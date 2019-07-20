@@ -38,4 +38,9 @@ nkbool preprocessorStateDeleteMacro(
     struct PreprocessorState *state,
     const char *identifier);
 
+struct PreprocessorState *preprocessorStateClone(
+    const struct PreprocessorState *state);
+
+// TODO: Clear output.
+
 #endif // NK_PPSTATE_H

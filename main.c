@@ -4,6 +4,8 @@
 #include "ppmacro.h"
 #include "ppstate.h"
 
+#include <assert.h>
+
 // ----------------------------------------------------------------------
 
 char *testStr =
@@ -12,6 +14,8 @@ char *testStr =
     "#undef foo\n"
     "#define foo(x) (x+x)\n"
     "foo(12345)\n"
+    "\"string test\"\n"
+    "\"quoted \\\"string\\\" test\"\n"
     "#undef foo\n"
     "#define multiarg(x, y, z, butts) \\\n  (x + x - y + (butts))\n"
     "#define multiarg(x, y, z, butts  \\\n  (x + x - y + (butts))\n"
@@ -43,6 +47,56 @@ char *readIdentifier(struct PreprocessorState *state)
     char *ret;
 
     while(nkiCompilerIsValidIdentifierCharacter(str[*i], *i == start)) {
+        (*i)++;
+    }
+
+    end = *i;
+
+    len = end - start;
+
+    // TODO: Check overflow.
+    ret = mallocWrapper(len + 1);
+
+    memcpyWrapper(ret, str + start, len);
+    ret[len] = 0;
+
+    return ret;
+}
+
+char *readQuotedString(struct PreprocessorState *state)
+{
+    const char *str = state->str;
+    nkuint32_t *i = &state->index;
+    nkuint32_t start = *i;
+    nkuint32_t end;
+    nkuint32_t len;
+    char *ret;
+    nkbool backslashed = nkfalse;
+
+    // Should only be called on the starting quote.
+    assert(str[*i] == '"');
+
+    // Skip initial quote.
+    (*i)++;
+
+    while(str[*i]) {
+
+        if(str[*i] == '\\') {
+
+            backslashed = !backslashed;
+
+        } else if(!backslashed && str[*i] == '"') {
+
+            // Skip final quote.
+            (*i)++;
+            break;
+
+        } else {
+
+            backslashed = nkfalse;
+
+        }
+
         (*i)++;
     }
 
@@ -108,6 +162,7 @@ struct PreprocessorToken
     nkuint32_t lineNumber;
 };
 
+// TODO: Move this into ppstate.c
 struct PreprocessorToken *getNextToken(
     struct PreprocessorState *state,
     nkbool outputWhitespace)
@@ -140,6 +195,13 @@ struct PreprocessorToken *getNextToken(
         ret->str = readInteger(state);
         ret->type = NK_PPTOKEN_NUMBER;
 
+    } else if(state->str[state->index] == '"') {
+
+        // Read quoted string.
+
+        ret->str = readQuotedString(state);
+        ret->type = NK_PPTOKEN_QUOTEDSTRING;
+
     } else if(state->str[state->index] == '#') {
 
         // Hash symbol.
@@ -153,7 +215,7 @@ struct PreprocessorToken *getNextToken(
 
     } else if(state->str[state->index] == ',') {
 
-        // Hash symbol.
+        // Comma.
 
         ret->str = mallocWrapper(2);
         ret->str[0] = state->str[state->index];
@@ -474,9 +536,8 @@ nkbool handleDirective(
     return ret;
 }
 
-void tokenize(const char *str)
+char *preprocess(struct PreprocessorState *state, const char *str)
 {
-    struct PreprocessorState *state = createPreprocessorState();
     state->str = str;
 
     printf("----------------------------------------------------------------------\n");
@@ -577,9 +638,35 @@ void tokenize(const char *str)
                     // TODO: Check argument count.
                     // TODO: Read arguments. Allow 0 in parens?
 
+                    struct PreprocessorState *clonedState = preprocessorStateClone(state);
+
+                    // TODO: ...
+                    //   Read arguments.
+                    //     For each argument...
+                    //       Read tokens until we get more ')' than the number of '(' that we've passed or...
+                    //         we hit a ','.
+                    //       Use the preprocessor system itself to output these into a buffer (for each arg) as we go.
+                    //         That will also skip quoted strings correctly.
+                    //         But also maybe that'll parse pp directives inside of an argument. Do we want that?
+                    //         Should we use a cloned or fresh state for that?
+                    //           Cloned macros will show up later in the definition output.
+                    //           Use fresh state here to avoid double-processing.
+                    //   Set them up as macros in the cloned state.
+                    //   Effectively #define argumentName valueGiven.
+                    //   Preprocess macro->definition with the cloned state, with output targeted at original buffer.
+                    //     That won't change the line number in the *parent* (cloned-from) state.
+                    //     It will change the number of lines in the actual output, though, so emit #file and #line directives if clonedState->lineNumber > 1.
+                    //     That will also activate directives in the definition, but they won't alter the parent state do we want that?
+
+                    // FIXME: Remove this.
                     appendString(state, ">>>");
+
                     appendString(state, macro->definition);
+
+                    // FIXME: Remove this.
                     appendString(state, "<<<");
+
+                    destroyPreprocessorState(clonedState);
 
                 } else {
 
@@ -601,12 +688,12 @@ void tokenize(const char *str)
 
     }
 
-    printf("----------------------------------------------------------------------\n");
-    printf("  Tokenizer output\n");
-    printf("----------------------------------------------------------------------\n");
-    printf("%s\n", state->output);
-
-    destroyPreprocessorState(state);
+    {
+        char *ret = state->output;
+        state->output = NULL;
+        destroyPreprocessorState(state);
+        return ret;
+    }
 }
 
 
@@ -615,12 +702,23 @@ void tokenize(const char *str)
 
 int main(int argc, char *argv[])
 {
+    struct PreprocessorState *state = createPreprocessorState();
+
     printf("----------------------------------------------------------------------\n");
     printf("  Input string\n");
     printf("----------------------------------------------------------------------\n");
     printf("%s\n", testStr);
 
-    tokenize(testStr);
+    {
+        char *preprocessed = preprocess(state, testStr);
+
+        printf("----------------------------------------------------------------------\n");
+        printf("  Preprocessor output\n");
+        printf("----------------------------------------------------------------------\n");
+        printf("%s\n", preprocessed);
+
+        freeWrapper(preprocessed);
+    }
 
     return 0;
 }

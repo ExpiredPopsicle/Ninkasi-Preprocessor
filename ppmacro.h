@@ -20,7 +20,8 @@ struct PreprocessorMacro
     struct PreprocessorMacro *next;
 };
 
-void destroyPreprocessorMacro(struct PreprocessorMacro *macro);
+void destroyPreprocessorMacro(
+    struct PreprocessorMacro *macro);
 
 struct PreprocessorMacro *createPreprocessorMacro(void);
 
@@ -36,8 +37,7 @@ nkbool preprocessorMacroSetDefinition(
     struct PreprocessorMacro *macro,
     const char *definition);
 
-struct PreprocessorMacro *preprocessorStateFindMacro(
-    struct PreprocessorState *state,
-    const char *identifier);
+struct PreprocessorMacro *preprocessorMacroClone(
+    const struct PreprocessorMacro *macro);
 
 #endif // NK_PPMACRO_H

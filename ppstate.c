@@ -144,4 +144,32 @@ nkbool preprocessorStateDeleteMacro(
     return nkfalse;
 }
 
+struct PreprocessorState *preprocessorStateClone(
+    const struct PreprocessorState *state)
+{
+    struct PreprocessorState *ret = createPreprocessorState();
+    struct PreprocessorMacro *currentMacro;
+    struct PreprocessorMacro **macroWritePtr;
+
+    ret->str = state->str; // Non-owning copy! (The source doesn't own it either.)
+    ret->index = state->index;
+    ret->lineNumber = state->lineNumber;
+    ret->output = strdupWrapper(state->output);
+
+    currentMacro = state->macros;
+    macroWritePtr = &ret->macros;
+    while(currentMacro) {
+
+        // TODO: Clone
+        struct PreprocessorMacro *clonedMacro = preprocessorMacroClone(currentMacro);
+
+        *macroWritePtr = clonedMacro;
+        macroWritePtr = &clonedMacro->next;
+
+        currentMacro = currentMacro->next;
+    }
+
+    return ret;
+}
+
 

@@ -90,3 +90,31 @@ nkbool preprocessorMacroSetDefinition(
     return nktrue;
 }
 
+struct PreprocessorMacro *preprocessorMacroClone(
+    const struct PreprocessorMacro *macro)
+{
+    struct PreprocessorMacro *ret = createPreprocessorMacro();
+    struct PreprocessorMacroArgument *currentArgument;
+    struct PreprocessorMacroArgument **argumentWritePtr;
+
+    ret->identifier = strdupWrapper(macro->identifier);
+    ret->definition = strdupWrapper(macro->definition);
+
+    currentArgument = macro->arguments;
+    argumentWritePtr = &ret->arguments;
+    while(currentArgument) {
+
+        struct PreprocessorMacroArgument *clonedArg =
+            mallocWrapper(sizeof(struct PreprocessorMacroArgument));
+        clonedArg->next = NULL;
+        clonedArg->name = strdupWrapper(currentArgument->name);
+
+        *argumentWritePtr = clonedArg;
+        argumentWritePtr = &clonedArg->next;
+
+        currentArgument = currentArgument->next;
+    }
+
+    return ret;
+}
+
