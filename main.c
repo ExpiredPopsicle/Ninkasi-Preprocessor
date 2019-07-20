@@ -75,6 +75,14 @@ void nkiMemcpy(void *dst, const void *src, nkuint32_t len)
 
 #define memcpy(x, y, z) kjdvkjndfvkdfmvkmdfvklm
 
+// struct PreprocessorMacro
+// {
+//     char *identifier;
+//     nkuint32_t argumentCount;
+//     char **argumentNames;
+//     char *definition;
+// };
+
 struct PreprocessorState
 {
     const char *str;
@@ -82,7 +90,27 @@ struct PreprocessorState
     nkuint32_t lineNumber;
 
     char *output;
+
+    // struct PreprocessorMacro *macros;
+    // nkuint32_t macroCount;
 };
+
+struct PreprocessorState *createPreprocessorState(void)
+{
+    struct PreprocessorState *ret =
+        mallocWrapper(sizeof(struct PreprocessorState));
+    ret->str = NULL;
+    ret->index = 0;
+    ret->lineNumber = 1;
+    ret->output = NULL;
+    return ret;
+}
+
+void destroyPreprocessorState(struct PreprocessorState *state)
+{
+    freeWrapper(state->output);
+    freeWrapper(state);
+}
 
 void appendString(struct PreprocessorState *state, const char *str)
 {
@@ -427,23 +455,19 @@ nkbool handleDirective(
     const char *directive,
     const char *restOfLine)
 {
-    // FIXME: Strip backslash-newlines out of restOfLine.
-
     nkbool ret = nkfalse;
-    struct PreprocessorState directiveParseState;
+    struct PreprocessorState *directiveParseState = createPreprocessorState();
     char *deletedBackslashes = deleteBackslashNewlines(restOfLine);
 
-    directiveParseState.index = 0;
-    directiveParseState.str = deletedBackslashes;
-    directiveParseState.output = NULL;
-    directiveParseState.lineNumber = 1;
+    directiveParseState->str = deletedBackslashes;
 
     printf("Handling directive: %s\n", directive);
 
     if(!strcmpWrapper(directive, "define")) {
 
         // Get identifier.
-        struct PreprocessorToken *identifierToken = getNextToken(&directiveParseState, nkfalse);
+        struct PreprocessorToken *identifierToken =
+            getNextToken(directiveParseState, nkfalse);
         char *definition = NULL;
 
         if(identifierToken->type == NK_PPTOKEN_IDENTIFIER) {
@@ -451,21 +475,22 @@ nkbool handleDirective(
             // Assume success. Set to false if something fails.
             ret = nktrue;
 
-            skipWhitespaceAndComments(&directiveParseState, nkfalse, nkfalse);
+            skipWhitespaceAndComments(
+                directiveParseState, nkfalse, nkfalse);
 
             // Check for arguments (next char == '(').
-            if(directiveParseState.str[directiveParseState.index] == '(') {
+            if(directiveParseState->str[directiveParseState->index] == '(') {
 
                 nkbool expectingComma = nkfalse;
 
                 // Skip the open paren.
                 struct PreprocessorToken *openParenToken =
-                    getNextToken(&directiveParseState, nkfalse);
+                    getNextToken(directiveParseState, nkfalse);
                 destroyToken(openParenToken);
 
                 // Parse the argument list.
 
-                struct PreprocessorToken *token = getNextToken(&directiveParseState, nkfalse);
+                struct PreprocessorToken *token = getNextToken(directiveParseState, nkfalse);
 
                 if(!token) {
 
@@ -525,7 +550,7 @@ nkbool handleDirective(
 
                         // Next token.
                         destroyToken(token);
-                        token = getNextToken(&directiveParseState, nkfalse);
+                        token = getNextToken(directiveParseState, nkfalse);
 
                         // We're not supposed to hit the end of the
                         // list here.
@@ -537,16 +562,22 @@ nkbool handleDirective(
                 }
 
                 // Skip up to the actual definition.
-                skipWhitespaceAndComments(&directiveParseState, nkfalse, nkfalse);
+                skipWhitespaceAndComments(directiveParseState, nkfalse, nkfalse);
             }
 
-            // definition = readRestOfLine(&directiveParseState, NULL);
-            definition = strdupWrapper(directiveParseState.str + directiveParseState.index);
+            definition = strdupWrapper(
+                directiveParseState->str + directiveParseState->index);
 
             printf("Define: \"%s\" = \"%s\"\n", identifierToken->str, definition);
 
             // TODO: Add definition to list.
             //   But only if ret is still nktrue (otherwise error).
+
+            if(ret) {
+
+                
+
+            }
 
             freeWrapper(definition);
             destroyToken(identifierToken);
@@ -566,25 +597,22 @@ nkbool handleDirective(
     }
 
     free(deletedBackslashes);
-    free(directiveParseState.output);
+    destroyPreprocessorState(directiveParseState);
     return ret;
 }
 
 void tokenize(const char *str)
 {
-    struct PreprocessorState state;
-    state.index = 0;
-    state.str = str;
-    state.output = NULL;
-    state.lineNumber = 1;
+    struct PreprocessorState *state = createPreprocessorState();
+    state->str = str;
 
     printf("----------------------------------------------------------------------\n");
     printf("  Tokenizing\n");
     printf("----------------------------------------------------------------------\n");
 
-    while(state.str[state.index]) {
+    while(state->str[state->index]) {
 
-        struct PreprocessorToken *token = getNextToken(&state, nktrue);
+        struct PreprocessorToken *token = getNextToken(state, nktrue);
 
         if(token) {
 
@@ -599,10 +627,10 @@ void tokenize(const char *str)
                 // Make sure there's the start of a valid identifier
                 // as the very next character. We don't support
                 // whitespace between the hash and a directive name.
-                if(nkiCompilerIsValidIdentifierCharacter(state.str[state.index], nktrue)) {
+                if(nkiCompilerIsValidIdentifierCharacter(state->str[state->index], nktrue)) {
 
                     // TODO: Do a thing.
-                    struct PreprocessorToken *directiveNameToken = getNextToken(&state, nktrue);
+                    struct PreprocessorToken *directiveNameToken = getNextToken(state, nktrue);
 
                     if(!strcmpWrapper(directiveNameToken->str, "define")) {
 
@@ -610,16 +638,16 @@ void tokenize(const char *str)
 
                         // // Read the macro name.
                         // struct PreprocessorToken *macroIdentifierToken =
-                        //     getNextToken(&state, nkfalse);
+                        //     getNextToken(state, nkfalse);
 
                         // freeWrapper(macroIdentifierToken->str);
                         // freeWrapper(macroIdentifierToken);
 
                         nkuint32_t lineCount = 0;
-                        char *line = readRestOfLine(&state, &lineCount);
+                        char *line = readRestOfLine(state, &lineCount);
 
                         if(handleDirective(
-                            &state,
+                            state,
                             directiveNameToken->str,
                             line))
                         {
@@ -628,7 +656,7 @@ void tokenize(const char *str)
                             // fill in the space used by the
                             // directive.
                             while(lineCount) {
-                                appendChar(&state, '\n');
+                                appendChar(state, '\n');
                                 lineCount--;
                             }
 
@@ -637,9 +665,9 @@ void tokenize(const char *str)
                             // Directive was invalid, or something we
                             // don't understand. Puke it back into the
                             // output.
-                            appendString(&state, token->str);
-                            appendString(&state, directiveNameToken->str);
-                            appendString(&state, line);
+                            appendString(state, token->str);
+                            appendString(state, directiveNameToken->str);
+                            appendString(state, line);
 
                         }
 
@@ -652,8 +680,8 @@ void tokenize(const char *str)
                         // Something we don't recognize? Better just
                         // output it with the hash and let the next
                         // preprocessor deal with it (GLSL, etc).
-                        appendString(&state, token->str);
-                        appendString(&state, directiveNameToken->str);
+                        appendString(state, token->str);
+                        appendString(state, directiveNameToken->str);
 
                     }
 
@@ -665,7 +693,7 @@ void tokenize(const char *str)
                     // '#', so we're going to ignore it and just
                     // output it directly as though it's not a
                     // preprocessor directive.
-                    appendString(&state, token->str);
+                    appendString(state, token->str);
 
                 }
 
@@ -675,11 +703,11 @@ void tokenize(const char *str)
                 // TODO: Check for macro, then do a thing if it is,
                 // otherwise just output.
 
-                appendString(&state, token->str);
+                appendString(state, token->str);
 
             } else {
 
-                appendString(&state, token->str);
+                appendString(state, token->str);
 
             }
 
@@ -694,9 +722,9 @@ void tokenize(const char *str)
     printf("----------------------------------------------------------------------\n");
     printf("  Tokenizer output\n");
     printf("----------------------------------------------------------------------\n");
-    printf("%s\n", state.output);
+    printf("%s\n", state->output);
 
-    free(state.output);
+    destroyPreprocessorState(state);
 }
 
 
