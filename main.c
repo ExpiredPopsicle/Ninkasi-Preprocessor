@@ -1,179 +1,10 @@
 #include <stdio.h>
-#include <malloc.h>
-#include <string.h>
 
-typedef unsigned int nkuint32_t;
-typedef int nkint32_t;
-typedef unsigned int nkbool;
-typedef unsigned char nkuint8_t;
-#define nktrue 1
-#define nkfalse 0
+#include "ppcommon.h"
+#include "ppmacro.h"
+#include "ppstate.h"
 
 // ----------------------------------------------------------------------
-// Stuff copied from nktoken.c
-
-nkbool nkiCompilerIsValidIdentifierCharacter(char c, nkbool isFirstCharacter)
-{
-    if(!isFirstCharacter) {
-        if(c >= '0' && c <= '9') {
-            return nktrue;
-        }
-    }
-
-    if(c == '_') return nktrue;
-    if(c >= 'a' && c <= 'z') return nktrue;
-    if(c >= 'A' && c <= 'Z') return nktrue;
-
-    return nkfalse;
-}
-
-nkbool nkiCompilerIsWhitespace(char c)
-{
-    if(c == ' ' || c == '\n' || c == '\t' || c == '\r') {
-        return nktrue;
-    }
-    return nkfalse;
-}
-
-void nkiCompilerPreprocessorSkipWhitespace(
-    const char *str,
-    nkuint32_t *k)
-{
-    while(str[*k] && nkiCompilerIsWhitespace(str[*k])) {
-
-        // Bail out when we get to the end of the line.
-        if(str[*k] == '\n') {
-            break;
-        }
-
-        (*k)++;
-    }
-}
-
-nkbool nkiCompilerIsNumber(char c)
-{
-    return (c >= '0' && c <= '9');
-}
-
-void nkiMemcpy(void *dst, const void *src, nkuint32_t len)
-{
-    nkuint32_t i;
-    for(i = 0; i < len; i++) {
-        ((char*)dst)[i] = ((const char*)src)[i];
-    }
-}
-
-// ----------------------------------------------------------------------
-
-#define mallocWrapper(x) malloc(x)
-#define memcpyWrapper(x, y, z) nkiMemcpy(x, y, z)
-#define freeWrapper(x) free(x)
-#define reallocWrapper(x, y) realloc(x, y)
-#define strlenWrapper(x) strlen(x)
-#define strcmpWrapper(x, y) strcmp(x, y)
-#define strdupWrapper(x) strdup(x)
-
-#define memcpy(x, y, z) kjdvkjndfvkdfmvkmdfvklm
-
-// struct PreprocessorMacro
-// {
-//     char *identifier;
-//     nkuint32_t argumentCount;
-//     char **argumentNames;
-//     char *definition;
-// };
-
-struct PreprocessorState
-{
-    const char *str;
-    nkuint32_t index;
-    nkuint32_t lineNumber;
-
-    char *output;
-
-    // struct PreprocessorMacro *macros;
-    // nkuint32_t macroCount;
-};
-
-struct PreprocessorState *createPreprocessorState(void)
-{
-    struct PreprocessorState *ret =
-        mallocWrapper(sizeof(struct PreprocessorState));
-    ret->str = NULL;
-    ret->index = 0;
-    ret->lineNumber = 1;
-    ret->output = NULL;
-    return ret;
-}
-
-void destroyPreprocessorState(struct PreprocessorState *state)
-{
-    freeWrapper(state->output);
-    freeWrapper(state);
-}
-
-void appendString(struct PreprocessorState *state, const char *str)
-{
-    nkuint32_t oldLen = state->output ? strlenWrapper(state->output) : 0;
-    // TODO: Check overflow.
-    nkuint32_t newLen = oldLen + strlenWrapper(str);
-
-    // TODO: Check overflow.
-    state->output = reallocWrapper(state->output, newLen + 1);
-
-    memcpyWrapper(state->output + oldLen, str, strlenWrapper(str));
-    state->output[newLen] = 0;
-}
-
-void appendChar(struct PreprocessorState *state, char c)
-{
-    char str[2] = { c, 0 };
-    appendString(state, str);
-}
-
-void skipChar(struct PreprocessorState *state, nkbool output)
-{
-    if(output) {
-        appendChar(state, state->str[state->index]);
-    }
-    state->index++;
-}
-
-void skipWhitespaceAndComments(
-    struct PreprocessorState *state,
-    nkbool output,
-    nkbool stopAtNewline)
-{
-    while(state->str[state->index]) {
-
-        // Skip comments (but output them).
-        if(state->str[state->index] == '/' && state->str[state->index] == '/') {
-
-            while(state->str[state->index] && state->str[state->index] != '\n') {
-                skipChar(state, output);
-            }
-
-        } else if(!nkiCompilerIsWhitespace(state->str[state->index])) {
-
-            // Non-whitespace, non-comment character found.
-            break;
-
-        }
-
-        // Bail out when we get to the end of the line.
-        if(state->str[state->index] == '\n') {
-            if(stopAtNewline) {
-                break;
-            } else {
-                state->lineNumber++;
-            }
-        }
-
-        skipChar(state, output);
-    }
-}
-
-
 
 char *testStr =
     "#define foo bar\n"
@@ -461,19 +292,56 @@ nkbool handleDirective(
 
     directiveParseState->str = deletedBackslashes;
 
-    printf("Handling directive: %s\n", directive);
+    if(!strcmpWrapper(directive, "undef")) {
 
-    if(!strcmpWrapper(directive, "define")) {
+        ret = nktrue;
 
         // Get identifier.
         struct PreprocessorToken *identifierToken =
             getNextToken(directiveParseState, nkfalse);
+
+        if(identifierToken->type == NK_PPTOKEN_IDENTIFIER) {
+
+            if(preprocessorStateDeleteMacro(state, identifierToken->str)) {
+
+                // Success!
+
+            } else {
+
+                // TODO: Error.
+                ret = nkfalse;
+
+            }
+
+        } else {
+
+            // TODO: Error.
+            ret = nkfalse;
+
+        }
+
+        destroyToken(identifierToken);
+
+    } else if(!strcmpWrapper(directive, "define")) {
+
+        struct PreprocessorMacro *macro = createPreprocessorMacro();
+
+        // Get identifier.
+        struct PreprocessorToken *identifierToken =
+            getNextToken(directiveParseState, nkfalse);
+
         char *definition = NULL;
 
         if(identifierToken->type == NK_PPTOKEN_IDENTIFIER) {
 
             // Assume success. Set to false if something fails.
             ret = nktrue;
+
+            // FIXME: TODO: Check to see if this identifier exists as
+            //   a macro first.
+            preprocessorMacroSetIdentifier(
+                macro,
+                identifierToken->str);
 
             skipWhitespaceAndComments(
                 directiveParseState, nkfalse, nkfalse);
@@ -536,6 +404,9 @@ nkbool handleDirective(
 
                                 // Valid identifier.
                                 printf("Argument name: %s\n", token->str);
+
+                                preprocessorMacroAddArgument(macro, token->str);
+
                                 expectingComma = nktrue;
 
                             } else {
@@ -565,19 +436,13 @@ nkbool handleDirective(
                 skipWhitespaceAndComments(directiveParseState, nkfalse, nkfalse);
             }
 
+            // Read the macro definition.
             definition = strdupWrapper(
                 directiveParseState->str + directiveParseState->index);
+            preprocessorMacroSetDefinition(
+                macro, definition);
 
             printf("Define: \"%s\" = \"%s\"\n", identifierToken->str, definition);
-
-            // TODO: Add definition to list.
-            //   But only if ret is still nktrue (otherwise error).
-
-            if(ret) {
-
-                
-
-            }
 
             freeWrapper(definition);
             destroyToken(identifierToken);
@@ -587,11 +452,19 @@ nkbool handleDirective(
             ret = nkfalse;
         }
 
+        // TODO: Add definition to list, or clean up if we had an
+        // error.
+        if(ret) {
+            preprocessorStateAddMacro(state, macro);
+        } else {
+            destroyPreprocessorMacro(macro);
+        }
+
     } else {
 
         // Unknown directive. Leave it alone.
 
-        // FIXME: Clean up and error out.
+        // FIXME: Error out.
 
         ret = nkfalse;
     }
@@ -629,20 +502,13 @@ void tokenize(const char *str)
                 // whitespace between the hash and a directive name.
                 if(nkiCompilerIsValidIdentifierCharacter(state->str[state->index], nktrue)) {
 
-                    // TODO: Do a thing.
+                    // Get the directive name.
                     struct PreprocessorToken *directiveNameToken = getNextToken(state, nktrue);
 
-                    if(!strcmpWrapper(directiveNameToken->str, "define")) {
-
-                        // Macro definition!
-
-                        // // Read the macro name.
-                        // struct PreprocessorToken *macroIdentifierToken =
-                        //     getNextToken(state, nkfalse);
-
-                        // freeWrapper(macroIdentifierToken->str);
-                        // freeWrapper(macroIdentifierToken);
-
+                    // Act on anything we might understand.
+                    if(!strcmpWrapper(directiveNameToken->str, "undef") ||
+                        !strcmpWrapper(directiveNameToken->str, "define"))
+                    {
                         nkuint32_t lineCount = 0;
                         char *line = readRestOfLine(state, &lineCount);
 
@@ -671,8 +537,7 @@ void tokenize(const char *str)
 
                         }
 
-                        // FIXME: Maybe remove this, depending on
-                        // where ownership goes.
+                        // Clean up.
                         freeWrapper(line);
 
                     } else {
@@ -703,7 +568,24 @@ void tokenize(const char *str)
                 // TODO: Check for macro, then do a thing if it is,
                 // otherwise just output.
 
-                appendString(state, token->str);
+                struct PreprocessorMacro *macro =
+                    preprocessorStateFindMacro(
+                        state, token->str);
+
+                if(macro) {
+
+                    // TODO: Check argument count.
+                    // TODO: Read arguments. Allow 0 in parens?
+
+                    appendString(state, ">>>");
+                    appendString(state, macro->definition);
+                    appendString(state, "<<<");
+
+                } else {
+
+                    appendString(state, token->str);
+
+                }
 
             } else {
 

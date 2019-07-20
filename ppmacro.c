@@ -1,0 +1,92 @@
+#include "ppmacro.h"
+
+void destroyPreprocessorMacro(struct PreprocessorMacro *macro)
+{
+    struct PreprocessorMacroArgument *args = macro->arguments;
+    while(args) {
+        struct PreprocessorMacroArgument *next = args->next;
+        freeWrapper(args->name);
+        freeWrapper(args);
+        args = next;
+    }
+
+    freeWrapper(macro->identifier);
+    freeWrapper(macro->definition);
+    freeWrapper(macro);
+}
+
+struct PreprocessorMacro *createPreprocessorMacro(void)
+{
+    struct PreprocessorMacro *ret =
+        mallocWrapper(sizeof(struct PreprocessorMacro));
+
+    if(ret) {
+        ret->identifier = NULL;
+        ret->definition = NULL;
+        ret->arguments = NULL;
+        ret->next = NULL;
+    }
+
+    return ret;
+}
+
+nkbool preprocessorMacroAddArgument(
+    struct PreprocessorMacro *macro,
+    const char *name)
+{
+    struct PreprocessorMacroArgument *arg =
+        mallocWrapper(sizeof(struct PreprocessorMacroArgument));
+
+    if(!arg) {
+        return nkfalse;
+    }
+
+    arg->name = strdupWrapper(name);
+
+    if(!arg->name) {
+        freeWrapper(arg);
+        return nkfalse;
+    }
+
+    arg->next = macro->arguments;
+    macro->arguments = arg;
+
+    return nktrue;
+}
+
+nkbool preprocessorMacroSetIdentifier(
+    struct PreprocessorMacro *macro,
+    const char *identifier)
+{
+    if(macro->identifier) {
+        freeWrapper(macro->identifier);
+        macro->identifier = NULL;
+    }
+
+    macro->identifier = strdupWrapper(identifier);
+
+    if(!macro->identifier) {
+        return nkfalse;
+    }
+
+    return nktrue;
+}
+
+nkbool preprocessorMacroSetDefinition(
+    struct PreprocessorMacro *macro,
+    const char *definition)
+{
+    if(macro->definition) {
+        freeWrapper(macro->definition);
+        macro->definition = NULL;
+    }
+
+    macro->definition = strdupWrapper(definition);
+
+    if(!macro->definition) {
+        return nkfalse;
+    }
+
+    return nktrue;
+}
+
