@@ -41,6 +41,12 @@ nkbool preprocessorStateDeleteMacro(
 struct PreprocessorState *preprocessorStateClone(
     const struct PreprocessorState *state);
 
+char *readIdentifier(struct PreprocessorState *state);
+
+char *readQuotedString(struct PreprocessorState *state);
+
+char *readInteger(struct PreprocessorState *state);
+
 // TODO: Clear output.
 
 #endif // NK_PPSTATE_H

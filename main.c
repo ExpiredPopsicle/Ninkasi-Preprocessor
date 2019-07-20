@@ -3,6 +3,7 @@
 #include "ppcommon.h"
 #include "ppmacro.h"
 #include "ppstate.h"
+#include "pptoken.h"
 
 #include <assert.h>
 
@@ -35,132 +36,6 @@ char *testStr =
 // #define malloc(x) ASDVDFKMggkmsglkbmdflksvm
 // #define free(x) kscmkcmsadlckmsdacas
 // #define memcpy(x, y, z) kmsdkmsdvkldmfvklds
-
-char *readIdentifier(struct PreprocessorState *state)
-{
-    const char *str = state->str;
-    nkuint32_t *i = &state->index;
-
-    nkuint32_t start = *i;
-    nkuint32_t end;
-    nkuint32_t len;
-    char *ret;
-
-    while(nkiCompilerIsValidIdentifierCharacter(str[*i], *i == start)) {
-        (*i)++;
-    }
-
-    end = *i;
-
-    len = end - start;
-
-    // TODO: Check overflow.
-    ret = mallocWrapper(len + 1);
-
-    memcpyWrapper(ret, str + start, len);
-    ret[len] = 0;
-
-    return ret;
-}
-
-char *readQuotedString(struct PreprocessorState *state)
-{
-    const char *str = state->str;
-    nkuint32_t *i = &state->index;
-    nkuint32_t start = *i;
-    nkuint32_t end;
-    nkuint32_t len;
-    char *ret;
-    nkbool backslashed = nkfalse;
-
-    // Should only be called on the starting quote.
-    assert(str[*i] == '"');
-
-    // Skip initial quote.
-    (*i)++;
-
-    while(str[*i]) {
-
-        if(str[*i] == '\\') {
-
-            backslashed = !backslashed;
-
-        } else if(!backslashed && str[*i] == '"') {
-
-            // Skip final quote.
-            (*i)++;
-            break;
-
-        } else {
-
-            backslashed = nkfalse;
-
-        }
-
-        (*i)++;
-    }
-
-    end = *i;
-
-    len = end - start;
-
-    // TODO: Check overflow.
-    ret = mallocWrapper(len + 1);
-
-    memcpyWrapper(ret, str + start, len);
-    ret[len] = 0;
-
-    return ret;
-}
-
-char *readInteger(struct PreprocessorState *state)
-{
-    const char *str = state->str;
-    nkuint32_t *i = &state->index;
-
-    nkuint32_t start = *i;
-    nkuint32_t end;
-    nkuint32_t len;
-    char *ret;
-
-    while(nkiCompilerIsNumber(str[*i])) {
-        (*i)++;
-    }
-
-    end = *i;
-
-    len = end - start;
-
-    // TODO: Check overflow.
-    ret = mallocWrapper(len + 1);
-
-    memcpyWrapper(ret, str + start, len);
-    ret[len] = 0;
-
-    return ret;
-}
-
-enum PreprocessorTokenType
-{
-    NK_PPTOKEN_IDENTIFIER,
-    NK_PPTOKEN_QUOTEDSTRING, // str is string with escape characters unconverted and quotes intact!
-    NK_PPTOKEN_HASH, // '#'
-    NK_PPTOKEN_COMMA,
-    NK_PPTOKEN_NUMBER,
-    NK_PPTOKEN_OPENPAREN,
-    NK_PPTOKEN_CLOSEPAREN,
-
-    // It's the preprocessor, so we have to let anything we don't
-    // understand slide through.
-    NK_PPTOKEN_UNKNOWN
-};
-
-struct PreprocessorToken
-{
-    char *str;
-    nkuint32_t type;
-    nkuint32_t lineNumber;
-};
 
 // TODO: Move this into ppstate.c
 struct PreprocessorToken *getNextToken(
@@ -201,6 +76,20 @@ struct PreprocessorToken *getNextToken(
 
         ret->str = readQuotedString(state);
         ret->type = NK_PPTOKEN_QUOTEDSTRING;
+
+    } else if(state->str[state->index] == '#' &&
+        state->str[state->index+1] == '#')
+    {
+        // Double-hash (concatenation) symbol.
+
+        ret->str = mallocWrapper(3);
+        ret->str[0] = state->str[state->index];
+        ret->str[1] = state->str[state->index+1];
+        ret->str[2] = 0;
+        ret->type = NK_PPTOKEN_DOUBLEHASH;
+
+        skipChar(state, nkfalse);
+        skipChar(state, nkfalse);
 
     } else if(state->str[state->index] == '#') {
 
@@ -536,9 +425,77 @@ nkbool handleDirective(
     return ret;
 }
 
-char *preprocess(struct PreprocessorState *state, const char *str)
+char *readMacroArgument(struct PreprocessorState *state)
+{
+    // Create a pristine state to read the arguments with.
+    struct PreprocessorState *readerState = createPreprocessorState();
+    nkuint32_t parenLevel = 0;
+
+    // Copy input and position.
+    readerState->index = state->index;
+    readerState->str = state->str;
+
+    // Skip whitespace up to the first token, but don't append
+    // whitespace on this side of it.
+    skipWhitespaceAndComments(readerState, nkfalse, nkfalse);
+
+    struct PreprocessorToken *token = NULL;
+    do {
+        skipWhitespaceAndComments(readerState, nktrue, nkfalse);
+
+        // Check to see if we're "done". (Zero-length arguments are
+        // okay, so we have to do this at the start.)
+        if(!parenLevel) {
+            if(readerState->str[readerState->index] == ',' ||
+                readerState->str[readerState->index] == ')')
+            {
+                break;
+            }
+        }
+
+        // Read token and output it.
+        token = getNextToken(readerState, nktrue);
+
+        // Check for '(', ')', and ','. Do stuff with paren level.
+        if(token) {
+            if(token->type == NK_PPTOKEN_OPENPAREN) {
+                parenLevel++;
+            } else if(token->type == NK_PPTOKEN_CLOSEPAREN) {
+                parenLevel--;
+            }
+        }
+
+        appendString(readerState, token->str);
+        destroyToken(token);
+
+    } while(token);
+
+    // if(token) {
+    //     destroyToken(token);
+    // }
+
+    // Update read position in the source state.
+    state->index = readerState->index;
+
+    {
+        char *ret = readerState->output;
+        readerState->output = NULL;
+        destroyPreprocessorState(readerState);
+        return ret;
+    }
+}
+
+void preprocessorStateClearOutput(struct PreprocessorState *state)
+{
+    freeWrapper(state->output);
+    state->output = NULL;
+}
+
+
+void preprocess(struct PreprocessorState *state, const char *str)
 {
     state->str = str;
+    state->index = 0;
 
     printf("----------------------------------------------------------------------\n");
     printf("  Tokenizing\n");
@@ -556,7 +513,13 @@ char *preprocess(struct PreprocessorState *state, const char *str)
                 token->type,
                 token->str);
 
-            if(token->type == NK_PPTOKEN_HASH) {
+            if(token->type == NK_PPTOKEN_DOUBLEHASH) {
+
+                // Output nothing. This is the symbol concatenation
+                // token, and it does its job by effectively just
+                // dropping out.
+
+            } else if(token->type == NK_PPTOKEN_HASH) {
 
                 // Make sure there's the start of a valid identifier
                 // as the very next character. We don't support
@@ -603,6 +566,8 @@ char *preprocess(struct PreprocessorState *state, const char *str)
 
                     } else {
 
+                        // TODO: Stringification?
+
                         // Something we don't recognize? Better just
                         // output it with the hash and let the next
                         // preprocessor deal with it (GLSL, etc).
@@ -615,7 +580,7 @@ char *preprocess(struct PreprocessorState *state, const char *str)
 
                 } else {
 
-                    // Some non-character identifier came after the
+                    // Some non-directive identifier came after the
                     // '#', so we're going to ignore it and just
                     // output it directly as though it's not a
                     // preprocessor directive.
@@ -635,10 +600,107 @@ char *preprocess(struct PreprocessorState *state, const char *str)
 
                 if(macro) {
 
-                    // TODO: Check argument count.
-                    // TODO: Read arguments. Allow 0 in parens?
-
                     struct PreprocessorState *clonedState = preprocessorStateClone(state);
+                    nkuint32_t startLineNumber = state->lineNumber;
+
+                    // Input is the macro definition. Output is
+                    // appending to the "parent" state.
+
+                    // clonedState->str = macro->definition; // FIXME: Redundant?
+
+                    if(macro->arguments) {
+
+                        skipWhitespaceAndComments(state, nkfalse, nkfalse);
+
+                        if(state->str[state->index] == '(') {
+
+                            // Skip open paren.
+                            skipChar(state, nkfalse);
+
+
+                            {
+                                struct PreprocessorMacroArgument *argument = macro->arguments;
+
+                                while(argument) {
+
+                                    // Read the macro argument.
+                                    char *argumentText = readMacroArgument(state);
+
+                                    printf("Argument (%s) text: %s\n",
+                                        argument->name, argumentText);
+
+                                    // Add the argument as a macro to
+                                    // the new cloned state.
+                                    {
+                                        struct PreprocessorMacro *newMacro = createPreprocessorMacro();
+                                        preprocessorMacroSetIdentifier(newMacro, argument->name);
+                                        preprocessorMacroSetDefinition(newMacro, argumentText);
+                                        preprocessorStateAddMacro(clonedState, newMacro);
+                                    }
+
+                                    freeWrapper(argumentText);
+
+                                    skipWhitespaceAndComments(state, nkfalse, nkfalse);
+
+                                    if(argument->next) {
+
+                                        // Expect ','
+                                        if(state->str[state->index] == ',') {
+                                            skipChar(state, nkfalse);
+                                        } else {
+                                            // TODO: Error out.
+                                            break;
+                                        }
+
+                                    } else {
+
+                                        // Expect ')'
+                                        if(state->str[state->index] == ')') {
+                                            skipChar(state, nkfalse);
+                                        } else {
+                                            // TODO: Error out.
+                                            break;
+                                        }
+                                    }
+
+                                    argument = argument->next;
+
+                                }
+
+                            }
+
+                        } else {
+
+                            // FIXME: Error out. Expected argument list.
+
+                        }
+
+                    } else {
+                        // No macros. Nothing to set up on cloned
+                        // state.
+                    }
+
+                    // Preprocess the macro into place.
+                    {
+                        // Clear input
+                        preprocessorStateClearOutput(clonedState);
+
+                        preprocess(clonedState, macro->definition);
+
+                        // // FIXME: Remove this.
+                        // appendString(state, ">>>");
+
+                        appendString(state, clonedState->output);
+
+                        // // FIXME: Remove this.
+                        // appendString(state, "<<<");
+
+                        // Clean up.
+                        destroyPreprocessorState(clonedState);
+                    }
+
+                    // TODO: Emit file and line directives.
+
 
                     // TODO: ...
                     //   Read arguments.
@@ -658,15 +720,7 @@ char *preprocess(struct PreprocessorState *state, const char *str)
                     //     It will change the number of lines in the actual output, though, so emit #file and #line directives if clonedState->lineNumber > 1.
                     //     That will also activate directives in the definition, but they won't alter the parent state do we want that?
 
-                    // FIXME: Remove this.
-                    appendString(state, ">>>");
 
-                    appendString(state, macro->definition);
-
-                    // FIXME: Remove this.
-                    appendString(state, "<<<");
-
-                    destroyPreprocessorState(clonedState);
 
                 } else {
 
@@ -688,37 +742,65 @@ char *preprocess(struct PreprocessorState *state, const char *str)
 
     }
 
-    {
-        char *ret = state->output;
-        state->output = NULL;
-        destroyPreprocessorState(state);
-        return ret;
-    }
+    // {
+    //     char *ret = state->output;
+    //     state->output = NULL;
+    //     destroyPreprocessorState(state);
+    //     return ret;
+    // }
 }
 
 
 
 
+char *loadFile(const char *filename)
+{
+    FILE *in = fopen(filename, "rb");
+    nkuint32_t fileSize = 0;
+    char *ret = mallocWrapper(fileSize + 1);
+    int c;
+
+    ret[0] = 0;
+
+    if(!in) {
+        return NULL;
+    }
+
+    while((c = fgetc(in)) != EOF) {
+        ret[fileSize] = c;
+        fileSize++;
+        ret = reallocWrapper(ret, fileSize + 1);
+        ret[fileSize] = 0;
+    }
+
+    fclose(in);
+
+    return ret;
+}
 
 int main(int argc, char *argv[])
 {
     struct PreprocessorState *state = createPreprocessorState();
+    char *testStr2 = loadFile("test.txt");
 
     printf("----------------------------------------------------------------------\n");
     printf("  Input string\n");
     printf("----------------------------------------------------------------------\n");
-    printf("%s\n", testStr);
+    printf("%s\n", testStr2);
 
     {
-        char *preprocessed = preprocess(state, testStr);
+        preprocess(state, testStr2);
 
         printf("----------------------------------------------------------------------\n");
         printf("  Preprocessor output\n");
         printf("----------------------------------------------------------------------\n");
-        printf("%s\n", preprocessed);
+        printf("%s\n", state->output);
 
-        freeWrapper(preprocessed);
+        // freeWrapper(preprocessed);
+        destroyPreprocessorState(state);
     }
+
+    freeWrapper(testStr2);
 
     return 0;
 }

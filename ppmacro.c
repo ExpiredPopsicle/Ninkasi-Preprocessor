@@ -48,8 +48,25 @@ nkbool preprocessorMacroAddArgument(
         return nkfalse;
     }
 
-    arg->next = macro->arguments;
-    macro->arguments = arg;
+    arg->next = NULL;
+
+    // This is annoying, but to keep the arguments in the correct
+    // order for later, we need to go all the way to the end of the
+    // list and add the new pointer there.
+    {
+        struct PreprocessorMacroArgument *existingArg = macro->arguments;
+        if(!existingArg) {
+            macro->arguments = arg;
+        } else {
+            while(existingArg->next) {
+                existingArg = existingArg->next;
+            }
+            existingArg->next = arg;
+        }
+    }
+
+    // arg->next = macro->arguments;
+    // macro->arguments = arg;
 
     return nktrue;
 }

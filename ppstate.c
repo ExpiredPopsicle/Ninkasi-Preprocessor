@@ -1,6 +1,9 @@
 #include "ppcommon.h"
 #include "ppstate.h"
 #include "ppmacro.h"
+#include "pptoken.h"
+
+#include <assert.h>
 
 struct PreprocessorState *createPreprocessorState(void)
 {
@@ -154,14 +157,15 @@ struct PreprocessorState *preprocessorStateClone(
     ret->str = state->str; // Non-owning copy! (The source doesn't own it either.)
     ret->index = state->index;
     ret->lineNumber = state->lineNumber;
-    ret->output = strdupWrapper(state->output);
+    ret->output = state->output ? strdupWrapper(state->output) : NULL;
 
     currentMacro = state->macros;
     macroWritePtr = &ret->macros;
+
     while(currentMacro) {
 
-        // TODO: Clone
-        struct PreprocessorMacro *clonedMacro = preprocessorMacroClone(currentMacro);
+        struct PreprocessorMacro *clonedMacro =
+            preprocessorMacroClone(currentMacro);
 
         *macroWritePtr = clonedMacro;
         macroWritePtr = &clonedMacro->next;
@@ -172,4 +176,106 @@ struct PreprocessorState *preprocessorStateClone(
     return ret;
 }
 
+char *readIdentifier(struct PreprocessorState *state)
+{
+    const char *str = state->str;
+    nkuint32_t *i = &state->index;
 
+    nkuint32_t start = *i;
+    nkuint32_t end;
+    nkuint32_t len;
+    char *ret;
+
+    while(nkiCompilerIsValidIdentifierCharacter(str[*i], *i == start)) {
+        (*i)++;
+    }
+
+    end = *i;
+
+    len = end - start;
+
+    // TODO: Check overflow.
+    ret = mallocWrapper(len + 1);
+
+    memcpyWrapper(ret, str + start, len);
+    ret[len] = 0;
+
+    return ret;
+}
+
+char *readQuotedString(struct PreprocessorState *state)
+{
+    const char *str = state->str;
+    nkuint32_t *i = &state->index;
+    nkuint32_t start = *i;
+    nkuint32_t end;
+    nkuint32_t len;
+    char *ret;
+    nkbool backslashed = nkfalse;
+
+    // Should only be called on the starting quote.
+    assert(str[*i] == '"');
+
+    // Skip initial quote.
+    (*i)++;
+
+    while(str[*i]) {
+
+        if(str[*i] == '\\') {
+
+            backslashed = !backslashed;
+
+        } else if(!backslashed && str[*i] == '"') {
+
+            // Skip final quote.
+            (*i)++;
+            break;
+
+        } else {
+
+            backslashed = nkfalse;
+
+        }
+
+        (*i)++;
+    }
+
+    end = *i;
+
+    len = end - start;
+
+    // TODO: Check overflow.
+    ret = mallocWrapper(len + 1);
+
+    memcpyWrapper(ret, str + start, len);
+    ret[len] = 0;
+
+    return ret;
+}
+
+char *readInteger(struct PreprocessorState *state)
+{
+    const char *str = state->str;
+    nkuint32_t *i = &state->index;
+
+    nkuint32_t start = *i;
+    nkuint32_t end;
+    nkuint32_t len;
+    char *ret;
+
+    while(nkiCompilerIsNumber(str[*i])) {
+        (*i)++;
+    }
+
+    end = *i;
+
+    len = end - start;
+
+    // TODO: Check overflow.
+    ret = mallocWrapper(len + 1);
+
+    memcpyWrapper(ret, str + start, len);
+    ret[len] = 0;
+
+    return ret;
+}
