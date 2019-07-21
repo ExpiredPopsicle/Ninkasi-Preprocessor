@@ -26,4 +26,6 @@ struct PreprocessorToken
     nkuint32_t lineNumber;
 };
 
+void destroyToken(struct PreprocessorToken *token);
+
 #endif // NK_PPTOKEN_H

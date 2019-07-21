@@ -42,16 +42,66 @@ void preprocessorStateWritePositionMarker(struct PreprocessorState *state)
     if(state->writePositionMarkers &&
         state->outputLineNumber != state->lineNumber)
     {
-        char numberStr[64];
+        char numberStr[128];
         char *filenameStr = "filenametest"; // FIXME: Finish this.
+
+        nkuint32_t orig1 = state->outputLineNumber;
+        nkuint32_t orig2 = state->lineNumber;
+
         appendString(state, "\n#file ");
         appendString(state, filenameStr); // FIXME: Add quotes and escape.
-        sprintf(numberStr, "\n#line %ld", (long)state->lineNumber);
+        sprintf(
+            numberStr, "\n#line %ld // %ld != %ld",
+            (long)state->lineNumber,
+            (long)orig1,
+            (long)orig2);
         appendString(state, numberStr);
 
         state->outputLineNumber = state->lineNumber;
     }
 }
+
+// void appendString(struct PreprocessorState *state, const char *str)
+// {
+//     if(!str) {
+
+//         return;
+
+//     } else {
+
+//         nkuint32_t oldLen = state->output ? strlenWrapper(state->output) : 0;
+//         // TODO: Check overflow.
+//         nkuint32_t newLen = oldLen + strlenWrapper(str);
+
+//         // // Count up output newlines.
+//         // nkuint32_t nlIterator = 0;
+//         // nkuint32_t lenStr = strlenWrapper(str);
+//         // for(nlIterator = 0; nlIterator < lenStr; nlIterator++) {
+//         //     if(str[nlIterator] == '\n') {
+//         //         state->outputLineNumber++;
+//         //     }
+//         // }
+
+//         // TODO: Check overflow.
+//         state->output = reallocWrapper(state->output, newLen + 1);
+
+//         memcpyWrapper(state->output + oldLen, str, strlenWrapper(str));
+//         state->output[newLen] = 0;
+//     }
+// }
+
+// void appendChar(struct PreprocessorState *state, char c)
+// {
+//     char str[2] = { c, 0 };
+
+//     // // FIXME: Relocate this?
+//     // if(state->str[state->index] == '\n') {
+//     //     state->outputLineNumber++;
+//     //     preprocessorStateWritePositionMarker(state);
+//     // }
+
+//     appendString(state, str);
+// }
 
 void appendString(struct PreprocessorState *state, const char *str)
 {
@@ -61,22 +111,58 @@ void appendString(struct PreprocessorState *state, const char *str)
 
     } else {
 
-        nkuint32_t oldLen = state->output ? strlenWrapper(state->output) : 0;
-        // TODO: Check overflow.
-        nkuint32_t newLen = oldLen + strlenWrapper(str);
+        nkuint32_t len = strlenWrapper(str);
+        nkuint32_t i;
 
-        // TODO: Check overflow.
-        state->output = reallocWrapper(state->output, newLen + 1);
-
-        memcpyWrapper(state->output + oldLen, str, strlenWrapper(str));
-        state->output[newLen] = 0;
+        for(i = 0; i < len; i++) {
+            appendChar(state, str[i]);
+        }
     }
+}
+
+void appendChar_real(struct PreprocessorState *state, char c)
+{
+    // TODO: Check overflow.
+    nkuint32_t oldLen = state->output ? strlenWrapper(state->output) : 0;
+    nkuint32_t newLen = oldLen + 1;
+    // TODO: Check overflow.
+    nkuint32_t allocLen = newLen + 1;
+
+    state->output = reallocWrapper(state->output, allocLen);
+    state->output[oldLen] = c;
+    state->output[newLen] = 0;
 }
 
 void appendChar(struct PreprocessorState *state, char c)
 {
-    char str[2] = { c, 0 };
-    appendString(state, str);
+    if(state->writePositionMarkers) {
+        if(!state->output || state->output[strlenWrapper(state->output) - 1] == '\n') {
+
+            // char lineNoBuf[128];
+            // sprintf(lineNoBuf, "%ld", (long)state->lineNumber);
+
+            nkuint32_t lineNo = state->lineNumber;
+            nkuint32_t lnMask = 100000;
+
+            while(!(lineNo / lnMask)) {
+                appendChar_real(state, ' ');
+                lineNo %= lnMask;
+                lnMask /= 10;
+            }
+
+            while(lnMask) {
+                appendChar_real(state, '0' + (lineNo / lnMask));
+                lineNo %= lnMask;
+                lnMask /= 10;
+            }
+
+            appendChar_real(state, ' ');
+            appendChar_real(state, '|');
+            appendChar_real(state, ' ');
+        }
+    }
+
+    appendChar_real(state, c);
 }
 
 void skipChar(struct PreprocessorState *state, nkbool output)
@@ -85,14 +171,26 @@ void skipChar(struct PreprocessorState *state, nkbool output)
 
     if(output) {
 
-        // FIXME: Relocate this?
-        if(state->str[state->index] == '\n') {
-            preprocessorStateWritePositionMarker(state);
-            state->outputLineNumber++;
-        }
+        // // FIXME: Relocate this?
+        // if(state->str[state->index] == '\n') {
+        //     // state->outputLineNumber++;
+        //     preprocessorStateWritePositionMarker(state);
+        // }
 
         appendChar(state, state->str[state->index]);
+
+        // // FIXME: Relocate?
+        // if(state->str[state->index] == '\n') {
+        //     state->outputLineNumber++;
+        //     preprocessorStateWritePositionMarker(state);
+        // }
+
     }
+
+    if(state->str && state->str[state->index] == '\n') {
+        state->lineNumber++;
+    }
+
     state->index++;
 }
 
@@ -122,7 +220,7 @@ void skipWhitespaceAndComments(
             if(stopAtNewline) {
                 break;
             } else {
-                state->lineNumber++;
+                // state->lineNumber++;
             }
         }
 
@@ -260,7 +358,7 @@ char *readQuotedString(struct PreprocessorState *state)
     assert(str[*i] == '"');
 
     // Skip initial quote.
-    (*i)++;
+    skipChar(state, nkfalse);
 
     while(str[*i]) {
 
@@ -271,7 +369,7 @@ char *readQuotedString(struct PreprocessorState *state)
         } else if(!backslashed && str[*i] == '"') {
 
             // Skip final quote.
-            (*i)++;
+            skipChar(state, nkfalse);
             break;
 
         } else {
@@ -280,7 +378,7 @@ char *readQuotedString(struct PreprocessorState *state)
 
         }
 
-        (*i)++;
+        skipChar(state, nkfalse);
     }
 
     end = *i;
