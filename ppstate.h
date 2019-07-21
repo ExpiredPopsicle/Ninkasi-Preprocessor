@@ -11,9 +11,17 @@ struct PreprocessorState
     nkuint32_t index;
     nkuint32_t lineNumber;
 
+    // Line number in the output after being fffected by #line
+    // directives. This should match the input lineNumber. When it
+    // gets out of sync it means we need to add a new #line directive
+    // and then set it back.
+    nkuint32_t outputLineNumber;
+
     char *output;
 
     struct PreprocessorMacro *macros;
+
+    nkbool writePositionMarkers;
 };
 
 struct PreprocessorState *createPreprocessorState(void);
@@ -46,6 +54,9 @@ char *readIdentifier(struct PreprocessorState *state);
 char *readQuotedString(struct PreprocessorState *state);
 
 char *readInteger(struct PreprocessorState *state);
+
+
+
 
 // TODO: Clear output.
 

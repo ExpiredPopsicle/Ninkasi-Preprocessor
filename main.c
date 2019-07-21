@@ -232,6 +232,77 @@ char *deleteBackslashNewlines(const char *str)
     return outputStr;
 }
 
+char *stripCommentsAndTrim(const char *in)
+{
+    char *ret = mallocWrapper(strlenWrapper(in) + 1);
+    nkuint32_t readIndex = 0;
+    nkuint32_t writeIndex = 0;
+
+    // Skip whitespace on the start.
+    while(in[readIndex] && nkiCompilerIsWhitespace(in[readIndex])) {
+        readIndex++;
+    }
+
+    while(in[readIndex]) {
+
+        if(in[readIndex] == '"') {
+
+            // If we see the start of a string, run through to the end
+            // of the string.
+
+            nkbool escaped = nkfalse;
+
+            // Skip initial '"'.
+            ret[writeIndex++] = in[readIndex++];
+
+            while(in[readIndex]) {
+
+                if(!escaped && in[readIndex] == '"') {
+
+                    ret[writeIndex++] = in[readIndex++];
+                    break;
+
+                } else if(in[readIndex] == '\\') {
+
+                    escaped = !escaped;
+
+                } else {
+
+                    escaped = nkfalse;
+
+                }
+
+                ret[writeIndex++] = in[readIndex++];
+            }
+
+        } else if(in[readIndex] == '/' && in[readIndex + 1] == '/') {
+
+            // If we see a comment, run through to the end of the line.
+            while(in[readIndex] && in[readIndex] != '\n') {
+                readIndex++;
+            }
+
+        } else {
+
+            // Just write the character.
+            ret[writeIndex++] = in[readIndex++];
+
+        }
+    }
+
+    // Back up the write index until we find some non-whitespace.
+    while(writeIndex) {
+        if(!nkiCompilerIsWhitespace(ret[writeIndex-1])) {
+            break;
+        }
+        writeIndex--;
+    }
+
+
+    ret[writeIndex] = 0;
+    return ret;
+}
+
 nkbool handleDirective(
     struct PreprocessorState *state,
     const char *directive,
@@ -288,8 +359,6 @@ nkbool handleDirective(
             // Assume success. Set to false if something fails.
             ret = nktrue;
 
-            // FIXME: TODO: Check to see if this identifier exists as
-            //   a macro first.
             preprocessorMacroSetIdentifier(
                 macro,
                 identifierToken->str);
@@ -388,8 +457,9 @@ nkbool handleDirective(
             }
 
             // Read the macro definition.
-            definition = strdupWrapper(
+            definition = stripCommentsAndTrim(
                 directiveParseState->str + directiveParseState->index);
+
             preprocessorMacroSetDefinition(
                 macro, definition);
 
@@ -400,6 +470,11 @@ nkbool handleDirective(
 
         } else {
 
+            ret = nkfalse;
+        }
+
+        if(preprocessorStateFindMacro(state, macro->identifier)) {
+            // TODO: Error out. Multiple definitions.
             ret = nkfalse;
         }
 
@@ -470,10 +545,6 @@ char *readMacroArgument(struct PreprocessorState *state)
 
     } while(token);
 
-    // if(token) {
-    //     destroyToken(token);
-    // }
-
     // Update read position in the source state.
     state->index = readerState->index;
 
@@ -489,8 +560,8 @@ void preprocessorStateClearOutput(struct PreprocessorState *state)
 {
     freeWrapper(state->output);
     state->output = NULL;
+    state->outputLineNumber = 1;
 }
-
 
 void preprocess(struct PreprocessorState *state, const char *str)
 {
@@ -606,8 +677,6 @@ void preprocess(struct PreprocessorState *state, const char *str)
                     // Input is the macro definition. Output is
                     // appending to the "parent" state.
 
-                    // clonedState->str = macro->definition; // FIXME: Redundant?
-
                     if(macro->arguments) {
 
                         skipWhitespaceAndComments(state, nkfalse, nkfalse);
@@ -624,7 +693,10 @@ void preprocess(struct PreprocessorState *state, const char *str)
                                 while(argument) {
 
                                     // Read the macro argument.
-                                    char *argumentText = readMacroArgument(state);
+                                    char *unstrippedArgumentText = readMacroArgument(state);
+                                    char *argumentText = stripCommentsAndTrim(unstrippedArgumentText);
+
+                                    freeWrapper(unstrippedArgumentText);
 
                                     printf("Argument (%s) text: %s\n",
                                         argument->name, argumentText);
@@ -684,16 +756,10 @@ void preprocess(struct PreprocessorState *state, const char *str)
                     {
                         // Clear input
                         preprocessorStateClearOutput(clonedState);
-
                         preprocess(clonedState, macro->definition);
 
-                        // // FIXME: Remove this.
-                        // appendString(state, ">>>");
-
+                        // Write output.
                         appendString(state, clonedState->output);
-
-                        // // FIXME: Remove this.
-                        // appendString(state, "<<<");
 
                         // Clean up.
                         destroyPreprocessorState(clonedState);
@@ -789,6 +855,7 @@ int main(int argc, char *argv[])
     printf("%s\n", testStr2);
 
     {
+        state->writePositionMarkers = nktrue;
         preprocess(state, testStr2);
 
         printf("----------------------------------------------------------------------\n");
