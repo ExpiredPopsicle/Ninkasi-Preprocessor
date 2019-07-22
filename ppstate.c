@@ -19,6 +19,7 @@ struct PreprocessorState *createPreprocessorState(void)
         ret->macros = NULL;
         ret->writePositionMarkers = nkfalse;
         ret->updateMarkers = nkfalse;
+        ret->filename = strdupWrapper("<unknown>");
     }
 
     return ret;
@@ -33,6 +34,7 @@ void destroyPreprocessorState(struct PreprocessorState *state)
         currentMacro = next;
     }
     freeWrapper(state->output);
+    freeWrapper(state->filename);
     freeWrapper(state);
 }
 
@@ -171,7 +173,7 @@ void appendChar(struct PreprocessorState *state, char c)
             // nkuint32_t lnMask = 10000;
 
             {
-                const char *filename = "filename";
+                const char *filename = state->filename;
                 nkuint32_t fnameLen = strlenWrapper(filename);
                 nkuint32_t i;
                 for(i = 0; i < 12; i++) {
@@ -379,6 +381,7 @@ struct PreprocessorState *preprocessorStateClone(
     ret->output = state->output ? strdupWrapper(state->output) : NULL;
     // Note: We purposely don't write position markers or update
     // markers here.
+    preprocessorStateSetFilename(ret, state->filename);
 
     currentMacro = state->macros;
     macroWritePtr = &ret->macros;
@@ -576,7 +579,7 @@ void preprocessorStateAddError(
 {
     // FIXME: Add filename.
     printf("ERROR %s:%ld: %s\n",
-        "filename",
+        state->filename,
         (long)state->lineNumber, errorMessage);
 }
 
@@ -586,3 +589,14 @@ void preprocessorStateFlagFileLineMarkersForUpdate(
     state->updateMarkers = nktrue;
 }
 
+void preprocessorStateSetFilename(
+    struct PreprocessorState *state,
+    const char *filename)
+{
+    if(state->filename) {
+        freeWrapper(state->filename);
+        state->filename = NULL;
+    }
+
+    state->filename = strdupWrapper(filename);
+}

@@ -40,6 +40,8 @@ struct PreprocessorState
     // TODO: Error state.
 
     nkbool updateMarkers;
+
+    char *filename;
 };
 
 // ----------------------------------------------------------------------
@@ -74,6 +76,7 @@ void skipWhitespaceAndComments(
     nkbool output,
     nkbool stopAtNewline);
 void preprocessorStateClearOutput(struct PreprocessorState *state);
+void preprocessorStateFlagFileLineMarkersForUpdate(struct PreprocessorState *state);
 
 // ----------------------------------------------------------------------
 // Tokenization
@@ -92,5 +95,8 @@ char *readMacroArgument(struct PreprocessorState *state);
 void preprocessorStateAddError(
     struct PreprocessorState *state,
     const char *errorMessage);
+void preprocessorStateSetFilename(
+    struct PreprocessorState *state,
+    const char *filename);
 
 #endif // NK_PPSTATE_H
