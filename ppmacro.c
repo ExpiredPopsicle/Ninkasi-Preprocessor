@@ -98,7 +98,8 @@ nkbool preprocessorMacroSetDefinition(
         macro->definition = NULL;
     }
 
-    macro->definition = strdupWrapper(definition);
+    macro->definition =
+        strdupWrapper(definition ? definition : "");
 
     if(!macro->definition) {
         return nkfalse;

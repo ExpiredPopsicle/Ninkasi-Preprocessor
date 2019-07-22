@@ -26,9 +26,15 @@ char *deleteBackslashNewlines(const char *str)
 
 char *stripCommentsAndTrim(const char *in)
 {
-    char *ret = mallocWrapper(strlenWrapper(in) + 1);
+    char *ret;
     nkuint32_t readIndex = 0;
     nkuint32_t writeIndex = 0;
+
+    if(!in) {
+        return NULL;
+    }
+
+    ret = mallocWrapper(strlenWrapper(in) + 1);
 
     // Skip whitespace on the start.
     while(in[readIndex] && nkiCompilerIsWhitespace(in[readIndex])) {

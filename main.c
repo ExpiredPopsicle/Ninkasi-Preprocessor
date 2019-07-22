@@ -147,8 +147,6 @@ struct PreprocessorToken *getNextToken(
         skipChar(state, nkfalse);
     }
 
-    // TODO: Numbers, quoted strings, parens, commas.
-
     return ret;
 }
 
@@ -169,13 +167,15 @@ char *readRestOfLine(
 
         } else if(state->str[state->index] == '\n') {
 
+            if(actualLineCount) {
+                (*actualLineCount)++;
+            }
+
             if(lastCharWasBackslash) {
                 // This is an escaped newline.
                 // state->lineNumber++;
-                if(actualLineCount) {
-                    (*actualLineCount)++;
-                }
             } else {
+                skipChar(state, state->str[state->index] == '\n');
                 break;
             }
 
@@ -185,7 +185,20 @@ char *readRestOfLine(
         }
 
         // state->index++;
-        skipChar(state, nkfalse);
+
+        // if(state->str[state->index] == '\n') {
+        //     appendChar(state, '>');
+        // }
+
+        skipChar(state, state->str[state->index] == '\n');
+
+        // if(state->str[state->index-1] == '\n') {
+        //     appendChar(state, '<');
+        // }
+
+        // // Add corresponding newlines to the output for these
+        // // lines that we're skipping.
+        // appendChar(state, '\n');
     }
 
     lineEnd = state->index;
@@ -231,14 +244,14 @@ nkbool handleDirective(
 
             } else {
 
-                // TODO: Error.
+                preprocessorStateAddError(state, "Cannot delete macro.");
                 ret = nkfalse;
 
             }
 
         } else {
 
-            // TODO: Error.
+            preprocessorStateAddError(state, "Invalid identifier.");
             ret = nkfalse;
 
         }
@@ -375,12 +388,11 @@ nkbool handleDirective(
         }
 
         if(preprocessorStateFindMacro(state, macro->identifier)) {
-            // TODO: Error out. Multiple definitions.
+            preprocessorStateAddError(state, "Multiple definitions of the same macro.");
             ret = nkfalse;
         }
 
-        // TODO: Add definition to list, or clean up if we had an
-        // error.
+        // Add definition to list, or clean up if we had an error.
         if(ret) {
             preprocessorStateAddMacro(state, macro);
         } else {
@@ -390,79 +402,18 @@ nkbool handleDirective(
     } else {
 
         // Unknown directive. Leave it alone.
-
-        // FIXME: Error out.
-
+        preprocessorStateAddError(state, "Unknown directive.");
         ret = nkfalse;
     }
+
+    // Update file/line markers.
+    // preprocessorStateWritePositionMarker(state);
+    preprocessorStateFlagFileLineMarkersForUpdate(state);
+
 
     free(deletedBackslashes);
     destroyPreprocessorState(directiveParseState);
     return ret;
-}
-
-char *readMacroArgument(struct PreprocessorState *state)
-{
-    // Create a pristine state to read the arguments with.
-    struct PreprocessorState *readerState = createPreprocessorState();
-    nkuint32_t parenLevel = 0;
-
-    // Copy input and position.
-    readerState->index = state->index;
-    readerState->str = state->str;
-
-    // Skip whitespace up to the first token, but don't append
-    // whitespace on this side of it.
-    skipWhitespaceAndComments(readerState, nkfalse, nkfalse);
-
-    struct PreprocessorToken *token = NULL;
-    do {
-        skipWhitespaceAndComments(readerState, nktrue, nkfalse);
-
-        // Check to see if we're "done". (Zero-length arguments are
-        // okay, so we have to do this at the start.)
-        if(!parenLevel) {
-            if(readerState->str[readerState->index] == ',' ||
-                readerState->str[readerState->index] == ')')
-            {
-                break;
-            }
-        }
-
-        // Read token and output it.
-        token = getNextToken(readerState, nktrue);
-
-        // Check for '(', ')', and ','. Do stuff with paren level.
-        if(token) {
-            if(token->type == NK_PPTOKEN_OPENPAREN) {
-                parenLevel++;
-            } else if(token->type == NK_PPTOKEN_CLOSEPAREN) {
-                parenLevel--;
-            }
-        }
-
-        appendString(readerState, token->str);
-        destroyToken(token);
-
-    } while(token);
-
-    // Update read position in the source state.
-    state->index = readerState->index;
-    state->lineNumber += readerState->lineNumber - 1;
-
-    {
-        char *ret = readerState->output;
-        readerState->output = NULL;
-        destroyPreprocessorState(readerState);
-        return ret;
-    }
-}
-
-void preprocessorStateClearOutput(struct PreprocessorState *state)
-{
-    freeWrapper(state->output);
-    state->output = NULL;
-    state->outputLineNumber = 1;
 }
 
 void preprocess(struct PreprocessorState *state, const char *str)
@@ -515,23 +466,9 @@ void preprocess(struct PreprocessorState *state, const char *str)
                             line))
                         {
 
-                            // Directive is valid. Output newlines to
-                            // fill in the space used by the
-                            // directive.
-                            while(lineCount) {
-                                appendChar(state, '\n');
-                                lineCount--;
-                            }
-
                         } else {
-
-                            // Directive was invalid, or something we
-                            // don't understand. Puke it back into the
-                            // output.
-                            appendString(state, token->str);
-                            appendString(state, directiveNameToken->str);
-                            appendString(state, line);
-
+                            preprocessorStateAddError(
+                                state, "Bad directive.");
                         }
 
                         // Clean up.
@@ -644,9 +581,7 @@ void preprocess(struct PreprocessorState *state, const char *str)
                             }
 
                         } else {
-
-                            // FIXME: Error out. Expected argument list.
-
+                            preprocessorStateAddError(state, "Expected argument list.");
                         }
 
                     } else {
@@ -656,8 +591,10 @@ void preprocess(struct PreprocessorState *state, const char *str)
 
                     // Preprocess the macro into place.
                     {
-                        // Clear input
+                        // Clear output from the cloned state.
                         preprocessorStateClearOutput(clonedState);
+
+                        // Feed the macro definition through it.
                         preprocess(clonedState, macro->definition);
 
                         // Write output.
@@ -666,6 +603,11 @@ void preprocess(struct PreprocessorState *state, const char *str)
                         // Clean up.
                         destroyPreprocessorState(clonedState);
                     }
+
+
+
+
+                    preprocessorStateFlagFileLineMarkersForUpdate(state);
 
                     // TODO: Emit file and line directives.
 

@@ -18,6 +18,7 @@ struct PreprocessorState *createPreprocessorState(void)
         ret->output = NULL;
         ret->macros = NULL;
         ret->writePositionMarkers = nkfalse;
+        ret->updateMarkers = nkfalse;
     }
 
     return ret;
@@ -39,8 +40,8 @@ void destroyPreprocessorState(struct PreprocessorState *state)
 // newline anyway.
 void preprocessorStateWritePositionMarker(struct PreprocessorState *state)
 {
-    if(state->writePositionMarkers &&
-        state->outputLineNumber != state->lineNumber)
+    // if(state->writePositionMarkers &&
+    //     state->outputLineNumber != state->lineNumber)
     {
         char numberStr[128];
         char *filenameStr = "filenametest"; // FIXME: Finish this.
@@ -48,13 +49,14 @@ void preprocessorStateWritePositionMarker(struct PreprocessorState *state)
         nkuint32_t orig1 = state->outputLineNumber;
         nkuint32_t orig2 = state->lineNumber;
 
-        appendString(state, "\n#file ");
+        appendString(state, "#file ");
         appendString(state, filenameStr); // FIXME: Add quotes and escape.
         sprintf(
-            numberStr, "\n#line %ld // %ld != %ld",
+            numberStr, "\n#line %ld // %ld != %ld\n",
             (long)state->lineNumber,
             (long)orig1,
             (long)orig2);
+
         appendString(state, numberStr);
 
         state->outputLineNumber = state->lineNumber;
@@ -133,36 +135,113 @@ void appendChar_real(struct PreprocessorState *state, char c)
     state->output[newLen] = 0;
 }
 
+
+void FIXME_REMOVETHIS_writenumber(struct PreprocessorState *state, nkuint32_t n)
+{
+    nkuint32_t lnMask = 10000;
+
+    while(!(n / lnMask)) {
+        appendChar_real(state, ' ');
+        n %= lnMask;
+        lnMask /= 10;
+    }
+
+    while(lnMask) {
+        appendChar_real(state, '0' + (n / lnMask));
+        n %= lnMask;
+        lnMask /= 10;
+    }
+}
+
+
 void appendChar(struct PreprocessorState *state, char c)
 {
     if(state->writePositionMarkers) {
+
+        // If this is the first character on a line...
         if(!state->output || state->output[strlenWrapper(state->output) - 1] == '\n') {
+
+
+            // FIXME: Replace this placeholder crap when we're done testing.
 
             // char lineNoBuf[128];
             // sprintf(lineNoBuf, "%ld", (long)state->lineNumber);
 
-            nkuint32_t lineNo = state->lineNumber;
-            nkuint32_t lnMask = 100000;
+            // nkuint32_t lineNo = state->lineNumber;
+            // nkuint32_t lnMask = 10000;
 
-            while(!(lineNo / lnMask)) {
+            {
+                const char *filename = "filename";
+                nkuint32_t fnameLen = strlenWrapper(filename);
+                nkuint32_t i;
+                for(i = 0; i < 12; i++) {
+                    if(i < fnameLen) {
+                        appendChar_real(state, filename[i]);
+                    } else {
+                        appendChar_real(state, ' ');
+                    }
+                }
+            }
+
+            appendChar_real(state, ':');
+
+            FIXME_REMOVETHIS_writenumber(state, state->lineNumber);
+            FIXME_REMOVETHIS_writenumber(state, state->outputLineNumber);
+
+            // while(!(lineNo / lnMask)) {
+            //     appendChar_real(state, ' ');
+            //     lineNo %= lnMask;
+            //     lnMask /= 10;
+            // }
+
+            // while(lnMask) {
+            //     appendChar_real(state, '0' + (lineNo / lnMask));
+            //     lineNo %= lnMask;
+            //     lnMask /= 10;
+            // }
+
+            appendChar_real(state, ' ');
+            appendChar_real(state, state->updateMarkers ? 'U' : ' ');
+
+            appendChar_real(state, ' ');
+
+            if(state->outputLineNumber != state->lineNumber) {
+                appendChar_real(state, '-');
                 appendChar_real(state, ' ');
-                lineNo %= lnMask;
-                lnMask /= 10;
+
+                // Add in a position marker and set the output line
+                // number.
+                if(state->updateMarkers) {
+                    state->outputLineNumber = state->lineNumber;
+                    state->updateMarkers = nkfalse;
+                    preprocessorStateWritePositionMarker(state);
+                }
+
+                // Send in a character we purposely won't do anything
+                // with just to pump the line-start debug info stuff.
+                appendChar(state, 0);
+
+            } else {
+                appendChar_real(state, '|');
+                appendChar_real(state, ' ');
             }
 
-            while(lnMask) {
-                appendChar_real(state, '0' + (lineNo / lnMask));
-                lineNo %= lnMask;
-                lnMask /= 10;
+            // If we hit this case, we may have had a redundant use of
+            // the updateMarkers flag. So just un-set it because we're
+            // fine now.
+            if(state->lineNumber == state->outputLineNumber) {
+                state->updateMarkers = nkfalse;
             }
-
-            appendChar_real(state, ' ');
-            appendChar_real(state, '|');
-            appendChar_real(state, ' ');
         }
     }
 
-    appendChar_real(state, c);
+    if(c == '\n') {
+        state->outputLineNumber++;
+    }
+
+    if(c) {
+        appendChar_real(state, c);
+    }
 }
 
 void skipChar(struct PreprocessorState *state, nkbool output)
@@ -298,7 +377,8 @@ struct PreprocessorState *preprocessorStateClone(
     ret->lineNumber = state->lineNumber;
     ret->outputLineNumber = state->outputLineNumber;
     ret->output = state->output ? strdupWrapper(state->output) : NULL;
-    // Note: We purposely don't write position markers.
+    // Note: We purposely don't write position markers or update
+    // markers here.
 
     currentMacro = state->macros;
     macroWritePtr = &ret->macros;
@@ -316,6 +396,9 @@ struct PreprocessorState *preprocessorStateClone(
 
     return ret;
 }
+
+// ----------------------------------------------------------------------
+// Read functions
 
 char *readIdentifier(struct PreprocessorState *state)
 {
@@ -421,5 +504,85 @@ char *readInteger(struct PreprocessorState *state)
     return ret;
 }
 
+char *readMacroArgument(struct PreprocessorState *state)
+{
+    // Create a pristine state to read the arguments with.
+    struct PreprocessorState *readerState = createPreprocessorState();
+    nkuint32_t parenLevel = 0;
 
+    // Copy input and position.
+    readerState->index = state->index;
+    readerState->str = state->str;
+
+    // Skip whitespace up to the first token, but don't append
+    // whitespace on this side of it.
+    skipWhitespaceAndComments(readerState, nkfalse, nkfalse);
+
+    struct PreprocessorToken *token = NULL;
+    do {
+        skipWhitespaceAndComments(readerState, nktrue, nkfalse);
+
+        // Check to see if we're "done". (Zero-length arguments are
+        // okay, so we have to do this at the start.)
+        if(!parenLevel) {
+            if(readerState->str[readerState->index] == ',' ||
+                readerState->str[readerState->index] == ')')
+            {
+                break;
+            }
+        }
+
+        // Read token and output it.
+        token = getNextToken(readerState, nktrue);
+
+        // Check for '(', ')', and ','. Do stuff with paren level.
+        if(token) {
+            if(token->type == NK_PPTOKEN_OPENPAREN) {
+                parenLevel++;
+            } else if(token->type == NK_PPTOKEN_CLOSEPAREN) {
+                parenLevel--;
+            }
+        }
+
+        appendString(readerState, token->str);
+        destroyToken(token);
+
+    } while(token);
+
+    // Update read position in the source state.
+    state->index = readerState->index;
+    state->lineNumber += readerState->lineNumber - 1;
+
+    {
+        char *ret = readerState->output;
+        readerState->output = NULL;
+        destroyPreprocessorState(readerState);
+        return ret;
+    }
+}
+
+// ----------------------------------------------------------------------
+
+void preprocessorStateClearOutput(struct PreprocessorState *state)
+{
+    freeWrapper(state->output);
+    state->output = NULL;
+    state->outputLineNumber = 1;
+}
+
+void preprocessorStateAddError(
+    struct PreprocessorState *state,
+    const char *errorMessage)
+{
+    // FIXME: Add filename.
+    printf("ERROR %s:%ld: %s\n",
+        "filename",
+        (long)state->lineNumber, errorMessage);
+}
+
+void preprocessorStateFlagFileLineMarkersForUpdate(
+    struct PreprocessorState *state)
+{
+    state->updateMarkers = nktrue;
+}
 
