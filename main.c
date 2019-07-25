@@ -34,10 +34,6 @@ char *testStr =
     "    thingy\n"
     "// comment after multiline\n";
 
-// #define malloc(x) ASDVDFKMggkmsglkbmdflksvm
-// #define free(x) kscmkcmsadlckmsdacas
-// #define memcpy(x, y, z) kmsdkmsdvkldmfvklds
-
 // TODO: Move this into ppstate.c
 struct PreprocessorToken *getNextToken(
     struct PreprocessorState *state,

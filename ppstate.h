@@ -68,15 +68,40 @@ nkbool preprocessorStateDeleteMacro(
 // ----------------------------------------------------------------------
 // Read/write functions
 
+/// Append a string to the output.
 void appendString(struct PreprocessorState *state, const char *str);
+
+/// Append a character to the output. Output line number tracking
+/// happens here. Use this (or a function that calls it, like
+/// appendString()) to output instead of maually updating the buffer.
 void appendChar(struct PreprocessorState *state, char c);
+
+/// Advance the read pointer. Optionally outputting the character.
+/// Input line number tracking happens here, so always use this to
+/// advance the read pointer instead of messing with the index
+/// yourself.
 void skipChar(struct PreprocessorState *state, nkbool output);
+
+/// Skip past whitespace and comments, optionally sending them to the
+/// output. This is to preserve formatting and comments in the output.
 void skipWhitespaceAndComments(
     struct PreprocessorState *state,
     nkbool output,
     nkbool stopAtNewline);
-void preprocessorStateClearOutput(struct PreprocessorState *state);
+
+/// Flag the preprocessor state as needing an updated file/line marker
+/// in the output. This should be used immediately after outputting
+/// something that would disrupt the syncronization between the input
+/// and output line number tracking. Something like a multi-line
+/// macro, or an include directive.
+///
+/// The file/line directive doesn't automatically get inserted without
+/// this flag being set, to prevent us from outputting it in the
+/// middle of one of those multiline macros.
 void preprocessorStateFlagFileLineMarkersForUpdate(struct PreprocessorState *state);
+
+/// Clear the output buffer entirely.
+void preprocessorStateClearOutput(struct PreprocessorState *state);
 
 // ----------------------------------------------------------------------
 // Tokenization
