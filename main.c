@@ -395,7 +395,6 @@ nkbool executeMacro(
     return ret;
 }
 
-// FIXME: Add recursion counter (and error).
 nkbool preprocess(
     struct PreprocessorState *state,
     const char *str,
@@ -611,6 +610,10 @@ int main(int argc, char *argv[])
     printf("%s\n", testStr2);
 
     {
+        printf("----------------------------------------------------------------------\n");
+        printf("  Whatever\n");
+        printf("----------------------------------------------------------------------\n");
+
         state->writePositionMarkers = nktrue;
         preprocess(state, testStr2, 0);
 
@@ -624,11 +627,19 @@ int main(int argc, char *argv[])
     }
 
     while(errorState.firstError) {
-        struct PreprocessorError *next = errorState.firstError->next;
-        freeWrapper(errorState.firstError->filename);
-        freeWrapper(errorState.firstError->text);
-        freeWrapper(errorState.firstError);
-        errorState.firstError = next;
+
+        printf("error: %s:%ld: %s\n",
+            errorState.firstError->filename,
+            (long)errorState.firstError->lineNumber,
+            errorState.firstError->text);
+
+        {
+            struct PreprocessorError *next = errorState.firstError->next;
+            freeWrapper(errorState.firstError->filename);
+            freeWrapper(errorState.firstError->text);
+            freeWrapper(errorState.firstError);
+            errorState.firstError = next;
+        }
     }
 
     freeWrapper(testStr2);
