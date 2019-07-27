@@ -54,3 +54,29 @@ void nkiMemcpy(void *dst, const void *src, nkuint32_t len)
     }
 }
 
+void nkiDbgAppendEscaped(nkuint32_t bufSize, char *dst, const char *src)
+{
+    nkuint32_t i = strlenWrapper(dst);
+    while(i + 2 < bufSize && *src) {
+        switch(*src) {
+            case '\n':
+                dst[i++] = '\\';
+                dst[i++] = 'n';
+                break;
+            case '\t':
+                dst[i++] = '\\';
+                dst[i++] = 't';
+                break;
+            case '\"':
+                dst[i++] = '\\';
+                dst[i++] = '\"';
+                break;
+            default:
+                dst[i++] = *src;
+                break;
+        }
+        src++;
+    }
+    dst[i] = 0;
+}
+

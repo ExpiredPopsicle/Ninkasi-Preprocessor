@@ -28,6 +28,6 @@ void nkiCompilerPreprocessorSkipWhitespace(
     nkuint32_t *k);
 nkbool nkiCompilerIsNumber(char c);
 void nkiMemcpy(void *dst, const void *src, nkuint32_t len);
-
+void nkiDbgAppendEscaped(nkuint32_t bufSize, char *dst, const char *src);
 
 #endif // NK_PPCOMMON_H

@@ -42,70 +42,27 @@ void destroyPreprocessorState(struct PreprocessorState *state)
 // newline anyway.
 void preprocessorStateWritePositionMarker(struct PreprocessorState *state)
 {
-    // if(state->writePositionMarkers &&
-    //     state->outputLineNumber != state->lineNumber)
-    {
-        char numberStr[128];
-        char *filenameStr = "filenametest"; // FIXME: Finish this.
+    char numberStr[128];
+    const char *filenameStr = state->filename;
+    nkuint32_t bufSize = strlen(filenameStr) * 2 + 3;
+    char *escapedFilenameStr = mallocWrapper(bufSize);
 
-        nkuint32_t orig1 = state->outputLineNumber;
-        nkuint32_t orig2 = state->lineNumber;
+    escapedFilenameStr[0] = 0;
+    nkiDbgAppendEscaped(bufSize, escapedFilenameStr, filenameStr);
 
-        appendString(state, "#file ");
-        appendString(state, filenameStr); // FIXME: Add quotes and escape.
-        sprintf(
-            numberStr, "\n#line %ld // %ld != %ld\n",
-            (long)state->lineNumber,
-            (long)orig1,
-            (long)orig2);
+    appendString(state, "#file \"");
+    appendString(state, escapedFilenameStr);
+    appendString(state, "\"");
+    sprintf(
+        numberStr, "\n#line %ld\n",
+        (long)state->lineNumber);
 
-        appendString(state, numberStr);
+    appendString(state, numberStr);
 
-        state->outputLineNumber = state->lineNumber;
-    }
+    state->outputLineNumber = state->lineNumber;
+
+    freeWrapper(escapedFilenameStr);
 }
-
-// void appendString(struct PreprocessorState *state, const char *str)
-// {
-//     if(!str) {
-
-//         return;
-
-//     } else {
-
-//         nkuint32_t oldLen = state->output ? strlenWrapper(state->output) : 0;
-//         // TODO: Check overflow.
-//         nkuint32_t newLen = oldLen + strlenWrapper(str);
-
-//         // // Count up output newlines.
-//         // nkuint32_t nlIterator = 0;
-//         // nkuint32_t lenStr = strlenWrapper(str);
-//         // for(nlIterator = 0; nlIterator < lenStr; nlIterator++) {
-//         //     if(str[nlIterator] == '\n') {
-//         //         state->outputLineNumber++;
-//         //     }
-//         // }
-
-//         // TODO: Check overflow.
-//         state->output = reallocWrapper(state->output, newLen + 1);
-
-//         memcpyWrapper(state->output + oldLen, str, strlenWrapper(str));
-//         state->output[newLen] = 0;
-//     }
-// }
-
-// void appendChar(struct PreprocessorState *state, char c)
-// {
-//     char str[2] = { c, 0 };
-
-//     // // FIXME: Relocate this?
-//     // if(state->str[state->index] == '\n') {
-//     //     state->outputLineNumber++;
-//     //     preprocessorStateWritePositionMarker(state);
-//     // }
-
-//     appendString(state, str);
-// }
 
 void appendString(struct PreprocessorState *state, const char *str)
 {
