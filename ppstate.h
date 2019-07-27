@@ -45,12 +45,17 @@ struct PreprocessorState
 };
 
 // ----------------------------------------------------------------------
-// State object
+// General state object
 
 struct PreprocessorState *createPreprocessorState(void);
 void destroyPreprocessorState(struct PreprocessorState *state);
 struct PreprocessorState *preprocessorStateClone(
     const struct PreprocessorState *state);
+
+/// Set the current file name. Used for error tracking.
+void preprocessorStateSetFilename(
+    struct PreprocessorState *state,
+    const char *filename);
 
 // ----------------------------------------------------------------------
 // Macros
@@ -117,11 +122,10 @@ char *readMacroArgument(struct PreprocessorState *state);
 // ----------------------------------------------------------------------
 // Errors
 
+/// Record an error. The error will be attributed to the current line
+/// number and file name.
 void preprocessorStateAddError(
     struct PreprocessorState *state,
     const char *errorMessage);
-void preprocessorStateSetFilename(
-    struct PreprocessorState *state,
-    const char *filename);
 
 #endif // NK_PPSTATE_H

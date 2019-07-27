@@ -280,6 +280,10 @@ void skipWhitespaceAndComments(
     nkbool output,
     nkbool stopAtNewline)
 {
+    if(!state->str) {
+        return;
+    }
+
     while(state->str[state->index]) {
 
         // Skip comments (but output them).
