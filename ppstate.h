@@ -25,8 +25,6 @@ struct PreprocessorErrorState
 // Main preprocessor state object.
 struct PreprocessorState
 {
-    // TODO: Source filename.
-
     // Input buffer and position.
     const char *str;
     nkuint32_t index;
@@ -51,12 +49,17 @@ struct PreprocessorState
     // switched back on when we get back to the normal source file.
     nkbool writePositionMarkers;
 
-    // TODO: Error state.
-
+    // nktrue if we should update line markers if they're out of sync
+    // (input vs output) once we get back to the main loop. nkfalse
+    // otherwise.
     nkbool updateMarkers;
 
+    // Current source filename.
     char *filename;
 
+    // Non-owning pointer to the error state. This will be shared
+    // between many PreprocessorStates. If this is NULL, then errors
+    // will be directed to stderr.
     struct PreprocessorErrorState *errorState;
 };
 

@@ -154,6 +154,7 @@ char *readRestOfLine(
     nkbool lastCharWasBackslash = nkfalse;
     nkuint32_t lineStart = state->index;
     nkuint32_t lineEnd = lineStart;
+    nkuint32_t lineLen = 0;
     char *ret = NULL;
 
     while(state->str[state->index]) {
@@ -169,11 +170,19 @@ char *readRestOfLine(
             }
 
             if(lastCharWasBackslash) {
-                // This is an escaped newline.
-                // state->lineNumber++;
+
+                // This is an escaped newline, so we're going to keep
+                // going.
+                lastCharWasBackslash = nkfalse;
+
             } else {
+
+                // Skip that newline and bail out. We're done. Only
+                // output if it's a newline to keep lines in sync
+                // between input and output.
                 skipChar(state, state->str[state->index] == '\n');
                 break;
+
             }
 
         } else {
@@ -181,32 +190,18 @@ char *readRestOfLine(
             lastCharWasBackslash = nkfalse;
         }
 
-        // state->index++;
-
-        // if(state->str[state->index] == '\n') {
-        //     appendChar(state, '>');
-        // }
-
+        // Skip this character. Only output if it's a newline to keep
+        // lines in sync between input and output.
         skipChar(state, state->str[state->index] == '\n');
-
-        // if(state->str[state->index-1] == '\n') {
-        //     appendChar(state, '<');
-        // }
-
-        // // Add corresponding newlines to the output for these
-        // // lines that we're skipping.
-        // appendChar(state, '\n');
     }
 
+    // Save the whole line.
     lineEnd = state->index;
-
-    {
-        // TODO: Check overflow.
-        nkuint32_t lineLen = lineEnd - lineStart;
-
-        // TODO: Check overflow.
-        ret = mallocWrapper(lineLen + 1);
-
+    // TODO: Check overflow.
+    lineLen = lineEnd - lineStart;
+    // TODO: Check overflow.
+    ret = mallocWrapper(lineLen + 1);
+    if(ret) {
         memcpyWrapper(ret, state->str + lineStart, lineLen);
         ret[lineLen] = 0;
     }
@@ -314,9 +309,6 @@ nkbool executeMacro(
                 char *argumentText = stripCommentsAndTrim(unstrippedArgumentText);
 
                 freeWrapper(unstrippedArgumentText);
-
-                printf("Argument (%s) text: %s\n",
-                    argument->name, argumentText);
 
                 // Add the argument as a macro to
                 // the new cloned state.
