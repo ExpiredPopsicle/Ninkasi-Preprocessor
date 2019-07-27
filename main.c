@@ -220,6 +220,15 @@ struct PreprocessorDirectiveMapping
     nkbool (*handler)(struct PreprocessorState *, const char*);
 };
 
+// TODO: Add these...
+//   include
+//   file
+//   line
+//   if
+//   endif
+//   ifdef
+//   ifndef
+//   ... anything else I think of
 struct PreprocessorDirectiveMapping directiveMapping[] = {
     { "undef",  handleUndef  },
     { "define", handleDefine },
@@ -228,7 +237,6 @@ struct PreprocessorDirectiveMapping directiveMapping[] = {
 nkuint32_t directiveMappingLen =
     sizeof(directiveMapping) /
     sizeof(struct PreprocessorDirectiveMapping);
-
 
 nkbool directiveIsValid(
     const char *directive)
@@ -251,16 +259,6 @@ nkbool handleDirective(
     char *deletedBackslashes = deleteBackslashNewlines(restOfLine);
     nkuint32_t i;
 
-    // TODO: Add these...
-    //   include
-    //   file
-    //   line
-    //   if
-    //   endif
-    //   ifdef
-    //   ifndef
-    //   ... anything else I think of
-
     for(i = 0; i < directiveMappingLen; i++) {
         if(!strcmpWrapper(directive, directiveMapping[i].identifier)) {
             ret = directiveMapping[i].handler(state, deletedBackslashes);
@@ -282,11 +280,15 @@ nkbool handleDirective(
     return ret;
 }
 
-nkbool preprocess(struct PreprocessorState *state, const char *str);
+nkbool preprocess(
+    struct PreprocessorState *state,
+    const char *str,
+    nkuint32_t recursionLevel);
 
 nkbool executeMacro(
     struct PreprocessorState *state,
-    struct PreprocessorMacro *macro)
+    struct PreprocessorMacro *macro,
+    nkuint32_t recursionLevel)
 {
     struct PreprocessorState *clonedState = preprocessorStateClone(state);
     nkbool ret = nktrue;
@@ -374,7 +376,10 @@ nkbool executeMacro(
         preprocessorStateClearOutput(clonedState);
 
         // Feed the macro definition through it.
-        if(!preprocess(clonedState, macro->definition)) {
+        if(!preprocess(
+                clonedState, macro->definition,
+                recursionLevel + 1))
+        {
             ret = nkfalse;
         }
 
@@ -391,28 +396,27 @@ nkbool executeMacro(
 }
 
 // FIXME: Add recursion counter (and error).
-nkbool preprocess(struct PreprocessorState *state, const char *str)
+nkbool preprocess(
+    struct PreprocessorState *state,
+    const char *str,
+    nkuint32_t recursionLevel)
 {
     nkbool ret = nktrue;
 
+    // FIXME: Maybe make this less arbitraty.
+    if(recursionLevel > 20) {
+        preprocessorStateAddError(state, "Arbitrary recursion limit reached.");
+        return nkfalse;
+    }
+
     state->str = str;
     state->index = 0;
-
-    printf("----------------------------------------------------------------------\n");
-    printf("  Tokenizing\n");
-    printf("----------------------------------------------------------------------\n");
 
     while(state->str[state->index]) {
 
         struct PreprocessorToken *token = getNextToken(state, nktrue);
 
         if(token) {
-
-            printf(
-                "%4d Token (%3d): '%s'\n",
-                token->lineNumber,
-                token->type,
-                token->str);
 
             if(token->type == NK_PPTOKEN_DOUBLEHASH) {
 
@@ -475,7 +479,7 @@ nkbool preprocess(struct PreprocessorState *state, const char *str)
 
                             preprocessorStateClearOutput(macroState);
 
-                            executeMacro(macroState, macro);
+                            executeMacro(macroState, macro, recursionLevel);
 
 
                             {
@@ -535,7 +539,7 @@ nkbool preprocess(struct PreprocessorState *state, const char *str)
 
                 if(macro) {
 
-                    executeMacro(state, macro);
+                    executeMacro(state, macro, recursionLevel);
 
                 } else {
 
@@ -594,8 +598,12 @@ char *loadFile(const char *filename)
 
 int main(int argc, char *argv[])
 {
-    struct PreprocessorState *state = createPreprocessorState();
+    struct PreprocessorErrorState errorState;
+    struct PreprocessorState *state = createPreprocessorState(&errorState);
     char *testStr2 = loadFile("test.txt");
+
+    errorState.firstError = NULL;
+    errorState.lastError = NULL;
 
     printf("----------------------------------------------------------------------\n");
     printf("  Input string\n");
@@ -604,7 +612,7 @@ int main(int argc, char *argv[])
 
     {
         state->writePositionMarkers = nktrue;
-        preprocess(state, testStr2);
+        preprocess(state, testStr2, 0);
 
         printf("----------------------------------------------------------------------\n");
         printf("  Preprocessor output\n");
@@ -613,6 +621,14 @@ int main(int argc, char *argv[])
 
         // freeWrapper(preprocessed);
         destroyPreprocessorState(state);
+    }
+
+    while(errorState.firstError) {
+        struct PreprocessorError *next = errorState.firstError->next;
+        freeWrapper(errorState.firstError->filename);
+        freeWrapper(errorState.firstError->text);
+        freeWrapper(errorState.firstError);
+        errorState.firstError = next;
     }
 
     freeWrapper(testStr2);

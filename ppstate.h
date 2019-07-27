@@ -8,6 +8,20 @@
 
 struct PreprocessorMacro;
 
+struct PreprocessorError
+{
+    char *filename;
+    nkuint32_t lineNumber;
+    char *text;
+    struct PreprocessorError *next;
+};
+
+struct PreprocessorErrorState
+{
+    struct PreprocessorError *firstError;
+    struct PreprocessorError *lastError;
+};
+
 // Main preprocessor state object.
 struct PreprocessorState
 {
@@ -42,13 +56,18 @@ struct PreprocessorState
     nkbool updateMarkers;
 
     char *filename;
+
+    struct PreprocessorErrorState *errorState;
 };
 
 // ----------------------------------------------------------------------
 // General state object
 
-struct PreprocessorState *createPreprocessorState(void);
+struct PreprocessorState *createPreprocessorState(
+    struct PreprocessorErrorState *errorState);
+
 void destroyPreprocessorState(struct PreprocessorState *state);
+
 struct PreprocessorState *preprocessorStateClone(
     const struct PreprocessorState *state);
 
@@ -103,7 +122,8 @@ void skipWhitespaceAndComments(
 /// The file/line directive doesn't automatically get inserted without
 /// this flag being set, to prevent us from outputting it in the
 /// middle of one of those multiline macros.
-void preprocessorStateFlagFileLineMarkersForUpdate(struct PreprocessorState *state);
+void preprocessorStateFlagFileLineMarkersForUpdate(
+    struct PreprocessorState *state);
 
 /// Clear the output buffer entirely.
 void preprocessorStateClearOutput(struct PreprocessorState *state);

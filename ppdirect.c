@@ -9,7 +9,8 @@ nkbool handleUndef(
     const char *restOfLine)
 {
     nkbool ret = nktrue;
-    struct PreprocessorState *directiveParseState = createPreprocessorState();
+    struct PreprocessorState *directiveParseState =
+        createPreprocessorState(state->errorState);
     struct PreprocessorToken *identifierToken;
 
     directiveParseState->str = restOfLine;
@@ -49,7 +50,8 @@ nkbool handleDefine(
     const char *restOfLine)
 {
     nkbool ret = nktrue;
-    struct PreprocessorState *directiveParseState = createPreprocessorState();
+    struct PreprocessorState *directiveParseState =
+        createPreprocessorState(state->errorState);
     struct PreprocessorMacro *macro = createPreprocessorMacro();
     struct PreprocessorToken *identifierToken;
     char *definition = NULL;

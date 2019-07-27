@@ -5,7 +5,8 @@
 
 #include <assert.h>
 
-struct PreprocessorState *createPreprocessorState(void)
+struct PreprocessorState *createPreprocessorState(
+    struct PreprocessorErrorState *errorState)
 {
     struct PreprocessorState *ret =
         mallocWrapper(sizeof(struct PreprocessorState));
@@ -20,6 +21,7 @@ struct PreprocessorState *createPreprocessorState(void)
         ret->writePositionMarkers = nkfalse;
         ret->updateMarkers = nkfalse;
         ret->filename = strdupWrapper("<unknown>");
+        ret->errorState = errorState;
     }
 
     return ret;
@@ -314,7 +316,8 @@ nkbool preprocessorStateDeleteMacro(
 struct PreprocessorState *preprocessorStateClone(
     const struct PreprocessorState *state)
 {
-    struct PreprocessorState *ret = createPreprocessorState();
+    struct PreprocessorState *ret = createPreprocessorState(
+        state->errorState);
     struct PreprocessorMacro *currentMacro;
     struct PreprocessorMacro **macroWritePtr;
 
@@ -325,6 +328,7 @@ struct PreprocessorState *preprocessorStateClone(
     ret->output = state->output ? strdupWrapper(state->output) : NULL;
     // Note: We purposely don't write position markers or update
     // markers here.
+    ret->errorState = state->errorState;
     preprocessorStateSetFilename(ret, state->filename);
 
     currentMacro = state->macros;
@@ -454,7 +458,8 @@ char *readInteger(struct PreprocessorState *state)
 char *readMacroArgument(struct PreprocessorState *state)
 {
     // Create a pristine state to read the arguments with.
-    struct PreprocessorState *readerState = createPreprocessorState();
+    struct PreprocessorState *readerState = createPreprocessorState(
+        state->errorState);
     nkuint32_t parenLevel = 0;
 
     char *ret = NULL;
@@ -522,12 +527,36 @@ void preprocessorStateAddError(
     struct PreprocessorState *state,
     const char *errorMessage)
 {
-    // FIXME: Add filename.
-    printf("ERROR %s:%ld: %s\n",
+    if(state->errorState) {
+
+        struct PreprocessorError *newError =
+            mallocWrapper(sizeof(struct PreprocessorError));
+
+        if(newError) {
+
+            newError->filename = strdupWrapper(state->filename);
+            newError->lineNumber = state->lineNumber;
+            newError->text = strdupWrapper(errorMessage);
+            newError->next = NULL;
+
+            if(state->errorState->lastError) {
+                state->errorState->lastError->next = newError;
+            }
+
+            if(!state->errorState->firstError) {
+                state->errorState->firstError = newError;
+            }
+
+            state->errorState->lastError = newError;
+        }
+
+    } else {
+
+        fprintf(stderr, "%s:%ld: %s\n",
         state->filename,
         (long)state->lineNumber, errorMessage);
 
-    // TODO: Actually append to the error state.
+    }
 }
 
 void preprocessorStateFlagFileLineMarkersForUpdate(
