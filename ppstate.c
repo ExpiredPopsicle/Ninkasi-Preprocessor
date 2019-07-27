@@ -208,21 +208,7 @@ void skipChar(struct PreprocessorState *state, nkbool output)
     assert(state->str[state->index]);
 
     if(output) {
-
-        // // FIXME: Relocate this?
-        // if(state->str[state->index] == '\n') {
-        //     // state->outputLineNumber++;
-        //     preprocessorStateWritePositionMarker(state);
-        // }
-
         appendChar(state, state->str[state->index]);
-
-        // // FIXME: Relocate?
-        // if(state->str[state->index] == '\n') {
-        //     state->outputLineNumber++;
-        //     preprocessorStateWritePositionMarker(state);
-        // }
-
     }
 
     if(state->str && state->str[state->index] == '\n') {
@@ -261,8 +247,6 @@ void skipWhitespaceAndComments(
         if(state->str[state->index] == '\n') {
             if(stopAtNewline) {
                 break;
-            } else {
-                // state->lineNumber++;
             }
         }
 
@@ -478,6 +462,8 @@ char *readMacroArgument(struct PreprocessorState *state)
     struct PreprocessorState *readerState = createPreprocessorState();
     nkuint32_t parenLevel = 0;
 
+    char *ret = NULL;
+
     // Copy input and position.
     readerState->index = state->index;
     readerState->str = state->str;
@@ -521,12 +507,11 @@ char *readMacroArgument(struct PreprocessorState *state)
     state->index = readerState->index;
     state->lineNumber += readerState->lineNumber - 1;
 
-    {
-        char *ret = readerState->output;
-        readerState->output = NULL;
-        destroyPreprocessorState(readerState);
-        return ret;
-    }
+    // Pull the output off the pp state and return it.
+    ret = readerState->output;
+    readerState->output = NULL;
+    destroyPreprocessorState(readerState);
+    return ret;
 }
 
 // ----------------------------------------------------------------------
@@ -546,6 +531,8 @@ void preprocessorStateAddError(
     printf("ERROR %s:%ld: %s\n",
         state->filename,
         (long)state->lineNumber, errorMessage);
+
+    // TODO: Actually append to the error state.
 }
 
 void preprocessorStateFlagFileLineMarkersForUpdate(

@@ -269,8 +269,119 @@ nkbool handleDirective(
     return ret;
 }
 
-void preprocess(struct PreprocessorState *state, const char *str)
+nkbool preprocess(struct PreprocessorState *state, const char *str);
+
+nkbool executeMacro(
+    struct PreprocessorState *state,
+    struct PreprocessorMacro *macro)
 {
+    struct PreprocessorState *clonedState = preprocessorStateClone(state);
+    nkbool ret = nktrue;
+
+    // Input is the macro definition. Output is
+    // appending to the "parent" state.
+
+    if(macro->arguments) {
+
+        skipWhitespaceAndComments(state, nkfalse, nkfalse);
+
+        if(state->str[state->index] == '(') {
+
+            struct PreprocessorMacroArgument *argument = macro->arguments;
+
+            // Skip open paren.
+            skipChar(state, nkfalse);
+
+            while(argument) {
+
+                // Read the macro argument.
+                char *unstrippedArgumentText = readMacroArgument(state);
+                char *argumentText = stripCommentsAndTrim(unstrippedArgumentText);
+
+                freeWrapper(unstrippedArgumentText);
+
+                printf("Argument (%s) text: %s\n",
+                    argument->name, argumentText);
+
+                // Add the argument as a macro to
+                // the new cloned state.
+                {
+                    struct PreprocessorMacro *newMacro = createPreprocessorMacro();
+                    preprocessorMacroSetIdentifier(newMacro, argument->name);
+                    preprocessorMacroSetDefinition(newMacro, argumentText);
+                    preprocessorStateAddMacro(clonedState, newMacro);
+                }
+
+                freeWrapper(argumentText);
+
+                skipWhitespaceAndComments(state, nkfalse, nkfalse);
+
+                if(argument->next) {
+
+                    // Expect ','
+                    if(state->str[state->index] == ',') {
+                        skipChar(state, nkfalse);
+                    } else {
+                        preprocessorStateAddError(state, "Expected ','.");
+                        ret = nkfalse;
+                        break;
+                    }
+
+                } else {
+
+                    // Expect ')'
+                    if(state->str[state->index] == ')') {
+                        skipChar(state, nkfalse);
+                    } else {
+                        preprocessorStateAddError(state, "Expected ')'.");
+                        ret = nkfalse;
+                        break;
+                    }
+                }
+
+                argument = argument->next;
+            }
+
+        } else {
+            preprocessorStateAddError(state, "Expected argument list.");
+            ret = nkfalse;
+        }
+
+    } else {
+
+        // No arguments. Nothing to set up on cloned
+        // state.
+
+    }
+
+    // Preprocess the macro into place.
+    if(ret) {
+
+        // Clear output from the cloned state.
+        preprocessorStateClearOutput(clonedState);
+
+        // Feed the macro definition through it.
+        if(!preprocess(clonedState, macro->definition)) {
+            ret = nkfalse;
+        }
+
+        // Write output.
+        appendString(state, clonedState->output);
+
+        preprocessorStateFlagFileLineMarkersForUpdate(state);
+    }
+
+    // Clean up.
+    destroyPreprocessorState(clonedState);
+
+    return ret;
+}
+
+// FIXME: Add recursion counter (and error).
+nkbool preprocess(struct PreprocessorState *state, const char *str)
+{
+    nkbool ret = nktrue;
+
     state->str = str;
     state->index = 0;
 
@@ -305,11 +416,20 @@ void preprocess(struct PreprocessorState *state, const char *str)
 
                     // Get the directive name.
                     struct PreprocessorToken *directiveNameToken = getNextToken(state, nktrue);
+                    nkbool recognizedDirective = nkfalse;
 
-                    // // Act on anything we might understand.
-                    // if(!strcmpWrapper(directiveNameToken->str, "undef") ||
-                    //     !strcmpWrapper(directiveNameToken->str, "define"))
-                    // {
+                    // TODO: Check to see if this is something we
+                    //   understand by going through the *actual* list
+                    //   of directives.
+                    if(!strcmpWrapper(directiveNameToken->str, "undef") ||
+                        !strcmpWrapper(directiveNameToken->str, "define"))
+                    {
+                        recognizedDirective = nktrue;
+                    }
+
+                    // Act on anything we might understand.
+                    if(recognizedDirective) {
+
                         nkuint32_t lineCount = 0;
                         char *line = readRestOfLine(state, &lineCount);
 
@@ -322,22 +442,60 @@ void preprocess(struct PreprocessorState *state, const char *str)
                         } else {
                             preprocessorStateAddError(
                                 state, "Bad directive.");
+                            ret = nkfalse;
                         }
 
                         // Clean up.
                         freeWrapper(line);
 
-                    // } else {
+                    } else {
 
-                    //     // TODO: Stringification?
+                        // Stringification.
+                        struct PreprocessorMacro *macro =
+                            preprocessorStateFindMacro(
+                                state, directiveNameToken->str);
 
-                    //     // Something we don't recognize? Better just
-                    //     // output it with the hash and let the next
-                    //     // preprocessor deal with it (GLSL, etc).
-                    //     appendString(state, token->str);
-                    //     appendString(state, directiveNameToken->str);
+                        if(macro) {
 
-                    // }
+                            struct PreprocessorState *macroState =
+                                preprocessorStateClone(state);
+
+                            preprocessorStateClearOutput(macroState);
+
+                            executeMacro(macroState, macro);
+
+
+                            {
+                                // TODO: Check overflow.
+                                nkuint32_t bufSize = strlen(macroState->output) * 2 + 3;
+                                char *escapedStr = mallocWrapper(bufSize);
+                                escapedStr[0] = 0;
+                                nkiDbgAppendEscaped(bufSize, escapedStr, macroState->output);
+
+                                appendString(state, "\"");
+                                appendString(state, escapedStr);
+                                appendString(state, "\"");
+
+                                freeWrapper(escapedStr);
+                            }
+
+
+                            // Skip past the stuff we read in the
+                            // cloned state.
+                            state->index = macroState->index;
+
+                            destroyPreprocessorState(macroState);
+
+                        } else {
+
+                            preprocessorStateAddError(
+                                state,
+                                "Unknown input for stringification.");
+                            ret = nkfalse;
+
+                        }
+
+                    }
 
                     destroyToken(directiveNameToken);
 
@@ -363,136 +521,118 @@ void preprocess(struct PreprocessorState *state, const char *str)
 
                 if(macro) {
 
-                    struct PreprocessorState *clonedState = preprocessorStateClone(state);
-                    nkuint32_t startLineNumber = state->lineNumber;
+                    executeMacro(state, macro);
 
-                    // Input is the macro definition. Output is
-                    // appending to the "parent" state.
+                //     struct PreprocessorState *clonedState = preprocessorStateClone(state);
+                //     nkuint32_t startLineNumber = state->lineNumber;
 
-                    if(macro->arguments) {
+                //     // Input is the macro definition. Output is
+                //     // appending to the "parent" state.
 
-                        skipWhitespaceAndComments(state, nkfalse, nkfalse);
+                //     if(macro->arguments) {
 
-                        if(state->str[state->index] == '(') {
+                //         skipWhitespaceAndComments(state, nkfalse, nkfalse);
 
-                            // Skip open paren.
-                            skipChar(state, nkfalse);
+                //         if(state->str[state->index] == '(') {
 
-
-                            {
-                                struct PreprocessorMacroArgument *argument = macro->arguments;
-
-                                while(argument) {
-
-                                    // Read the macro argument.
-                                    char *unstrippedArgumentText = readMacroArgument(state);
-                                    char *argumentText = stripCommentsAndTrim(unstrippedArgumentText);
-
-                                    freeWrapper(unstrippedArgumentText);
-
-                                    printf("Argument (%s) text: %s\n",
-                                        argument->name, argumentText);
-
-                                    // Add the argument as a macro to
-                                    // the new cloned state.
-                                    {
-                                        struct PreprocessorMacro *newMacro = createPreprocessorMacro();
-                                        preprocessorMacroSetIdentifier(newMacro, argument->name);
-                                        preprocessorMacroSetDefinition(newMacro, argumentText);
-                                        preprocessorStateAddMacro(clonedState, newMacro);
-                                    }
-
-                                    freeWrapper(argumentText);
-
-                                    skipWhitespaceAndComments(state, nkfalse, nkfalse);
-
-                                    if(argument->next) {
-
-                                        // Expect ','
-                                        if(state->str[state->index] == ',') {
-                                            skipChar(state, nkfalse);
-                                        } else {
-                                            // TODO: Error out.
-                                            break;
-                                        }
-
-                                    } else {
-
-                                        // Expect ')'
-                                        if(state->str[state->index] == ')') {
-                                            skipChar(state, nkfalse);
-                                        } else {
-                                            // TODO: Error out.
-                                            break;
-                                        }
-                                    }
-
-                                    argument = argument->next;
-
-                                }
-
-                            }
-
-                        } else {
-                            preprocessorStateAddError(state, "Expected argument list.");
-                        }
-
-                    } else {
-                        // No macros. Nothing to set up on cloned
-                        // state.
-                    }
-
-                    // Preprocess the macro into place.
-                    {
-                        // Clear output from the cloned state.
-                        preprocessorStateClearOutput(clonedState);
-
-                        // Feed the macro definition through it.
-                        preprocess(clonedState, macro->definition);
-
-                        // Write output.
-                        appendString(state, clonedState->output);
-
-                        // Clean up.
-                        destroyPreprocessorState(clonedState);
-                    }
+                //             // Skip open paren.
+                //             skipChar(state, nkfalse);
 
 
+                //             {
+                //                 struct PreprocessorMacroArgument *argument = macro->arguments;
 
+                //                 while(argument) {
 
-                    preprocessorStateFlagFileLineMarkersForUpdate(state);
+                //                     // Read the macro argument.
+                //                     char *unstrippedArgumentText = readMacroArgument(state);
+                //                     char *argumentText = stripCommentsAndTrim(unstrippedArgumentText);
 
-                    // TODO: Emit file and line directives.
+                //                     freeWrapper(unstrippedArgumentText);
 
+                //                     printf("Argument (%s) text: %s\n",
+                //                         argument->name, argumentText);
 
-                    // TODO: ...
-                    //   Read arguments.
-                    //     For each argument...
-                    //       Read tokens until we get more ')' than the number of '(' that we've passed or...
-                    //         we hit a ','.
-                    //       Use the preprocessor system itself to output these into a buffer (for each arg) as we go.
-                    //         That will also skip quoted strings correctly.
-                    //         But also maybe that'll parse pp directives inside of an argument. Do we want that?
-                    //         Should we use a cloned or fresh state for that?
-                    //           Cloned macros will show up later in the definition output.
-                    //           Use fresh state here to avoid double-processing.
-                    //   Set them up as macros in the cloned state.
-                    //   Effectively #define argumentName valueGiven.
-                    //   Preprocess macro->definition with the cloned state, with output targeted at original buffer.
-                    //     That won't change the line number in the *parent* (cloned-from) state.
-                    //     It will change the number of lines in the actual output, though, so emit #file and #line directives if clonedState->lineNumber > 1.
-                    //     That will also activate directives in the definition, but they won't alter the parent state do we want that?
+                //                     // Add the argument as a macro to
+                //                     // the new cloned state.
+                //                     {
+                //                         struct PreprocessorMacro *newMacro = createPreprocessorMacro();
+                //                         preprocessorMacroSetIdentifier(newMacro, argument->name);
+                //                         preprocessorMacroSetDefinition(newMacro, argumentText);
+                //                         preprocessorStateAddMacro(clonedState, newMacro);
+                //                     }
 
+                //                     freeWrapper(argumentText);
 
+                //                     skipWhitespaceAndComments(state, nkfalse, nkfalse);
+
+                //                     if(argument->next) {
+
+                //                         // Expect ','
+                //                         if(state->str[state->index] == ',') {
+                //                             skipChar(state, nkfalse);
+                //                         } else {
+                //                             // TODO: Error out.
+                //                             break;
+                //                         }
+
+                //                     } else {
+
+                //                         // Expect ')'
+                //                         if(state->str[state->index] == ')') {
+                //                             skipChar(state, nkfalse);
+                //                         } else {
+                //                             // TODO: Error out.
+                //                             break;
+                //                         }
+                //                     }
+
+                //                     argument = argument->next;
+
+                //                 }
+
+                //             }
+
+                //         } else {
+                //             preprocessorStateAddError(state, "Expected argument list.");
+                //         }
+
+                //     } else {
+
+                //         // No arguments. Nothing to set up on cloned
+                //         // state.
+
+                //     }
+
+                //     // Preprocess the macro into place.
+                //     {
+                //         // Clear output from the cloned state.
+                //         preprocessorStateClearOutput(clonedState);
+
+                //         // Feed the macro definition through it.
+                //         preprocess(clonedState, macro->definition);
+
+                //         // Write output.
+                //         appendString(state, clonedState->output);
+
+                //         // Clean up.
+                //         destroyPreprocessorState(clonedState);
+                //     }
+
+                //     preprocessorStateFlagFileLineMarkersForUpdate(state);
 
                 } else {
 
+                    // This is an identifier, but it's not a defined
+                    // macro.
                     appendString(state, token->str);
 
                 }
 
             } else {
 
+                // We don't know what this is. It's probably not for
+                // us. Just pass it through.
                 appendString(state, token->str);
 
             }
@@ -511,6 +651,8 @@ void preprocess(struct PreprocessorState *state, const char *str)
     //     destroyPreprocessorState(state);
     //     return ret;
     // }
+
+    return ret;
 }
 
 

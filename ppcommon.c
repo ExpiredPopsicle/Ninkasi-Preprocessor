@@ -57,6 +57,9 @@ void nkiMemcpy(void *dst, const void *src, nkuint32_t len)
 void nkiDbgAppendEscaped(nkuint32_t bufSize, char *dst, const char *src)
 {
     nkuint32_t i = strlenWrapper(dst);
+
+    // TODO: Check for overflow.
+
     while(i + 2 < bufSize && *src) {
         switch(*src) {
             case '\n':
@@ -80,3 +83,21 @@ void nkiDbgAppendEscaped(nkuint32_t bufSize, char *dst, const char *src)
     dst[i] = 0;
 }
 
+char *escapeString(const char *src)
+{
+    char *output;
+    nkuint32_t bufferLen;
+
+    if(!src) {
+        return NULL;
+    }
+
+    // TODO: Check overflow.
+    bufferLen = strlenWrapper(src) * 2 + 1;
+
+    output = mallocWrapper(bufferLen);
+    output[0] = 0;
+    nkiDbgAppendEscaped(bufferLen, output, src);
+
+    return output;
+}
