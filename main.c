@@ -220,6 +220,28 @@ struct PreprocessorDirectiveMapping
     nkbool (*handler)(struct PreprocessorState *, const char*);
 };
 
+struct PreprocessorDirectiveMapping directiveMapping[] = {
+    { "undef",  handleUndef  },
+    { "define", handleDefine },
+};
+
+nkuint32_t directiveMappingLen =
+    sizeof(directiveMapping) /
+    sizeof(struct PreprocessorDirectiveMapping);
+
+
+nkbool directiveIsValid(
+    const char *directive)
+{
+    nkuint32_t i;
+    for(i = 0; i < directiveMappingLen; i++) {
+        if(!strcmpWrapper(directive, directiveMapping[i].identifier)) {
+            return nktrue;
+        }
+    }
+    return nkfalse;
+}
+
 nkbool handleDirective(
     struct PreprocessorState *state,
     const char *directive,
@@ -238,15 +260,6 @@ nkbool handleDirective(
     //   ifdef
     //   ifndef
     //   ... anything else I think of
-
-    struct PreprocessorDirectiveMapping directiveMapping[] = {
-        { "undef",  handleUndef },
-        { "define", handleDefine },
-    };
-
-    nkuint32_t directiveMappingLen =
-        sizeof(directiveMapping) /
-        sizeof(struct PreprocessorDirectiveMapping);
 
     for(i = 0; i < directiveMappingLen; i++) {
         if(!strcmpWrapper(directive, directiveMapping[i].identifier)) {
@@ -416,19 +429,11 @@ nkbool preprocess(struct PreprocessorState *state, const char *str)
 
                     // Get the directive name.
                     struct PreprocessorToken *directiveNameToken = getNextToken(state, nktrue);
-                    nkbool recognizedDirective = nkfalse;
 
-                    // TODO: Check to see if this is something we
-                    //   understand by going through the *actual* list
-                    //   of directives.
-                    if(!strcmpWrapper(directiveNameToken->str, "undef") ||
-                        !strcmpWrapper(directiveNameToken->str, "define"))
-                    {
-                        recognizedDirective = nktrue;
-                    }
-
-                    // Act on anything we might understand.
-                    if(recognizedDirective) {
+                    // Check to see if this is something we understand
+                    // by going through the *actual* list of
+                    // directives.
+                    if(directiveIsValid(directiveNameToken->str)) {
 
                         nkuint32_t lineCount = 0;
                         char *line = readRestOfLine(state, &lineCount);
@@ -439,7 +444,15 @@ nkbool preprocess(struct PreprocessorState *state, const char *str)
                             line))
                         {
 
+                            // That went well.
+
                         } else {
+
+                            // I don't know if we really need to
+                            // report an error here, because an error
+                            // would have been added in
+                            // handleDirective() for whatever went
+                            // wrong.
                             preprocessorStateAddError(
                                 state, "Bad directive.");
                             ret = nkfalse;
@@ -524,104 +537,6 @@ nkbool preprocess(struct PreprocessorState *state, const char *str)
 
                     executeMacro(state, macro);
 
-                //     struct PreprocessorState *clonedState = preprocessorStateClone(state);
-                //     nkuint32_t startLineNumber = state->lineNumber;
-
-                //     // Input is the macro definition. Output is
-                //     // appending to the "parent" state.
-
-                //     if(macro->arguments) {
-
-                //         skipWhitespaceAndComments(state, nkfalse, nkfalse);
-
-                //         if(state->str[state->index] == '(') {
-
-                //             // Skip open paren.
-                //             skipChar(state, nkfalse);
-
-
-                //             {
-                //                 struct PreprocessorMacroArgument *argument = macro->arguments;
-
-                //                 while(argument) {
-
-                //                     // Read the macro argument.
-                //                     char *unstrippedArgumentText = readMacroArgument(state);
-                //                     char *argumentText = stripCommentsAndTrim(unstrippedArgumentText);
-
-                //                     freeWrapper(unstrippedArgumentText);
-
-                //                     printf("Argument (%s) text: %s\n",
-                //                         argument->name, argumentText);
-
-                //                     // Add the argument as a macro to
-                //                     // the new cloned state.
-                //                     {
-                //                         struct PreprocessorMacro *newMacro = createPreprocessorMacro();
-                //                         preprocessorMacroSetIdentifier(newMacro, argument->name);
-                //                         preprocessorMacroSetDefinition(newMacro, argumentText);
-                //                         preprocessorStateAddMacro(clonedState, newMacro);
-                //                     }
-
-                //                     freeWrapper(argumentText);
-
-                //                     skipWhitespaceAndComments(state, nkfalse, nkfalse);
-
-                //                     if(argument->next) {
-
-                //                         // Expect ','
-                //                         if(state->str[state->index] == ',') {
-                //                             skipChar(state, nkfalse);
-                //                         } else {
-                //                             // TODO: Error out.
-                //                             break;
-                //                         }
-
-                //                     } else {
-
-                //                         // Expect ')'
-                //                         if(state->str[state->index] == ')') {
-                //                             skipChar(state, nkfalse);
-                //                         } else {
-                //                             // TODO: Error out.
-                //                             break;
-                //                         }
-                //                     }
-
-                //                     argument = argument->next;
-
-                //                 }
-
-                //             }
-
-                //         } else {
-                //             preprocessorStateAddError(state, "Expected argument list.");
-                //         }
-
-                //     } else {
-
-                //         // No arguments. Nothing to set up on cloned
-                //         // state.
-
-                //     }
-
-                //     // Preprocess the macro into place.
-                //     {
-                //         // Clear output from the cloned state.
-                //         preprocessorStateClearOutput(clonedState);
-
-                //         // Feed the macro definition through it.
-                //         preprocess(clonedState, macro->definition);
-
-                //         // Write output.
-                //         appendString(state, clonedState->output);
-
-                //         // Clean up.
-                //         destroyPreprocessorState(clonedState);
-                //     }
-
-                //     preprocessorStateFlagFileLineMarkersForUpdate(state);
-
                 } else {
 
                     // This is an identifier, but it's not a defined
@@ -645,13 +560,6 @@ nkbool preprocess(struct PreprocessorState *state, const char *str)
         }
 
     }
-
-    // {
-    //     char *ret = state->output;
-    //     state->output = NULL;
-    //     destroyPreprocessorState(state);
-    //     return ret;
-    // }
 
     return ret;
 }
