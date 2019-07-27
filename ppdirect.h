@@ -9,4 +9,8 @@ nkbool handleUndef(
     struct PreprocessorState *state,
     const char *restOfLine);
 
+nkbool handleDefine(
+    struct PreprocessorState *state,
+    const char *restOfLine);
+
 #endif // PPDIRECT_H

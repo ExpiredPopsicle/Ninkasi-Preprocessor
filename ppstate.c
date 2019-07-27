@@ -289,6 +289,10 @@ struct PreprocessorMacro *preprocessorStateFindMacro(
 {
     struct PreprocessorMacro *currentMacro = state->macros;
 
+    if(!identifier) {
+        return NULL;
+    }
+
     while(currentMacro) {
 
         if(!strcmpWrapper(currentMacro->identifier, identifier)) {

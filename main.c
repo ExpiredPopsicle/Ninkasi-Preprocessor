@@ -214,176 +214,58 @@ char *readRestOfLine(
     return ret;
 }
 
+struct PreprocessorDirectiveMapping
+{
+    const char *identifier;
+    nkbool (*handler)(struct PreprocessorState *, const char*);
+};
+
 nkbool handleDirective(
     struct PreprocessorState *state,
     const char *directive,
     const char *restOfLine)
 {
     nkbool ret = nkfalse;
-    struct PreprocessorState *directiveParseState = createPreprocessorState();
     char *deletedBackslashes = deleteBackslashNewlines(restOfLine);
+    nkuint32_t i;
 
-    directiveParseState->str = deletedBackslashes;
+    // TODO: Add these...
+    //   include
+    //   file
+    //   line
+    //   if
+    //   endif
+    //   ifdef
+    //   ifndef
+    //   ... anything else I think of
 
-    if(!strcmpWrapper(directive, "undef")) {
+    struct PreprocessorDirectiveMapping directiveMapping[] = {
+        { "undef",  handleUndef },
+        { "define", handleDefine },
+    };
 
-        ret = handleUndef(state, restOfLine);
+    nkuint32_t directiveMappingLen =
+        sizeof(directiveMapping) /
+        sizeof(struct PreprocessorDirectiveMapping);
 
-    } else if(!strcmpWrapper(directive, "define")) {
-
-        struct PreprocessorMacro *macro = createPreprocessorMacro();
-
-        // Get identifier.
-        struct PreprocessorToken *identifierToken =
-            getNextToken(directiveParseState, nkfalse);
-
-        char *definition = NULL;
-
-        if(identifierToken->type == NK_PPTOKEN_IDENTIFIER) {
-
-            // Assume success. Set to false if something fails.
-            ret = nktrue;
-
-            preprocessorMacroSetIdentifier(
-                macro,
-                identifierToken->str);
-
-            skipWhitespaceAndComments(
-                directiveParseState, nkfalse, nkfalse);
-
-            // Check for arguments (next char == '(').
-            if(directiveParseState->str[directiveParseState->index] == '(') {
-
-                nkbool expectingComma = nkfalse;
-
-                // Skip the open paren.
-                struct PreprocessorToken *openParenToken =
-                    getNextToken(directiveParseState, nkfalse);
-                destroyToken(openParenToken);
-
-                // Parse the argument list.
-
-                struct PreprocessorToken *token = getNextToken(directiveParseState, nkfalse);
-
-                if(!token) {
-
-                    // FIXME: Output error message?
-                    // We're done, but with an error!
-                    ret = nkfalse;
-
-                } else if(token->type == NK_PPTOKEN_CLOSEPAREN) {
-
-                    // Zero-argument list. Nothing to do here.
-
-                    destroyToken(token);
-
-                } else {
-
-                    // Argument list with actual arguments detected.
-
-                    while(1) {
-
-                        if(expectingComma) {
-
-                            if(token->type == NK_PPTOKEN_CLOSEPAREN) {
-
-                                // We're done. Bail out.
-                                destroyToken(token);
-                                break;
-
-                            } else if(token->type == NK_PPTOKEN_COMMA) {
-
-                                // Okay. This is what we expect, but
-                                // there's nothing useful here.
-                                expectingComma = nkfalse;
-
-                            } else {
-
-                                // Error.
-                                ret = nkfalse;
-                            }
-
-                        } else {
-
-                            if(token->type == NK_PPTOKEN_IDENTIFIER) {
-
-                                // Valid identifier.
-                                printf("Argument name: %s\n", token->str);
-
-                                preprocessorMacroAddArgument(macro, token->str);
-
-                                expectingComma = nktrue;
-
-                            } else {
-
-                                // Not a valid identifier.
-                                ret = nkfalse;
-                                destroyToken(token);
-                                break;
-
-                            }
-                        }
-
-                        // Next token.
-                        destroyToken(token);
-                        token = getNextToken(directiveParseState, nkfalse);
-
-                        // We're not supposed to hit the end of the
-                        // list here.
-                        if(!token) {
-                            ret = nkfalse;
-                            break;
-                        }
-                    }
-                }
-
-                // Skip up to the actual definition.
-                skipWhitespaceAndComments(directiveParseState, nkfalse, nkfalse);
-            }
-
-            // Read the macro definition.
-            definition = stripCommentsAndTrim(
-                directiveParseState->str + directiveParseState->index);
-
-            preprocessorMacroSetDefinition(
-                macro, definition);
-
-            printf("Define: \"%s\" = \"%s\"\n", identifierToken->str, definition);
-
-            freeWrapper(definition);
-            destroyToken(identifierToken);
-
-        } else {
-
-            ret = nkfalse;
+    for(i = 0; i < directiveMappingLen; i++) {
+        if(!strcmpWrapper(directive, directiveMapping[i].identifier)) {
+            ret = directiveMapping[i].handler(state, deletedBackslashes);
+            break;
         }
+    }
 
-        if(preprocessorStateFindMacro(state, macro->identifier)) {
-            preprocessorStateAddError(state, "Multiple definitions of the same macro.");
-            ret = nkfalse;
-        }
-
-        // Add definition to list, or clean up if we had an error.
-        if(ret) {
-            preprocessorStateAddMacro(state, macro);
-        } else {
-            destroyPreprocessorMacro(macro);
-        }
-
-    } else {
-
-        // Unknown directive. Leave it alone.
+    // Spit out an error if we couldn't find a matching directive.
+    if(i == directiveMappingLen) {
         preprocessorStateAddError(state, "Unknown directive.");
         ret = nkfalse;
     }
 
-    // Update file/line markers.
-    // preprocessorStateWritePositionMarker(state);
+    // Update file/line markers, in case they've changed.
     preprocessorStateFlagFileLineMarkersForUpdate(state);
 
+    freeWrapper(deletedBackslashes);
 
-    free(deletedBackslashes);
-    destroyPreprocessorState(directiveParseState);
     return ret;
 }
 
@@ -424,10 +306,10 @@ void preprocess(struct PreprocessorState *state, const char *str)
                     // Get the directive name.
                     struct PreprocessorToken *directiveNameToken = getNextToken(state, nktrue);
 
-                    // Act on anything we might understand.
-                    if(!strcmpWrapper(directiveNameToken->str, "undef") ||
-                        !strcmpWrapper(directiveNameToken->str, "define"))
-                    {
+                    // // Act on anything we might understand.
+                    // if(!strcmpWrapper(directiveNameToken->str, "undef") ||
+                    //     !strcmpWrapper(directiveNameToken->str, "define"))
+                    // {
                         nkuint32_t lineCount = 0;
                         char *line = readRestOfLine(state, &lineCount);
 
@@ -445,17 +327,17 @@ void preprocess(struct PreprocessorState *state, const char *str)
                         // Clean up.
                         freeWrapper(line);
 
-                    } else {
+                    // } else {
 
-                        // TODO: Stringification?
+                    //     // TODO: Stringification?
 
-                        // Something we don't recognize? Better just
-                        // output it with the hash and let the next
-                        // preprocessor deal with it (GLSL, etc).
-                        appendString(state, token->str);
-                        appendString(state, directiveNameToken->str);
+                    //     // Something we don't recognize? Better just
+                    //     // output it with the hash and let the next
+                    //     // preprocessor deal with it (GLSL, etc).
+                    //     appendString(state, token->str);
+                    //     appendString(state, directiveNameToken->str);
 
-                    }
+                    // }
 
                     destroyToken(directiveNameToken);
 
