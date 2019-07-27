@@ -43,20 +43,15 @@ void destroyPreprocessorState(struct PreprocessorState *state)
 void preprocessorStateWritePositionMarker(struct PreprocessorState *state)
 {
     char numberStr[128];
-    const char *filenameStr = state->filename;
-    nkuint32_t bufSize = strlen(filenameStr) * 2 + 3;
-    char *escapedFilenameStr = mallocWrapper(bufSize);
-
-    escapedFilenameStr[0] = 0;
-    nkiDbgAppendEscaped(bufSize, escapedFilenameStr, filenameStr);
+    char *escapedFilenameStr = escapeString(state->filename);
 
     appendString(state, "#file \"");
     appendString(state, escapedFilenameStr);
     appendString(state, "\"");
+
     sprintf(
         numberStr, "\n#line %ld\n",
         (long)state->lineNumber);
-
     appendString(state, numberStr);
 
     state->outputLineNumber = state->lineNumber;

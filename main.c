@@ -466,11 +466,12 @@ nkbool preprocess(struct PreprocessorState *state, const char *str)
 
 
                             {
-                                // TODO: Check overflow.
-                                nkuint32_t bufSize = strlen(macroState->output) * 2 + 3;
-                                char *escapedStr = mallocWrapper(bufSize);
-                                escapedStr[0] = 0;
-                                nkiDbgAppendEscaped(bufSize, escapedStr, macroState->output);
+                                // // TODO: Check overflow.
+                                // nkuint32_t bufSize = strlen(macroState->output) * 2 + 3;
+                                // char *escapedStr = mallocWrapper(bufSize);
+                                // escapedStr[0] = 0;
+                                // nkiDbgAppendEscaped(bufSize, escapedStr, macroState->output);
+                                char *escapedStr = escapeString(macroState->output);
 
                                 appendString(state, "\"");
                                 appendString(state, escapedStr);
