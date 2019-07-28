@@ -1,5 +1,6 @@
 #include "ppmacro.h"
 
+// MEMSAFE
 void destroyPreprocessorMacro(struct PreprocessorMacro *macro)
 {
     struct PreprocessorMacroArgument *args = macro->arguments;
@@ -15,6 +16,7 @@ void destroyPreprocessorMacro(struct PreprocessorMacro *macro)
     freeWrapper(macro);
 }
 
+// MEMSAFE
 struct PreprocessorMacro *createPreprocessorMacro(void)
 {
     struct PreprocessorMacro *ret =
@@ -31,6 +33,7 @@ struct PreprocessorMacro *createPreprocessorMacro(void)
     return ret;
 }
 
+// FIXME: Make MEMSAFE
 nkbool preprocessorMacroAddArgument(
     struct PreprocessorMacro *macro,
     const char *name)
@@ -72,6 +75,7 @@ nkbool preprocessorMacroAddArgument(
     return nktrue;
 }
 
+// FIXME: Make MEMSAFE
 nkbool preprocessorMacroSetIdentifier(
     struct PreprocessorMacro *macro,
     const char *identifier)
@@ -90,6 +94,7 @@ nkbool preprocessorMacroSetIdentifier(
     return nktrue;
 }
 
+// MEMSAFE
 nkbool preprocessorMacroSetDefinition(
     struct PreprocessorMacro *macro,
     const char *definition)
@@ -109,25 +114,51 @@ nkbool preprocessorMacroSetDefinition(
     return nktrue;
 }
 
+// MEMSAFE
 struct PreprocessorMacro *preprocessorMacroClone(
     const struct PreprocessorMacro *macro)
 {
-    struct PreprocessorMacro *ret = createPreprocessorMacro();
+    struct PreprocessorMacro *ret;
     struct PreprocessorMacroArgument *currentArgument;
     struct PreprocessorMacroArgument **argumentWritePtr;
 
+    ret = createPreprocessorMacro();
+    if(!ret) {
+        return NULL;
+    }
+
     ret->identifier = strdupWrapper(macro->identifier);
+    if(!ret->identifier) {
+        destroyPreprocessorMacro(ret);
+        return NULL;
+    }
+
     ret->definition = strdupWrapper(macro->definition);
+    if(!ret->definition) {
+        destroyPreprocessorMacro(ret);
+        return NULL;
+    }
+
     ret->functionStyleMacro = macro->functionStyleMacro;
 
     currentArgument = macro->arguments;
     argumentWritePtr = &ret->arguments;
+
     while(currentArgument) {
 
         struct PreprocessorMacroArgument *clonedArg =
             mallocWrapper(sizeof(struct PreprocessorMacroArgument));
+        if(!clonedArg) {
+            destroyPreprocessorMacro(ret);
+            return NULL;
+        }
+
         clonedArg->next = NULL;
         clonedArg->name = strdupWrapper(currentArgument->name);
+        if(!clonedArg->name) {
+            destroyPreprocessorMacro(ret);
+            return NULL;
+        }
 
         *argumentWritePtr = clonedArg;
         argumentWritePtr = &clonedArg->next;

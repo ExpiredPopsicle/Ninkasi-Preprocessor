@@ -78,7 +78,7 @@ struct PreprocessorState *preprocessorStateClone(
     const struct PreprocessorState *state);
 
 /// Set the current file name. Used for error tracking.
-void preprocessorStateSetFilename(
+nkbool preprocessorStateSetFilename(
     struct PreprocessorState *state,
     const char *filename);
 
@@ -99,22 +99,22 @@ nkbool preprocessorStateDeleteMacro(
 // Read/write functions
 
 /// Append a string to the output.
-void appendString(struct PreprocessorState *state, const char *str);
+nkbool appendString(struct PreprocessorState *state, const char *str);
 
 /// Append a character to the output. Output line number tracking
 /// happens here. Use this (or a function that calls it, like
 /// appendString()) to output instead of maually updating the buffer.
-void appendChar(struct PreprocessorState *state, char c);
+nkbool appendChar(struct PreprocessorState *state, char c);
 
 /// Advance the read pointer. Optionally outputting the character.
 /// Input line number tracking happens here, so always use this to
 /// advance the read pointer instead of messing with the index
 /// yourself.
-void skipChar(struct PreprocessorState *state, nkbool output);
+nkbool skipChar(struct PreprocessorState *state, nkbool output);
 
 /// Skip past whitespace and comments, optionally sending them to the
 /// output. This is to preserve formatting and comments in the output.
-void skipWhitespaceAndComments(
+nkbool skipWhitespaceAndComments(
     struct PreprocessorState *state,
     nkbool output,
     nkbool stopAtNewline);

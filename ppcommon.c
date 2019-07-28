@@ -54,6 +54,7 @@ void nkiMemcpy(void *dst, const void *src, nkuint32_t len)
     }
 }
 
+// FIXME: Make MEMSAFE (overflow)
 void nkiDbgAppendEscaped(nkuint32_t bufSize, char *dst, const char *src)
 {
     nkuint32_t i = strlenWrapper(dst);
@@ -83,6 +84,7 @@ void nkiDbgAppendEscaped(nkuint32_t bufSize, char *dst, const char *src)
     dst[i] = 0;
 }
 
+// FIXME: Make MEMSAFE (call to nkiDbgAppendEscaped)
 char *escapeString(const char *src)
 {
     char *output;
@@ -93,9 +95,22 @@ char *escapeString(const char *src)
     }
 
     // TODO: Check overflow.
-    bufferLen = strlenWrapper(src) * 2 + 1;
+    // bufferLen = strlenWrapper(src) * 2 + 1;
+    {
+        nkbool overflow = nkfalse;
+        bufferLen = strlenWrapper(src);
+        NK_CHECK_OVERFLOW_UINT_MUL(bufferLen, 2, bufferLen, overflow);
+        NK_CHECK_OVERFLOW_UINT_ADD(bufferLen, 1, bufferLen, overflow);
+        if(overflow) {
+            return NULL;
+        }
+    }
 
     output = mallocWrapper(bufferLen);
+    if(!output) {
+        return NULL;
+    }
+
     output[0] = 0;
     nkiDbgAppendEscaped(bufferLen, output, src);
 
@@ -108,8 +123,10 @@ struct AllocHeader
     nkuint32_t size;
 };
 
+static nkuint32_t maxAllowedMemory = ~(nkuint32_t)0;
 static nkuint32_t totalAllocations = 0;
 static nkuint32_t maxUsage = 0;
+static nkuint32_t allocationsUntilFailure = ~(nkuint32_t)0;
 
 struct AllocHeader *getAllocHeader(void *ptr)
 {
@@ -123,12 +140,47 @@ struct AllocHeader *getAllocHeaderData(struct AllocHeader *header)
     return ret;
 }
 
+void setAllocationFailureTestLimits(
+    nkuint32_t limitMemory,
+    nkuint32_t limitAllocations)
+{
+    printf("Alloc limits: %lu bytes, %lu allocs\n",
+        (long)limitMemory, (long)limitAllocations);
+
+    maxAllowedMemory = limitMemory;
+    allocationsUntilFailure = limitAllocations;
+}
+
+void *mallocLowLevel(size_t size)
+{
+    if(allocationsUntilFailure != ~(nkuint32_t)0) {
+        if(allocationsUntilFailure) {
+            allocationsUntilFailure--;
+        }
+    }
+
+    if(!allocationsUntilFailure) {
+        return NULL;
+    }
+
+    return malloc(size);
+}
+
 void *mallocWrapper(nkuint32_t size)
 {
-    struct AllocHeader *header =
-        malloc(size + sizeof(struct AllocHeader));
+    struct AllocHeader *header = NULL;
+    void *ret = NULL;
 
-    void *ret = getAllocHeaderData(header);
+    // Avoid 32-bit to size_t truncation on 16-bit (DOS).
+    if(size < ~(size_t)0) {
+        header = mallocLowLevel(size + sizeof(struct AllocHeader));
+    }
+
+    if(!header) {
+        return NULL;
+    }
+
+    ret = getAllocHeaderData(header);
 
     header->size = size;
 
@@ -137,9 +189,9 @@ void *mallocWrapper(nkuint32_t size)
         maxUsage = totalAllocations;
     }
 
-    printf("Alloc: %8lu ( %8lu )\n",
-        (long)totalAllocations,
-        (long)maxUsage);
+    // printf("Alloc: %8lu ( %8lu )\n",
+    //     (long)totalAllocations,
+    //     (long)maxUsage);
 
     return ret;
 }
@@ -154,9 +206,9 @@ void freeWrapper(void *ptr)
         free(header);
     }
 
-    printf("Free:  %8lu ( %8lu )\n",
-        (long)totalAllocations,
-        (long)maxUsage);
+    // printf("Free:  %8lu ( %8lu )\n",
+    //     (long)totalAllocations,
+    //     (long)maxUsage);
 }
 
 void *reallocWrapper(void *ptr, nkuint32_t size)
@@ -168,6 +220,10 @@ void *reallocWrapper(void *ptr, nkuint32_t size)
     } else {
 
         void *newChunk = mallocWrapper(size);
+        if(!newChunk) {
+            return NULL;
+        }
+
         struct AllocHeader *oldHeader = getAllocHeader(ptr);
         nkuint32_t oldSize = oldHeader->size;
 
@@ -187,6 +243,9 @@ char *strdupWrapper(const char *s)
     nkuint32_t size = len + 1;
 
     char *ret = (char*)mallocWrapper(size);
+    if(!ret) {
+        return NULL;
+    }
 
     memcpyWrapper(ret, s, len);
     ret[len] = 0;

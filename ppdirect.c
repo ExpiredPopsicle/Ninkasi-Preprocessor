@@ -4,6 +4,7 @@
 #include "ppmacro.h"
 #include "ppstring.h"
 
+// FIXME: Make MEMSAFE
 nkbool handleIfdefReal(
     struct PreprocessorState *state,
     const char *restOfLine,
@@ -44,6 +45,7 @@ nkbool handleIfdefReal(
     return ret;
 }
 
+// FIXME: Make MEMSAFE
 nkbool handleIfdef(
     struct PreprocessorState *state,
     const char *restOfLine)
@@ -51,6 +53,7 @@ nkbool handleIfdef(
     return handleIfdefReal(state, restOfLine, nkfalse);
 }
 
+// FIXME: Make MEMSAFE
 nkbool handleIfndef(
     struct PreprocessorState *state,
     const char *restOfLine)
@@ -58,6 +61,7 @@ nkbool handleIfndef(
     return handleIfdefReal(state, restOfLine, nktrue);
 }
 
+// MEMSAFE
 nkbool handleElse(
     struct PreprocessorState *state,
     const char *restOfLine)
@@ -65,6 +69,7 @@ nkbool handleElse(
     return preprocessorStateFlipIfResult(state);
 }
 
+// MEMSAFE
 nkbool handleEndif(
     struct PreprocessorState *state,
     const char *restOfLine)
@@ -72,19 +77,29 @@ nkbool handleEndif(
     return preprocessorStatePopIfResult(state);
 }
 
+// MEMSAFE
 nkbool handleUndef(
     struct PreprocessorState *state,
     const char *restOfLine)
 {
     nkbool ret = nktrue;
-    struct PreprocessorState *directiveParseState =
+    struct PreprocessorState *directiveParseState = NULL;
+    struct PreprocessorToken *identifierToken = NULL;
+
+    directiveParseState =
         createPreprocessorState(state->errorState);
-    struct PreprocessorToken *identifierToken;
+    if(!directiveParseState) {
+        return nkfalse;
+    }
 
     directiveParseState->str = restOfLine;
 
     // Get identifier.
     identifierToken = getNextToken(directiveParseState, nkfalse);
+    if(!identifierToken) {
+        destroyPreprocessorState(directiveParseState);
+        return nkfalse;
+    }
 
     if(identifierToken->type == NK_PPTOKEN_IDENTIFIER) {
 
@@ -107,147 +122,185 @@ nkbool handleUndef(
     }
 
     destroyToken(identifierToken);
-
     destroyPreprocessorState(directiveParseState);
-
     return ret;
 }
 
+// MEMSAFE
 nkbool handleDefine(
     struct PreprocessorState *state,
     const char *restOfLine)
 {
     nkbool ret = nktrue;
-    struct PreprocessorState *directiveParseState =
-        createPreprocessorState(state->errorState);
-    struct PreprocessorMacro *macro = createPreprocessorMacro();
-    struct PreprocessorToken *identifierToken;
+    struct PreprocessorState *directiveParseState = NULL;
+    struct PreprocessorMacro *macro = NULL;
+    struct PreprocessorToken *identifierToken = NULL;
     char *definition = NULL;
+    nkbool expectingComma = nkfalse;
+    struct PreprocessorToken *openParenToken = NULL;
+    struct PreprocessorToken *argToken = NULL;
 
+    // Setup pp state.
+    directiveParseState = createPreprocessorState(state->errorState);
+    if(!directiveParseState) {
+        ret = nkfalse;
+        goto handleDefine_cleanup;
+    }
     directiveParseState->str = restOfLine;
+
+    // Setup new macro.
+    macro = createPreprocessorMacro();
+    if(!macro) {
+        ret = nkfalse;
+        goto handleDefine_cleanup;
+    }
 
     // Get identifier.
     identifierToken =
         getNextToken(directiveParseState, nkfalse);
+    if(!identifierToken) {
+        ret = nkfalse;
+        goto handleDefine_cleanup;
+    }
 
-    if(identifierToken->type == NK_PPTOKEN_IDENTIFIER) {
+    // That better be an identifier.
+    if(identifierToken->type != NK_PPTOKEN_IDENTIFIER) {
+        preprocessorStateAddError(state, "Expected identifier after #define.");
+        ret = nkfalse;
+        goto handleDefine_cleanup;
+    }
 
-        preprocessorMacroSetIdentifier(
-            macro,
-            identifierToken->str);
+    if(!preprocessorMacroSetIdentifier(
+        macro,
+        identifierToken->str))
+    {
+        ret = nkfalse;
+        goto handleDefine_cleanup;
+    }
 
-        skipWhitespaceAndComments(
-            directiveParseState, nkfalse, nkfalse);
+    if(!skipWhitespaceAndComments(
+            directiveParseState, nkfalse, nkfalse))
+    {
+        ret = nkfalse;
+        goto handleDefine_cleanup;
+    }
 
-        // Check for arguments (next char == '(').
-        if(directiveParseState->str[directiveParseState->index] == '(') {
+    // Check for arguments (next char == '(').
+    if(directiveParseState->str[directiveParseState->index] == '(') {
 
-            nkbool expectingComma = nkfalse;
+        // Skip the open paren.
+        openParenToken =
+            getNextToken(directiveParseState, nkfalse);
+        if(!openParenToken) {
+            ret = nkfalse;
+            goto handleDefine_cleanup;
+        }
 
-            // Skip the open paren.
-            struct PreprocessorToken *openParenToken =
-                getNextToken(directiveParseState, nkfalse);
+        destroyToken(openParenToken);
+        openParenToken = NULL;
 
-            // Parse the argument list.
+        // Parse the argument list.
 
-            struct PreprocessorToken *token = getNextToken(directiveParseState, nkfalse);
+        argToken = getNextToken(directiveParseState, nkfalse);
 
-            destroyToken(openParenToken);
+        macro->functionStyleMacro = nktrue;
 
-            macro->functionStyleMacro = nktrue;
+        if(!argToken) {
 
-            if(!token) {
+            // We're done, but with an error!
+            preprocessorStateAddError(
+                state, "Ran out of tokens while parsing argument list.");
+            ret = nkfalse;
 
-                // We're done, but with an error!
-                preprocessorStateAddError(
-                    state, "Ran out of tokens while parsing argument list.");
-                ret = nkfalse;
+        } else if(argToken->type == NK_PPTOKEN_CLOSEPAREN) {
 
-            } else if(token->type == NK_PPTOKEN_CLOSEPAREN) {
+            // Zero-argument list. Nothing to do here.
+            destroyToken(argToken);
+            argToken = NULL;
 
-                // Zero-argument list. Nothing to do here.
+        } else {
 
-                destroyToken(token);
+            // Argument list with actual arguments detected.
 
-            } else {
+            while(1) {
 
-                // Argument list with actual arguments detected.
+                if(expectingComma) {
 
-                while(1) {
+                    if(argToken->type == NK_PPTOKEN_CLOSEPAREN) {
 
-                    if(expectingComma) {
+                        // We're done. Bail out.
+                        destroyToken(argToken);
+                        argToken = NULL;
+                        break;
 
-                        if(token->type == NK_PPTOKEN_CLOSEPAREN) {
+                    } else if(argToken->type == NK_PPTOKEN_COMMA) {
 
-                            // We're done. Bail out.
-                            destroyToken(token);
-                            break;
-
-                        } else if(token->type == NK_PPTOKEN_COMMA) {
-
-                            // Okay. This is what we expect, but
-                            // there's nothing useful here.
-                            expectingComma = nkfalse;
-
-                        } else {
-
-                            // Error.
-                            ret = nkfalse;
-                        }
+                        // Okay. This is what we expect, but
+                        // there's nothing useful here.
+                        expectingComma = nkfalse;
 
                     } else {
 
-                        if(token->type == NK_PPTOKEN_IDENTIFIER) {
-
-                            // Valid identifier.
-                            preprocessorMacroAddArgument(macro, token->str);
-                            expectingComma = nktrue;
-
-                        } else {
-
-                            // Not a valid identifier.
-                            ret = nkfalse;
-                            destroyToken(token);
-                            break;
-
-                        }
+                        // Error.
+                        ret = nkfalse;
                     }
 
-                    // Next token.
-                    destroyToken(token);
-                    token = getNextToken(directiveParseState, nkfalse);
+                } else {
 
-                    // We're not supposed to hit the end of the
-                    // list here.
-                    if(!token) {
-                        preprocessorStateAddError(state, "Incomplete argument list in #define.");
+                    if(argToken->type == NK_PPTOKEN_IDENTIFIER) {
+
+                        // Valid identifier.
+                        if(!preprocessorMacroAddArgument(macro, argToken->str)) {
+                            ret = nkfalse;
+                        }
+                        expectingComma = nktrue;
+
+                    } else {
+
+                        // Not a valid identifier.
                         ret = nkfalse;
+                        destroyToken(argToken);
+                        argToken = NULL;
                         break;
+
                     }
                 }
 
-                // FIXME: If we didn't get any arguments, indicate
-                // that, for function-style #defines.
-            }
+                // Next token.
+                destroyToken(argToken);
+                argToken = getNextToken(directiveParseState, nkfalse);
 
-            // Skip up to the actual definition.
-            skipWhitespaceAndComments(directiveParseState, nkfalse, nkfalse);
+                // We're not supposed to hit the end of the
+                // list here.
+                if(!argToken) {
+                    preprocessorStateAddError(state, "Incomplete argument list in #define.");
+                    ret = nkfalse;
+                    break;
+                }
+            }
         }
 
-        // Read the macro definition.
-        definition = stripCommentsAndTrim(
-            directiveParseState->str + directiveParseState->index);
+        // Skip up to the actual definition.
+        if(!skipWhitespaceAndComments(directiveParseState, nkfalse, nkfalse)) {
+            ret = nkfalse;
+            goto handleDefine_cleanup;
+        }
+    }
 
-        preprocessorMacroSetDefinition(
-            macro, definition);
-
-        freeWrapper(definition);
-
-    } else {
-
-        // That's not an identifier.
-        preprocessorStateAddError(state, "Expected identifier after #define.");
+    // Read the macro definition.
+    definition = stripCommentsAndTrim(
+        directiveParseState->str + directiveParseState->index);
+    if(!definition) {
         ret = nkfalse;
+        goto handleDefine_cleanup;
+    }
+
+    // Set it.
+    if(!preprocessorMacroSetDefinition(
+            macro, definition))
+    {
+        ret = nkfalse;
+        goto handleDefine_cleanup;
     }
 
     // Disallow multiple definitions.
@@ -259,11 +312,29 @@ nkbool handleDefine(
     // Add definition to list, or clean up if we had an error.
     if(ret) {
         preprocessorStateAddMacro(state, macro);
+        macro = NULL;
     } else {
         destroyPreprocessorMacro(macro);
     }
 
-    destroyToken(identifierToken);
-    destroyPreprocessorState(directiveParseState);
+handleDefine_cleanup:
+
+    // Cleanup.
+    if(directiveParseState) {
+        destroyPreprocessorState(directiveParseState);
+    }
+    if(identifierToken) {
+        destroyToken(identifierToken);
+    }
+    if(definition) {
+        freeWrapper(definition);
+    }
+    if(openParenToken) {
+        destroyToken(openParenToken);
+    }
+    if(macro) {
+        destroyPreprocessorMacro(macro);
+    }
+
     return ret;
 }

@@ -5,6 +5,7 @@
 
 #include <assert.h>
 
+// MEMSAFE
 struct PreprocessorState *createPreprocessorState(
     struct PreprocessorErrorState *errorState)
 {
@@ -24,11 +25,17 @@ struct PreprocessorState *createPreprocessorState(
         ret->errorState = errorState;
         ret->nestedPassedIfs = 0;
         ret->nestedFailedIfs = 0;
+
+        if(!ret->filename) {
+            freeWrapper(ret);
+            return NULL;
+        }
     }
 
     return ret;
 }
 
+// MEMSAFE
 void destroyPreprocessorState(struct PreprocessorState *state)
 {
     struct PreprocessorMacro *currentMacro = state->macros;
@@ -44,30 +51,40 @@ void destroyPreprocessorState(struct PreprocessorState *state)
 
 // This should only ever be called when we're about to output a
 // newline anyway.
-void preprocessorStateWritePositionMarker(struct PreprocessorState *state)
+//
+// MEMSAFE
+nkbool preprocessorStateWritePositionMarker(struct PreprocessorState *state)
 {
     char numberStr[128];
     char *escapedFilenameStr = escapeString(state->filename);
+    nkbool ret = nktrue;
 
-    appendString(state, "#file \"");
-    appendString(state, escapedFilenameStr);
-    appendString(state, "\"");
+    if(!escapedFilenameStr) {
+        return nkfalse;
+    }
+
+    ret &= appendString(state, "#file \"");
+    ret &= appendString(state, escapedFilenameStr);
+    ret &= appendString(state, "\"");
 
     sprintf(
         numberStr, "\n#line %ld\n",
         (long)state->lineNumber);
-    appendString(state, numberStr);
+    ret &= appendString(state, numberStr);
 
     state->outputLineNumber = state->lineNumber;
 
     freeWrapper(escapedFilenameStr);
+
+    return ret;
 }
 
-void appendString(struct PreprocessorState *state, const char *str)
+// MEMSAFE
+nkbool appendString(struct PreprocessorState *state, const char *str)
 {
     if(!str) {
 
-        return;
+        return nktrue;
 
     } else {
 
@@ -75,12 +92,17 @@ void appendString(struct PreprocessorState *state, const char *str)
         nkuint32_t i;
 
         for(i = 0; i < len; i++) {
-            appendChar(state, str[i]);
+            if(!appendChar(state, str[i])) {
+                return nkfalse;
+            }
         }
     }
+
+    return nktrue;
 }
 
-void appendChar_real(struct PreprocessorState *state, char c)
+// FIXME: Make MEMSAFE (overflow checks)
+nkbool appendChar_real(struct PreprocessorState *state, char c)
 {
     // TODO: Check overflow.
     nkuint32_t oldLen = state->output ? strlenWrapper(state->output) : 0;
@@ -88,32 +110,45 @@ void appendChar_real(struct PreprocessorState *state, char c)
     // TODO: Check overflow.
     nkuint32_t allocLen = newLen + 1;
 
-    state->output = reallocWrapper(state->output, allocLen);
+    char *newChunk = reallocWrapper(state->output, allocLen);
+    if(!newChunk) {
+        // Handle alloc fail.
+        return nkfalse;
+    }
+    state->output = newChunk;
+
     state->output[oldLen] = c;
     state->output[newLen] = 0;
+
+    return nktrue;
 }
 
-
-void FIXME_REMOVETHIS_writenumber(struct PreprocessorState *state, nkuint32_t n)
+// MEMSAFE
+nkbool FIXME_REMOVETHIS_writenumber(struct PreprocessorState *state, nkuint32_t n)
 {
     nkuint32_t lnMask = 10000;
+    nkbool ret = nktrue;
 
     while(!(n / lnMask)) {
-        appendChar_real(state, ' ');
+        ret &= appendChar_real(state, ' ');
         n %= lnMask;
         lnMask /= 10;
     }
 
     while(lnMask) {
-        appendChar_real(state, '0' + (n / lnMask));
+        ret &= appendChar_real(state, '0' + (n / lnMask));
         n %= lnMask;
         lnMask /= 10;
     }
+
+    return ret;
 }
 
-
-void appendChar(struct PreprocessorState *state, char c)
+// FIXME: Make MEMSAFE (Just check it. This one might be good.)
+nkbool appendChar(struct PreprocessorState *state, char c)
 {
+    nkbool ret = nktrue;
+
     if(state->writePositionMarkers) {
 
         // If this is the first character on a line...
@@ -134,57 +169,45 @@ void appendChar(struct PreprocessorState *state, char c)
                 nkuint32_t i;
                 for(i = 0; i < 12; i++) {
                     if(i < fnameLen) {
-                        appendChar_real(state, filename[i]);
+                        ret &= appendChar_real(state, filename[i]);
                     } else {
-                        appendChar_real(state, ' ');
+                        ret &= appendChar_real(state, ' ');
                     }
                 }
             }
 
-            appendChar_real(state, ':');
+            ret &= appendChar_real(state, ':');
 
-            FIXME_REMOVETHIS_writenumber(state, state->lineNumber);
-            FIXME_REMOVETHIS_writenumber(state, state->outputLineNumber);
+            ret &= FIXME_REMOVETHIS_writenumber(state, state->lineNumber);
+            ret &= FIXME_REMOVETHIS_writenumber(state, state->outputLineNumber);
 
-            FIXME_REMOVETHIS_writenumber(state, state->nestedFailedIfs);
-            FIXME_REMOVETHIS_writenumber(state, state->nestedPassedIfs);
+            ret &= FIXME_REMOVETHIS_writenumber(state, state->nestedFailedIfs);
+            ret &= FIXME_REMOVETHIS_writenumber(state, state->nestedPassedIfs);
 
-            // while(!(lineNo / lnMask)) {
-            //     appendChar_real(state, ' ');
-            //     lineNo %= lnMask;
-            //     lnMask /= 10;
-            // }
+            ret &= appendChar_real(state, ' ');
+            ret &= appendChar_real(state, state->updateMarkers ? 'U' : ' ');
 
-            // while(lnMask) {
-            //     appendChar_real(state, '0' + (lineNo / lnMask));
-            //     lineNo %= lnMask;
-            //     lnMask /= 10;
-            // }
-
-            appendChar_real(state, ' ');
-            appendChar_real(state, state->updateMarkers ? 'U' : ' ');
-
-            appendChar_real(state, ' ');
+            ret &= appendChar_real(state, ' ');
 
             if(state->outputLineNumber != state->lineNumber) {
-                appendChar_real(state, '-');
-                appendChar_real(state, ' ');
+                ret &= appendChar_real(state, '-');
+                ret &= appendChar_real(state, ' ');
 
                 // Add in a position marker and set the output line
                 // number.
                 if(state->updateMarkers) {
                     state->outputLineNumber = state->lineNumber;
                     state->updateMarkers = nkfalse;
-                    preprocessorStateWritePositionMarker(state);
+                    ret &= preprocessorStateWritePositionMarker(state);
                 }
 
                 // Send in a character we purposely won't do anything
                 // with just to pump the line-start debug info stuff.
-                appendChar(state, 0);
+                ret &= appendChar(state, 0);
 
             } else {
-                appendChar_real(state, '|');
-                appendChar_real(state, ' ');
+                ret &= appendChar_real(state, '|');
+                ret &= appendChar_real(state, ' ');
             }
 
             // If we hit this case, we may have had a redundant use of
@@ -202,17 +225,22 @@ void appendChar(struct PreprocessorState *state, char c)
 
     if(c) {
         if(!state->nestedFailedIfs || c == '\n') {
-            appendChar_real(state, c);
+            ret &= appendChar_real(state, c);
         }
     }
+
+    return ret;
 }
 
-void skipChar(struct PreprocessorState *state, nkbool output)
+// MEMSAFE
+nkbool skipChar(struct PreprocessorState *state, nkbool output)
 {
     assert(state->str[state->index]);
 
     if(output) {
-        appendChar(state, state->str[state->index]);
+        if(!appendChar(state, state->str[state->index])) {
+            return nkfalse;
+        }
     }
 
     if(state->str && state->str[state->index] == '\n') {
@@ -220,15 +248,18 @@ void skipChar(struct PreprocessorState *state, nkbool output)
     }
 
     state->index++;
+
+    return nktrue;
 }
 
-void skipWhitespaceAndComments(
+// MEMSAFE
+nkbool skipWhitespaceAndComments(
     struct PreprocessorState *state,
     nkbool output,
     nkbool stopAtNewline)
 {
     if(!state->str) {
-        return;
+        return nktrue;
     }
 
     while(state->str[state->index]) {
@@ -237,7 +268,9 @@ void skipWhitespaceAndComments(
         if(state->str[state->index] == '/' && state->str[state->index] == '/') {
 
             while(state->str[state->index] && state->str[state->index] != '\n') {
-                skipChar(state, output);
+                if(!skipChar(state, output)) {
+                    return nkfalse;
+                }
             }
 
         } else if(!nkiCompilerIsWhitespace(state->str[state->index])) {
@@ -259,10 +292,15 @@ void skipWhitespaceAndComments(
             break;
         }
 
-        skipChar(state, output);
+        if(!skipChar(state, output)) {
+            return nkfalse;
+        }
     }
+
+    return nktrue;
 }
 
+// MEMSAFE
 void preprocessorStateAddMacro(
     struct PreprocessorState *state,
     struct PreprocessorMacro *macro)
@@ -271,6 +309,7 @@ void preprocessorStateAddMacro(
     state->macros = macro;
 }
 
+// FIXME: Make MEMSAFE
 struct PreprocessorMacro *preprocessorStateFindMacro(
     struct PreprocessorState *state,
     const char *identifier)
@@ -316,6 +355,7 @@ struct PreprocessorMacro *preprocessorStateFindMacro(
     return currentMacro;
 }
 
+// MEMSAFE
 nkbool preprocessorStateDeleteMacro(
     struct PreprocessorState *state,
     const char *identifier)
@@ -343,6 +383,7 @@ nkbool preprocessorStateDeleteMacro(
     return nkfalse;
 }
 
+// MEMSAFE
 struct PreprocessorState *preprocessorStateClone(
     const struct PreprocessorState *state)
 {
@@ -351,15 +392,28 @@ struct PreprocessorState *preprocessorStateClone(
     struct PreprocessorMacro *currentMacro;
     struct PreprocessorMacro **macroWritePtr;
 
+    if(!ret) {
+        return NULL;
+    }
+
     ret->str = state->str; // Non-owning copy! (The source doesn't own it either.)
     ret->index = state->index;
     ret->lineNumber = state->lineNumber;
     ret->outputLineNumber = state->outputLineNumber;
     ret->output = state->output ? strdupWrapper(state->output) : NULL;
+
+    if(state->output && !ret->output) {
+        destroyPreprocessorState(ret);
+        return NULL;
+    }
+
     // Note: We purposely don't write position markers or update
     // markers here.
     ret->errorState = state->errorState;
-    preprocessorStateSetFilename(ret, state->filename);
+    if(!preprocessorStateSetFilename(ret, state->filename)) {
+        destroyPreprocessorState(ret);
+        return NULL;
+    }
 
     // Note: Nested if state is not copied.
 
@@ -370,6 +424,10 @@ struct PreprocessorState *preprocessorStateClone(
 
         struct PreprocessorMacro *clonedMacro =
             preprocessorMacroClone(currentMacro);
+        if(!clonedMacro) {
+            destroyPreprocessorState(ret);
+            return NULL;
+        }
 
         *macroWritePtr = clonedMacro;
         macroWritePtr = &clonedMacro->next;
@@ -383,6 +441,7 @@ struct PreprocessorState *preprocessorStateClone(
 // ----------------------------------------------------------------------
 // Read functions
 
+// MEMSAFE
 char *readIdentifier(struct PreprocessorState *state)
 {
     const char *str = state->str;
@@ -401,8 +460,21 @@ char *readIdentifier(struct PreprocessorState *state)
 
     len = end - start;
 
-    // TODO: Check overflow.
-    ret = mallocWrapper(len + 1);
+    // Check overflow and allocate.
+    {
+        nkbool overflow = nkfalse;
+        nkuint32_t memLen = len;
+        NK_CHECK_OVERFLOW_UINT_ADD(len, 1, memLen, overflow);
+        if(overflow) {
+            return NULL;
+        }
+
+        ret = mallocWrapper(memLen);
+    }
+
+    if(!ret) {
+        return NULL;
+    }
 
     memcpyWrapper(ret, str + start, len);
     ret[len] = 0;
@@ -410,6 +482,7 @@ char *readIdentifier(struct PreprocessorState *state)
     return ret;
 }
 
+// MEMSAFE
 char *readQuotedString(struct PreprocessorState *state)
 {
     const char *str = state->str;
@@ -424,7 +497,9 @@ char *readQuotedString(struct PreprocessorState *state)
     assert(str[*i] == '"');
 
     // Skip initial quote.
-    skipChar(state, nkfalse);
+    if(!skipChar(state, nkfalse)) {
+        return NULL;
+    }
 
     while(str[*i]) {
 
@@ -435,7 +510,9 @@ char *readQuotedString(struct PreprocessorState *state)
         } else if(!backslashed && str[*i] == '"') {
 
             // Skip final quote.
-            skipChar(state, nkfalse);
+            if(!skipChar(state, nkfalse)) {
+                return NULL;
+            }
             break;
 
         } else {
@@ -444,15 +521,30 @@ char *readQuotedString(struct PreprocessorState *state)
 
         }
 
-        skipChar(state, nkfalse);
+        if(!skipChar(state, nkfalse)) {
+            return NULL;
+        }
     }
 
     end = *i;
 
     len = end - start;
 
-    // TODO: Check overflow.
-    ret = mallocWrapper(len + 1);
+    // Check overflow and allocate.
+    {
+        nkbool overflow = nkfalse;
+        nkuint32_t memLen = len;
+        NK_CHECK_OVERFLOW_UINT_ADD(len, 1, memLen, overflow);
+        if(overflow) {
+            return NULL;
+        }
+
+        ret = mallocWrapper(memLen);
+    }
+
+    if(!ret) {
+        return NULL;
+    }
 
     memcpyWrapper(ret, str + start, len);
     ret[len] = 0;
@@ -460,6 +552,7 @@ char *readQuotedString(struct PreprocessorState *state)
     return ret;
 }
 
+// FIXME: Make MEMSAFE (overflow checks)
 char *readInteger(struct PreprocessorState *state)
 {
     const char *str = state->str;
@@ -480,6 +573,9 @@ char *readInteger(struct PreprocessorState *state)
 
     // TODO: Check overflow.
     ret = mallocWrapper(len + 1);
+    if(!ret) {
+        return NULL;
+    }
 
     memcpyWrapper(ret, str + start, len);
     ret[len] = 0;
@@ -487,6 +583,7 @@ char *readInteger(struct PreprocessorState *state)
     return ret;
 }
 
+// FIXME: Make MEMSAFE
 char *readMacroArgument(struct PreprocessorState *state)
 {
     // Create a pristine state to read the arguments with.
@@ -548,6 +645,7 @@ char *readMacroArgument(struct PreprocessorState *state)
 
 // ----------------------------------------------------------------------
 
+// MEMSAFE
 void preprocessorStateClearOutput(struct PreprocessorState *state)
 {
     freeWrapper(state->output);
@@ -555,6 +653,7 @@ void preprocessorStateClearOutput(struct PreprocessorState *state)
     state->outputLineNumber = 1;
 }
 
+// FIXME: Make MEMSAFE
 void preprocessorStateAddError(
     struct PreprocessorState *state,
     const char *errorMessage)
@@ -591,13 +690,15 @@ void preprocessorStateAddError(
     }
 }
 
+// MEMSAFE
 void preprocessorStateFlagFileLineMarkersForUpdate(
     struct PreprocessorState *state)
 {
     state->updateMarkers = nktrue;
 }
 
-void preprocessorStateSetFilename(
+// MEMSAFE
+nkbool preprocessorStateSetFilename(
     struct PreprocessorState *state,
     const char *filename)
 {
@@ -607,10 +708,16 @@ void preprocessorStateSetFilename(
     }
 
     state->filename = strdupWrapper(filename);
+
+    if(!state->filename) {
+        return nkfalse;
+    }
+    return nktrue;
 }
 
 // ----------------------------------------------------------------------
 
+// FIXME: Make MEMSAFE (overflow checks)
 nkbool preprocessorStatePushIfResult(
     struct PreprocessorState *state,
     nkbool ifResult)
@@ -639,6 +746,7 @@ nkbool preprocessorStatePushIfResult(
     return nktrue;
 }
 
+// MEMSAFE
 nkbool preprocessorStatePopIfResult(
     struct PreprocessorState *state)
 {
@@ -656,6 +764,7 @@ nkbool preprocessorStatePopIfResult(
     return nktrue;
 }
 
+// FIXME: Make MEMSAFE (overflows)
 nkbool preprocessorStateFlipIfResult(
     struct PreprocessorState *state)
 {

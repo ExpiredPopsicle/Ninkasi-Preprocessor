@@ -8,6 +8,7 @@
 #include "ppdirect.h"
 
 #include <assert.h>
+#include <stdlib.h>
 
 // ----------------------------------------------------------------------
 
@@ -36,15 +37,24 @@ char *testStr =
     "// comment after multiline\n";
 
 // TODO: Move this into ppstate.c
+// FIXME: Make MEMSAFE (doublecheck)
 struct PreprocessorToken *getNextToken(
     struct PreprocessorState *state,
     nkbool outputWhitespace)
 {
+    nkbool success = nktrue;
     struct PreprocessorToken *ret = mallocWrapper(sizeof(struct PreprocessorToken));
+    if(!ret) {
+        return NULL;
+    }
+
     ret->str = NULL;
     ret->type = NK_PPTOKEN_UNKNOWN;
 
-    skipWhitespaceAndComments(state, outputWhitespace, nkfalse);
+    if(!skipWhitespaceAndComments(state, outputWhitespace, nkfalse)) {
+        freeWrapper(ret);
+        return NULL;
+    }
 
     ret->lineNumber = state->lineNumber;
 
@@ -81,72 +91,91 @@ struct PreprocessorToken *getNextToken(
         // Double-hash (concatenation) symbol.
 
         ret->str = mallocWrapper(3);
-        ret->str[0] = state->str[state->index];
-        ret->str[1] = state->str[state->index+1];
-        ret->str[2] = 0;
+        if(ret->str) {
+            ret->str[0] = state->str[state->index];
+            ret->str[1] = state->str[state->index+1];
+            ret->str[2] = 0;
+        }
         ret->type = NK_PPTOKEN_DOUBLEHASH;
 
-        skipChar(state, nkfalse);
-        skipChar(state, nkfalse);
+        success = success && skipChar(state, nkfalse);
+        success = success && skipChar(state, nkfalse);
 
     } else if(state->str[state->index] == '#') {
 
         // Hash symbol.
 
         ret->str = mallocWrapper(2);
-        ret->str[0] = state->str[state->index];
-        ret->str[1] = 0;
+        if(ret->str) {
+            ret->str[0] = state->str[state->index];
+            ret->str[1] = 0;
+        }
         ret->type = NK_PPTOKEN_HASH;
 
-        skipChar(state, nkfalse);
+        success = success && skipChar(state, nkfalse);
 
     } else if(state->str[state->index] == ',') {
 
         // Comma.
 
         ret->str = mallocWrapper(2);
-        ret->str[0] = state->str[state->index];
-        ret->str[1] = 0;
+        if(ret->str) {
+            ret->str[0] = state->str[state->index];
+            ret->str[1] = 0;
+        }
         ret->type = NK_PPTOKEN_COMMA;
 
-        skipChar(state, nkfalse);
+        success = success && skipChar(state, nkfalse);
 
     } else if(state->str[state->index] == '(') {
 
         // Open parenthesis.
 
         ret->str = mallocWrapper(2);
-        ret->str[0] = state->str[state->index];
-        ret->str[1] = 0;
+        if(ret->str) {
+            ret->str[0] = state->str[state->index];
+            ret->str[1] = 0;
+        }
         ret->type = NK_PPTOKEN_OPENPAREN;
 
-        skipChar(state, nkfalse);
+        success = success && skipChar(state, nkfalse);
 
     } else if(state->str[state->index] == ')') {
 
         // Open parenthesis.
 
         ret->str = mallocWrapper(2);
-        ret->str[0] = state->str[state->index];
-        ret->str[1] = 0;
+        if(ret->str) {
+            ret->str[0] = state->str[state->index];
+            ret->str[1] = 0;
+        }
         ret->type = NK_PPTOKEN_CLOSEPAREN;
 
-        skipChar(state, nkfalse);
+        success = success && skipChar(state, nkfalse);
 
     } else {
 
         // Unknown.
 
         ret->str = mallocWrapper(2);
-        ret->str[0] = state->str[state->index];
-        ret->str[1] = 0;
+        if(ret->str) {
+            ret->str[0] = state->str[state->index];
+            ret->str[1] = 0;
+        }
 
-        skipChar(state, nkfalse);
+        success = success && skipChar(state, nkfalse);
+    }
+
+    if(!ret->str || !success) {
+        freeWrapper(ret->str);
+        freeWrapper(ret);
+        ret = NULL;
     }
 
     return ret;
 }
 
+// FIXME: Make MEMSAFE
 char *readRestOfLine(
     struct PreprocessorState *state,
     nkuint32_t *actualLineCount)
@@ -234,6 +263,7 @@ nkuint32_t directiveMappingLen =
     sizeof(directiveMapping) /
     sizeof(struct PreprocessorDirectiveMapping);
 
+// MEMSAFE
 nkbool directiveIsValid(
     const char *directive)
 {
@@ -246,6 +276,7 @@ nkbool directiveIsValid(
     return nkfalse;
 }
 
+// FIXME: Make MEMSAFE
 nkbool handleDirective(
     struct PreprocessorState *state,
     const char *directive,
@@ -281,6 +312,7 @@ nkbool preprocess(
     const char *str,
     nkuint32_t recursionLevel);
 
+// FIXME: Make MEMSAFE
 nkbool executeMacro(
     struct PreprocessorState *state,
     struct PreprocessorMacro *macro,
@@ -288,6 +320,10 @@ nkbool executeMacro(
 {
     struct PreprocessorState *clonedState = preprocessorStateClone(state);
     nkbool ret = nktrue;
+
+    if(!clonedState) {
+        return nkfalse;
+    }
 
     // Input is the macro definition. Output is
     // appending to the "parent" state.
@@ -394,6 +430,7 @@ nkbool executeMacro(
     return ret;
 }
 
+// FIXME: Make MEMSAFE
 nkbool preprocess(
     struct PreprocessorState *state,
     const char *str,
@@ -432,82 +469,90 @@ nkbool preprocess(
                     // Get the directive name.
                     struct PreprocessorToken *directiveNameToken = getNextToken(state, nktrue);
 
-                    // Check to see if this is something we understand
-                    // by going through the *actual* list of
-                    // directives.
-                    if(directiveIsValid(directiveNameToken->str)) {
+                    if(!directiveNameToken) {
 
-                        nkuint32_t lineCount = 0;
-                        char *line = readRestOfLine(state, &lineCount);
-
-                        if(handleDirective(
-                            state,
-                            directiveNameToken->str,
-                            line))
-                        {
-
-                            // That went well.
-
-                        } else {
-
-                            // I don't know if we really need to
-                            // report an error here, because an error
-                            // would have been added in
-                            // handleDirective() for whatever went
-                            // wrong.
-                            preprocessorStateAddError(
-                                state, "Bad directive.");
-                            ret = nkfalse;
-                        }
-
-                        // Clean up.
-                        freeWrapper(line);
+                        ret = nkfalse;
 
                     } else {
 
-                        // Stringification.
-                        struct PreprocessorMacro *macro =
-                            preprocessorStateFindMacro(
-                                state, directiveNameToken->str);
+                        // Check to see if this is something we
+                        // understand by going through the *actual*
+                        // list of directives.
+                        if(directiveIsValid(directiveNameToken->str)) {
 
-                        if(macro) {
+                            nkuint32_t lineCount = 0;
+                            char *line = readRestOfLine(state, &lineCount);
 
-                            struct PreprocessorState *macroState =
-                                preprocessorStateClone(state);
-
-                            preprocessorStateClearOutput(macroState);
-
-                            executeMacro(macroState, macro, recursionLevel);
-
+                            if(handleDirective(
+                                    state,
+                                    directiveNameToken->str,
+                                    line))
                             {
-                                char *escapedStr = escapeString(macroState->output);
 
-                                appendString(state, "\"");
-                                appendString(state, escapedStr);
-                                appendString(state, "\"");
+                                // That went well.
 
-                                freeWrapper(escapedStr);
+                            } else {
+
+                                // I don't know if we really need to
+                                // report an error here, because an error
+                                // would have been added in
+                                // handleDirective() for whatever went
+                                // wrong.
+                                preprocessorStateAddError(
+                                    state, "Bad directive.");
+                                ret = nkfalse;
                             }
 
-
-                            // Skip past the stuff we read in the
-                            // cloned state.
-                            state->index = macroState->index;
-
-                            destroyPreprocessorState(macroState);
+                            // Clean up.
+                            freeWrapper(line);
 
                         } else {
 
-                            preprocessorStateAddError(
-                                state,
-                                "Unknown input for stringification.");
-                            ret = nkfalse;
+                            // Stringification.
+                            struct PreprocessorMacro *macro =
+                                preprocessorStateFindMacro(
+                                    state, directiveNameToken->str);
+
+                            if(macro) {
+
+                                struct PreprocessorState *macroState =
+                                    preprocessorStateClone(state);
+
+                                preprocessorStateClearOutput(macroState);
+
+                                executeMacro(macroState, macro, recursionLevel);
+
+                                {
+                                    char *escapedStr = escapeString(macroState->output);
+
+                                    appendString(state, "\"");
+                                    appendString(state, escapedStr);
+                                    appendString(state, "\"");
+
+                                    freeWrapper(escapedStr);
+                                }
+
+
+                                // Skip past the stuff we read in the
+                                // cloned state.
+                                state->index = macroState->index;
+
+                                destroyPreprocessorState(macroState);
+
+                            } else {
+
+                                preprocessorStateAddError(
+                                    state,
+                                    "Unknown input for stringification.");
+                                ret = nkfalse;
+
+                            }
 
                         }
 
-                    }
+                        destroyToken(directiveNameToken);
 
-                    destroyToken(directiveNameToken);
+                    }
 
                 } else {
 
@@ -560,26 +605,42 @@ nkbool preprocess(
     return ret;
 }
 
-
-
-
+// MEMSAFE
 char *loadFile(const char *filename)
 {
     FILE *in = fopen(filename, "rb");
     nkuint32_t fileSize = 0;
-    char *ret = mallocWrapper(fileSize + 1);
+    char *ret;
     int c;
-
-    ret[0] = 0;
 
     if(!in) {
         return NULL;
     }
 
+    ret = mallocWrapper(fileSize + 1);
+
+    if(!ret) {
+        fclose(in);
+        return NULL;
+    }
+
+    ret[0] = 0;
+
     while((c = fgetc(in)) != EOF) {
+
+        char *newRet;
         ret[fileSize] = c;
         fileSize++;
-        ret = reallocWrapper(ret, fileSize + 1);
+
+        // Allocate new chunk.
+        newRet = reallocWrapper(ret, fileSize + 1);
+        if(!newRet) {
+            freeWrapper(ret);
+            fclose(in);
+            return NULL;
+        }
+        ret = newRet;
+
         ret[fileSize] = 0;
     }
 
@@ -590,52 +651,87 @@ char *loadFile(const char *filename)
 
 int main(int argc, char *argv[])
 {
-    struct PreprocessorErrorState errorState;
-    struct PreprocessorState *state = createPreprocessorState(&errorState);
-    char *testStr2 = loadFile("test.txt");
+    for(nkuint32_t counter = 2430; counter < 2000000; counter++) {
+    // for(nkuint32_t counter = 0; counter < 2430; counter++) {
 
-    errorState.firstError = NULL;
-    errorState.lastError = NULL;
+        struct PreprocessorErrorState errorState;
+        struct PreprocessorState *state;
+        char *testStr2;
 
-    printf("----------------------------------------------------------------------\n");
-    printf("  Input string\n");
-    printf("----------------------------------------------------------------------\n");
-    printf("%s\n", testStr2);
+        // nkuint32_t allocLimit = ~(nkuint32_t)0;
+        // nkuint32_t memLimit = ~(nkuint32_t)0;
+        // if(argc > 2) {
+        //     memLimit = atoi(argv[2]);
+        // }
+        // if(argc > 1) {
+        //     allocLimit = atol(argv[1]);
+        // }
+        // setAllocationFailureTestLimits(
+        //     memLimit, allocLimit);
 
-    {
+        setAllocationFailureTestLimits(
+            ~(nkuint32_t)0, counter);
+
+        state = createPreprocessorState(&errorState);
+        if(!state) {
+            printf("Allocation failure on state creation.\n");
+            // return 0;
+            continue;
+        }
+
+        testStr2 = loadFile("test.txt");
+        if(!testStr2) {
+            printf("Allocation failure on file load.\n");
+            destroyPreprocessorState(state);
+            // return 0;
+            continue;
+        }
+
+        errorState.firstError = NULL;
+        errorState.lastError = NULL;
+
         printf("----------------------------------------------------------------------\n");
-        printf("  Whatever\n");
+        printf("  Input string\n");
         printf("----------------------------------------------------------------------\n");
-
-        state->writePositionMarkers = nktrue;
-        preprocess(state, testStr2, 0);
-
-        printf("----------------------------------------------------------------------\n");
-        printf("  Preprocessor output\n");
-        printf("----------------------------------------------------------------------\n");
-        printf("%s\n", state->output);
-
-        // freeWrapper(preprocessed);
-        destroyPreprocessorState(state);
-    }
-
-    while(errorState.firstError) {
-
-        printf("error: %s:%ld: %s\n",
-            errorState.firstError->filename,
-            (long)errorState.firstError->lineNumber,
-            errorState.firstError->text);
+        printf("%s\n", testStr2);
 
         {
-            struct PreprocessorError *next = errorState.firstError->next;
-            freeWrapper(errorState.firstError->filename);
-            freeWrapper(errorState.firstError->text);
-            freeWrapper(errorState.firstError);
-            errorState.firstError = next;
-        }
-    }
+            printf("----------------------------------------------------------------------\n");
+            printf("  Whatever\n");
+            printf("----------------------------------------------------------------------\n");
 
-    freeWrapper(testStr2);
+            state->writePositionMarkers = nktrue;
+            preprocess(state, testStr2, 0);
+
+            printf("----------------------------------------------------------------------\n");
+            printf("  Preprocessor output\n");
+            printf("----------------------------------------------------------------------\n");
+            if(state->output) {
+                printf("%s\n", state->output);
+            }
+
+            // freeWrapper(preprocessed);
+            destroyPreprocessorState(state);
+        }
+
+        while(errorState.firstError) {
+
+            printf("error: %s:%ld: %s\n",
+                errorState.firstError->filename,
+                (long)errorState.firstError->lineNumber,
+                errorState.firstError->text);
+
+            {
+                struct PreprocessorError *next = errorState.firstError->next;
+                freeWrapper(errorState.firstError->filename);
+                freeWrapper(errorState.firstError->text);
+                freeWrapper(errorState.firstError);
+                errorState.firstError = next;
+            }
+        }
+
+        freeWrapper(testStr2);
+    }
 
     return 0;
 }

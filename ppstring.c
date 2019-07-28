@@ -1,29 +1,48 @@
 #include "ppstring.h"
 
+// MEMSAFE
 char *deleteBackslashNewlines(const char *str)
 {
-    // FIXME: Check overflow.
-    nkuint32_t inputLen = strlenWrapper(str);
-    char *outputStr = mallocWrapper(inputLen + 1);
-    nkuint32_t i;
-    nkuint32_t n;
+    if(str) {
 
-    n = 0;
-    for(i = 0; i < inputLen; i++) {
+        nkuint32_t inputLen = strlenWrapper(str);
+        nkuint32_t outputLen;
+        char *outputStr;
+        nkbool overflow = nkfalse;
 
-        // Skip backslashes before a newline.
-        if(str[i] == '\\' && str[i+1] == '\n') {
-            i++;
+        NK_CHECK_OVERFLOW_UINT_ADD(inputLen, 1, outputLen, overflow);
+
+        if(!overflow) {
+
+            outputStr = mallocWrapper(outputLen);
+
+            if(outputStr) {
+
+                nkuint32_t i;
+                nkuint32_t n;
+
+                n = 0;
+                for(i = 0; i < inputLen; i++) {
+
+                    // Skip backslashes before a newline.
+                    if(str[i] == '\\' && str[i+1] == '\n') {
+                        i++;
+                    }
+
+                    outputStr[n++] = str[i];
+                }
+
+                outputStr[n] = 0;
+
+                return outputStr;
+            }
         }
-
-        outputStr[n++] = str[i];
     }
 
-    outputStr[n] = 0;
-
-    return outputStr;
+    return NULL;
 }
 
+// FIXME: Make MEMSAFE (overflow)
 char *stripCommentsAndTrim(const char *in)
 {
     char *ret;
@@ -34,7 +53,11 @@ char *stripCommentsAndTrim(const char *in)
         return NULL;
     }
 
+    // FIXME: Check overflow.
     ret = mallocWrapper(strlenWrapper(in) + 1);
+    if(!ret) {
+        return NULL;
+    }
 
     // Skip whitespace on the start.
     while(in[readIndex] && nkiCompilerIsWhitespace(in[readIndex])) {
