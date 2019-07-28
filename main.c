@@ -292,7 +292,7 @@ nkbool executeMacro(
     // Input is the macro definition. Output is
     // appending to the "parent" state.
 
-    if(macro->arguments) {
+    if(macro->arguments || macro->functionStyleMacro) {
 
         skipWhitespaceAndComments(state, nkfalse, nkfalse);
 
@@ -338,9 +338,7 @@ nkbool executeMacro(
                 } else {
 
                     // Expect ')'
-                    if(state->str[state->index] == ')') {
-                        skipChar(state, nkfalse);
-                    } else {
+                    if(state->str[state->index] != ')') {
                         preprocessorStateAddError(state, "Expected ')'.");
                         ret = nkfalse;
                         break;
@@ -348,6 +346,14 @@ nkbool executeMacro(
                 }
 
                 argument = argument->next;
+            }
+
+            // Skip final ')'.
+            if(state->str[state->index] == ')') {
+                skipChar(state, nkfalse);
+            } else {
+                preprocessorStateAddError(state, "Expected ')'.");
+                ret = nkfalse;
             }
 
         } else {

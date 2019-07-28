@@ -25,6 +25,7 @@ struct PreprocessorMacro *createPreprocessorMacro(void)
         ret->definition = NULL;
         ret->arguments = NULL;
         ret->next = NULL;
+        ret->functionStyleMacro = nkfalse;
     }
 
     return ret;
@@ -117,6 +118,7 @@ struct PreprocessorMacro *preprocessorMacroClone(
 
     ret->identifier = strdupWrapper(macro->identifier);
     ret->definition = strdupWrapper(macro->definition);
+    ret->functionStyleMacro = macro->functionStyleMacro;
 
     currentArgument = macro->arguments;
     argumentWritePtr = &ret->arguments;

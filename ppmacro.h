@@ -17,6 +17,11 @@ struct PreprocessorMacro
     char *definition;
     struct PreprocessorMacroArgument *arguments;
 
+    // Normally we'd just use arguments == NULL to see if this isn't a
+    // function style macro, but if we have zero parameters, it'll be
+    // NULL and we need this instead.
+    nkbool functionStyleMacro;
+
     struct PreprocessorMacro *next;
 };
 

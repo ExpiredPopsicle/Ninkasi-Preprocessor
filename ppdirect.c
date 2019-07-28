@@ -147,11 +147,14 @@ nkbool handleDefine(
             // Skip the open paren.
             struct PreprocessorToken *openParenToken =
                 getNextToken(directiveParseState, nkfalse);
-            destroyToken(openParenToken);
 
             // Parse the argument list.
 
             struct PreprocessorToken *token = getNextToken(directiveParseState, nkfalse);
+
+            destroyToken(openParenToken);
+
+            macro->functionStyleMacro = nktrue;
 
             if(!token) {
 
