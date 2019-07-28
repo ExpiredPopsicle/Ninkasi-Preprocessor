@@ -158,8 +158,9 @@ nkbool handleDefine(
 
             if(!token) {
 
-                // FIXME: Output error message?
                 // We're done, but with an error!
+                preprocessorStateAddError(
+                    state, "Ran out of tokens while parsing argument list.");
                 ret = nkfalse;
 
             } else if(token->type == NK_PPTOKEN_CLOSEPAREN) {

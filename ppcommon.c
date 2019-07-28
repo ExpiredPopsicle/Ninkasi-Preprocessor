@@ -101,3 +101,95 @@ char *escapeString(const char *src)
 
     return output;
 }
+
+
+struct AllocHeader
+{
+    nkuint32_t size;
+};
+
+static nkuint32_t totalAllocations = 0;
+static nkuint32_t maxUsage = 0;
+
+struct AllocHeader *getAllocHeader(void *ptr)
+{
+    struct AllocHeader *header = ((struct AllocHeader*)ptr) - 1;
+    return header;
+}
+
+struct AllocHeader *getAllocHeaderData(struct AllocHeader *header)
+{
+    void *ret = header + 1;
+    return ret;
+}
+
+void *mallocWrapper(nkuint32_t size)
+{
+    struct AllocHeader *header =
+        malloc(size + sizeof(struct AllocHeader));
+
+    void *ret = getAllocHeaderData(header);
+
+    header->size = size;
+
+    totalAllocations += size;
+    if(totalAllocations > maxUsage) {
+        maxUsage = totalAllocations;
+    }
+
+    printf("Alloc: %8lu ( %8lu )\n",
+        (long)totalAllocations,
+        (long)maxUsage);
+
+    return ret;
+}
+
+void freeWrapper(void *ptr)
+{
+    if(!ptr) {
+        return;
+    } else {
+        struct AllocHeader *header = getAllocHeader(ptr);
+        totalAllocations -= header->size;
+        free(header);
+    }
+
+    printf("Free:  %8lu ( %8lu )\n",
+        (long)totalAllocations,
+        (long)maxUsage);
+}
+
+void *reallocWrapper(void *ptr, nkuint32_t size)
+{
+    if(!ptr) {
+
+        return mallocWrapper(size);
+
+    } else {
+
+        void *newChunk = mallocWrapper(size);
+        struct AllocHeader *oldHeader = getAllocHeader(ptr);
+        nkuint32_t oldSize = oldHeader->size;
+
+        memcpyWrapper(newChunk, ptr, size > oldSize ? oldSize : size);
+
+        // free(oldHeader);
+        freeWrapper(ptr);
+
+        return newChunk;
+    }
+}
+
+char *strdupWrapper(const char *s)
+{
+    // FIXME: Check overflow.
+    nkuint32_t len = strlenWrapper(s);
+    nkuint32_t size = len + 1;
+
+    char *ret = (char*)mallocWrapper(size);
+
+    memcpyWrapper(ret, s, len);
+    ret[len] = 0;
+
+    return ret;
+}
