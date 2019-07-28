@@ -219,14 +219,15 @@ struct PreprocessorDirectiveMapping
 //   include
 //   file
 //   line
-//   if
-//   endif
-//   ifdef
-//   ifndef
+//   if (with more complicated expressions)
 //   ... anything else I think of
 struct PreprocessorDirectiveMapping directiveMapping[] = {
     { "undef",  handleUndef  },
     { "define", handleDefine },
+    { "ifdef",  handleIfdef  },
+    { "ifndef", handleIfndef },
+    { "else",   handleElse   },
+    { "endif",  handleEndif  },
 };
 
 nkuint32_t directiveMappingLen =
@@ -472,13 +473,7 @@ nkbool preprocess(
 
                             executeMacro(macroState, macro, recursionLevel);
 
-
                             {
-                                // // TODO: Check overflow.
-                                // nkuint32_t bufSize = strlen(macroState->output) * 2 + 3;
-                                // char *escapedStr = mallocWrapper(bufSize);
-                                // escapedStr[0] = 0;
-                                // nkiDbgAppendEscaped(bufSize, escapedStr, macroState->output);
                                 char *escapedStr = escapeString(macroState->output);
 
                                 appendString(state, "\"");

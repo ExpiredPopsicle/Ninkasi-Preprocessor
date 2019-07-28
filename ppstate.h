@@ -61,6 +61,9 @@ struct PreprocessorState
     // between many PreprocessorStates. If this is NULL, then errors
     // will be directed to stderr.
     struct PreprocessorErrorState *errorState;
+
+    nkuint32_t nestedPassedIfs;
+    nkuint32_t nestedFailedIfs;
 };
 
 // ----------------------------------------------------------------------
@@ -150,5 +153,19 @@ char *readMacroArgument(struct PreprocessorState *state);
 void preprocessorStateAddError(
     struct PreprocessorState *state,
     const char *errorMessage);
+
+// ----------------------------------------------------------------------
+// ifdef/ifndef/if/else/endif handling
+
+nkbool preprocessorStatePushIfResult(
+    struct PreprocessorState *state,
+    nkbool ifResult);
+
+nkbool preprocessorStatePopIfResult(
+    struct PreprocessorState *state);
+
+/// For handling the topmost "else" statement.
+nkbool preprocessorStateFlipIfResult(
+    struct PreprocessorState *state);
 
 #endif // NK_PPSTATE_H

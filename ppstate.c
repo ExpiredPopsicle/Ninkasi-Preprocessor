@@ -22,6 +22,8 @@ struct PreprocessorState *createPreprocessorState(
         ret->updateMarkers = nkfalse;
         ret->filename = strdupWrapper("<unknown>");
         ret->errorState = errorState;
+        ret->nestedPassedIfs = 0;
+        ret->nestedFailedIfs = 0;
     }
 
     return ret;
@@ -144,6 +146,9 @@ void appendChar(struct PreprocessorState *state, char c)
             FIXME_REMOVETHIS_writenumber(state, state->lineNumber);
             FIXME_REMOVETHIS_writenumber(state, state->outputLineNumber);
 
+            FIXME_REMOVETHIS_writenumber(state, state->nestedFailedIfs);
+            FIXME_REMOVETHIS_writenumber(state, state->nestedPassedIfs);
+
             // while(!(lineNo / lnMask)) {
             //     appendChar_real(state, ' ');
             //     lineNo %= lnMask;
@@ -196,7 +201,9 @@ void appendChar(struct PreprocessorState *state, char c)
     }
 
     if(c) {
-        appendChar_real(state, c);
+        if(!state->nestedFailedIfs || c == '\n') {
+            appendChar_real(state, c);
+        }
     }
 }
 
@@ -274,16 +281,39 @@ struct PreprocessorMacro *preprocessorStateFindMacro(
         return NULL;
     }
 
+    // Find the macro.
     while(currentMacro) {
-
         if(!strcmpWrapper(currentMacro->identifier, identifier)) {
-            return currentMacro;
+            break;
         }
-
         currentMacro = currentMacro->next;
     }
 
-    return NULL;
+    // Dynamically add in or modify __FILE__ and __LINE__ macros.
+    if(!strcmpWrapper(identifier, "__FILE__") ||
+        !strcmpWrapper(identifier, "__LINE__"))
+    {
+        // Lazy-create the macro if it doesn't exist.
+        if(!currentMacro) {
+            currentMacro =
+                createPreprocessorMacro();
+            preprocessorMacroSetIdentifier(
+                currentMacro, identifier);
+            preprocessorStateAddMacro(
+                state, currentMacro);
+        }
+
+        // Update to whatever it is now.
+        if(!strcmpWrapper(identifier, "__FILE__")) {
+            preprocessorMacroSetDefinition(currentMacro, state->filename);
+        } else if(!strcmpWrapper(identifier, "__LINE__")) {
+            char tmp[128];
+            sprintf(tmp, "%lu", (unsigned long)state->lineNumber);
+            preprocessorMacroSetDefinition(currentMacro, tmp);
+        }
+    }
+
+    return currentMacro;
 }
 
 nkbool preprocessorStateDeleteMacro(
@@ -330,6 +360,8 @@ struct PreprocessorState *preprocessorStateClone(
     // markers here.
     ret->errorState = state->errorState;
     preprocessorStateSetFilename(ret, state->filename);
+
+    // Note: Nested if state is not copied.
 
     currentMacro = state->macros;
     macroWritePtr = &ret->macros;
@@ -576,3 +608,73 @@ void preprocessorStateSetFilename(
 
     state->filename = strdupWrapper(filename);
 }
+
+// ----------------------------------------------------------------------
+
+nkbool preprocessorStatePushIfResult(
+    struct PreprocessorState *state,
+    nkbool ifResult)
+{
+    // TODO: Check overflow on these.
+
+    if(!ifResult) {
+
+        state->nestedFailedIfs++;
+
+    } else {
+
+        if(state->nestedFailedIfs) {
+
+            // If we're inside a failed "if" block, then we're going
+            // to count this result as failed, too.
+            state->nestedFailedIfs++;
+
+        } else {
+
+            state->nestedPassedIfs++;
+
+        }
+    }
+
+    return nktrue;
+}
+
+nkbool preprocessorStatePopIfResult(
+    struct PreprocessorState *state)
+{
+    if(state->nestedFailedIfs) {
+        state->nestedFailedIfs--;
+    } else if(state->nestedPassedIfs) {
+        state->nestedPassedIfs--;
+    } else {
+        preprocessorStateAddError(
+            state,
+            "\"endif\" directive without \"if\"");
+        return nkfalse;
+    }
+
+    return nktrue;
+}
+
+nkbool preprocessorStateFlipIfResult(
+    struct PreprocessorState *state)
+{
+    if(!state->nestedPassedIfs && !state->nestedFailedIfs) {
+        preprocessorStateAddError(
+            state,
+            "\"else\" directive without \"if\"");
+        return nkfalse;
+    }
+
+    if(state->nestedFailedIfs == 1) {
+        // TODO: Check overflow.
+        state->nestedPassedIfs++;
+        state->nestedFailedIfs--;
+    } else if(state->nestedPassedIfs) {
+        state->nestedPassedIfs--;
+        state->nestedFailedIfs++;
+    }
+
+    return nktrue;
+}
+

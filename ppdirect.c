@@ -4,6 +4,74 @@
 #include "ppmacro.h"
 #include "ppstring.h"
 
+nkbool handleIfdefReal(
+    struct PreprocessorState *state,
+    const char *restOfLine,
+    nkbool invert)
+{
+    nkbool ret = nktrue;
+    struct PreprocessorState *directiveParseState =
+        createPreprocessorState(state->errorState);
+    struct PreprocessorToken *identifierToken;
+
+    directiveParseState->str = restOfLine;
+
+    // Get identifier.
+    identifierToken =
+        getNextToken(directiveParseState, nkfalse);
+
+    if(identifierToken->type == NK_PPTOKEN_IDENTIFIER) {
+
+        struct PreprocessorMacro *macro =
+            preprocessorStateFindMacro(
+                state, identifierToken->str);
+
+        if(macro) {
+            preprocessorStatePushIfResult(state, !invert);
+        } else {
+            preprocessorStatePushIfResult(state, invert);
+        }
+
+    } else {
+
+        // That's not an identifier.
+        preprocessorStateAddError(state, "Expected identifier after #ifdef/ifndef.");
+        ret = nkfalse;
+    }
+
+    destroyToken(identifierToken);
+    destroyPreprocessorState(directiveParseState);
+    return ret;
+}
+
+nkbool handleIfdef(
+    struct PreprocessorState *state,
+    const char *restOfLine)
+{
+    return handleIfdefReal(state, restOfLine, nkfalse);
+}
+
+nkbool handleIfndef(
+    struct PreprocessorState *state,
+    const char *restOfLine)
+{
+    return handleIfdefReal(state, restOfLine, nktrue);
+}
+
+nkbool handleElse(
+    struct PreprocessorState *state,
+    const char *restOfLine)
+{
+    return preprocessorStateFlipIfResult(state);
+}
+
+nkbool handleEndif(
+    struct PreprocessorState *state,
+    const char *restOfLine)
+{
+    return preprocessorStatePopIfResult(state);
+}
+
 nkbool handleUndef(
     struct PreprocessorState *state,
     const char *restOfLine)
@@ -153,6 +221,9 @@ nkbool handleDefine(
                         break;
                     }
                 }
+
+                // FIXME: If we didn't get any arguments, indicate
+                // that, for function-style #defines.
             }
 
             // Skip up to the actual definition.
