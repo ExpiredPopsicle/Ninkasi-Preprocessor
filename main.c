@@ -312,7 +312,7 @@ nkbool preprocess(
     const char *str,
     nkuint32_t recursionLevel);
 
-// FIXME: Make MEMSAFE
+// FIXME: Make MEMSAFE (check called functions)
 nkbool executeMacro(
     struct PreprocessorState *state,
     struct PreprocessorMacro *macro,
@@ -320,6 +320,9 @@ nkbool executeMacro(
 {
     struct PreprocessorState *clonedState = preprocessorStateClone(state);
     nkbool ret = nktrue;
+    char *unstrippedArgumentText = NULL;
+    char *argumentText = NULL;
+    struct PreprocessorMacro *newMacro = NULL;
 
     if(!clonedState) {
         return nkfalse;
@@ -330,41 +333,78 @@ nkbool executeMacro(
 
     if(macro->arguments || macro->functionStyleMacro) {
 
-        skipWhitespaceAndComments(state, nkfalse, nkfalse);
+        if(!skipWhitespaceAndComments(state, nkfalse, nkfalse)) {
+            ret = nkfalse;
+            goto executeMacro_cleanup;
+        }
 
         if(state->str[state->index] == '(') {
 
             struct PreprocessorMacroArgument *argument = macro->arguments;
 
             // Skip open paren.
-            skipChar(state, nkfalse);
+            if(!skipChar(state, nkfalse)) {
+                ret = nkfalse;
+                goto executeMacro_cleanup;
+            }
 
             while(argument) {
 
                 // Read the macro argument.
-                char *unstrippedArgumentText = readMacroArgument(state);
-                char *argumentText = stripCommentsAndTrim(unstrippedArgumentText);
+                unstrippedArgumentText = readMacroArgument(state);
+                if(!unstrippedArgumentText) {
+                    ret = nkfalse;
+                    goto executeMacro_cleanup;
+                }
+
+                argumentText = stripCommentsAndTrim(unstrippedArgumentText);
+                if(!argumentText) {
+                    ret = nkfalse;
+                    goto executeMacro_cleanup;
+                }
 
                 freeWrapper(unstrippedArgumentText);
+                unstrippedArgumentText = NULL;
 
                 // Add the argument as a macro to
                 // the new cloned state.
                 {
-                    struct PreprocessorMacro *newMacro = createPreprocessorMacro();
-                    preprocessorMacroSetIdentifier(newMacro, argument->name);
-                    preprocessorMacroSetDefinition(newMacro, argumentText);
+                    newMacro = createPreprocessorMacro();
+                    if(!newMacro) {
+                        ret = nkfalse;
+                        goto executeMacro_cleanup;
+                    }
+
+                    if(!preprocessorMacroSetIdentifier(newMacro, argument->name)) {
+                        ret = nkfalse;
+                        goto executeMacro_cleanup;
+                    }
+
+                    if(!preprocessorMacroSetDefinition(newMacro, argumentText)) {
+                        ret = nkfalse;
+                        goto executeMacro_cleanup;
+                    }
+
                     preprocessorStateAddMacro(clonedState, newMacro);
+                    newMacro = NULL;
                 }
 
                 freeWrapper(argumentText);
+                argumentText = NULL;
 
-                skipWhitespaceAndComments(state, nkfalse, nkfalse);
+                if(!skipWhitespaceAndComments(state, nkfalse, nkfalse)) {
+                    ret = nkfalse;
+                    goto executeMacro_cleanup;
+                }
 
                 if(argument->next) {
 
                     // Expect ','
                     if(state->str[state->index] == ',') {
-                        skipChar(state, nkfalse);
+                        if(!skipChar(state, nkfalse)) {
+                            ret = nkfalse;
+                            goto executeMacro_cleanup;
+                        }
                     } else {
                         preprocessorStateAddError(state, "Expected ','.");
                         ret = nkfalse;
@@ -386,7 +426,10 @@ nkbool executeMacro(
 
             // Skip final ')'.
             if(state->str[state->index] == ')') {
-                skipChar(state, nkfalse);
+                if(!skipChar(state, nkfalse)) {
+                    ret = nkfalse;
+                    goto executeMacro_cleanup;
+                }
             } else {
                 preprocessorStateAddError(state, "Expected ')'.");
                 ret = nkfalse;
@@ -419,13 +462,29 @@ nkbool executeMacro(
         }
 
         // Write output.
-        appendString(state, clonedState->output);
+        if(!appendString(state, clonedState->output)) {
+            ret = nkfalse;
+            goto executeMacro_cleanup;
+        }
 
         preprocessorStateFlagFileLineMarkersForUpdate(state);
     }
 
+executeMacro_cleanup:
+
     // Clean up.
-    destroyPreprocessorState(clonedState);
+    if(clonedState) {
+        destroyPreprocessorState(clonedState);
+    }
+    if(unstrippedArgumentText) {
+        freeWrapper(unstrippedArgumentText);
+    }
+    if(argumentText) {
+        freeWrapper(argumentText);
+    }
+    if(newMacro) {
+        destroyPreprocessorMacro(newMacro);
+    }
 
     return ret;
 }
@@ -651,8 +710,11 @@ char *loadFile(const char *filename)
 
 int main(int argc, char *argv[])
 {
-    for(nkuint32_t counter = 2430; counter < 2000000; counter++) {
+    // 10691?
+    // for(nkuint32_t counter = 4200; counter < 2000000; counter++) {
     // for(nkuint32_t counter = 0; counter < 2430; counter++) {
+    // for(nkuint32_t counter = 0; counter < 1; counter++) {
+    for(nkuint32_t counter = 11141; counter < 2000000; counter++) {
 
         struct PreprocessorErrorState errorState;
         struct PreprocessorState *state;

@@ -315,6 +315,7 @@ nkbool handleDefine(
         macro = NULL;
     } else {
         destroyPreprocessorMacro(macro);
+        macro = NULL;
     }
 
 handleDefine_cleanup:

@@ -199,11 +199,11 @@ nkbool appendChar(struct PreprocessorState *state, char c)
                     state->outputLineNumber = state->lineNumber;
                     state->updateMarkers = nkfalse;
                     ret &= preprocessorStateWritePositionMarker(state);
-                }
 
-                // Send in a character we purposely won't do anything
-                // with just to pump the line-start debug info stuff.
-                ret &= appendChar(state, 0);
+                    // Send in a character we purposely won't do anything
+                    // with just to pump the line-start debug info stuff.
+                    ret &= appendChar(state, 0);
+                }
 
             } else {
                 ret &= appendChar_real(state, '|');
@@ -583,27 +583,47 @@ char *readInteger(struct PreprocessorState *state)
     return ret;
 }
 
-// FIXME: Make MEMSAFE
+// MEMSAFE
 char *readMacroArgument(struct PreprocessorState *state)
 {
     // Create a pristine state to read the arguments with.
-    struct PreprocessorState *readerState = createPreprocessorState(
-        state->errorState);
+    struct PreprocessorState *readerState = NULL;
     nkuint32_t parenLevel = 0;
-
     char *ret = NULL;
+    struct PreprocessorToken *token = NULL;
+
+    readerState = createPreprocessorState(
+        state->errorState);
+    if(!readerState) {
+        return NULL;
+    }
 
     // Copy input and position.
     readerState->index = state->index;
     readerState->str = state->str;
 
+    // Start off with an allocated-but-empty string, because we have
+    // to return something not-NULL to indicate a success.
+    readerState->output = mallocWrapper(1);
+    if(!readerState->output) {
+        destroyPreprocessorState(readerState);
+        return NULL;
+    }
+    readerState->output[0] = 0;
+
     // Skip whitespace up to the first token, but don't append
     // whitespace on this side of it.
-    skipWhitespaceAndComments(readerState, nkfalse, nkfalse);
+    if(!skipWhitespaceAndComments(readerState, nkfalse, nkfalse)) {
+        destroyPreprocessorState(readerState);
+        return NULL;
+    }
 
-    struct PreprocessorToken *token = NULL;
     do {
-        skipWhitespaceAndComments(readerState, nktrue, nkfalse);
+        // Skip whitespace.
+        if(!skipWhitespaceAndComments(readerState, nktrue, nkfalse)) {
+            destroyPreprocessorState(readerState);
+            return NULL;
+        }
 
         // Check to see if we're "done". (Zero-length arguments are
         // okay, so we have to do this at the start.)
@@ -618,17 +638,24 @@ char *readMacroArgument(struct PreprocessorState *state)
         // Read token and output it.
         token = getNextToken(readerState, nktrue);
 
-        // Check for '(', ')', and ','. Do stuff with paren level.
         if(token) {
+
+            // Check for '(', ')', and ','. Do stuff with paren level.
             if(token->type == NK_PPTOKEN_OPENPAREN) {
                 parenLevel++;
             } else if(token->type == NK_PPTOKEN_CLOSEPAREN) {
                 parenLevel--;
             }
-        }
 
-        appendString(readerState, token->str);
-        destroyToken(token);
+            // Add it.
+            if(!appendString(readerState, token->str)) {
+                destroyToken(token);
+                destroyPreprocessorState(readerState);
+                return NULL;
+            }
+
+            destroyToken(token);
+        }
 
     } while(token);
 

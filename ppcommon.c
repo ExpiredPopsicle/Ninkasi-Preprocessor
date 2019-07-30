@@ -90,8 +90,13 @@ char *escapeString(const char *src)
     char *output;
     nkuint32_t bufferLen;
 
+    // Return an empty string if input is MULL.
     if(!src) {
-        return NULL;
+        output = mallocWrapper(1);
+        if(output) {
+            output[0] = 0;
+        }
+        return output;
     }
 
     // TODO: Check overflow.
