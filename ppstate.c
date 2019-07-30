@@ -334,21 +334,32 @@ struct PreprocessorMacro *preprocessorStateFindMacro(
     {
         // Lazy-create the macro if it doesn't exist.
         if(!currentMacro) {
+
             currentMacro =
                 createPreprocessorMacro();
-            preprocessorMacroSetIdentifier(
-                currentMacro, identifier);
-            preprocessorStateAddMacro(
-                state, currentMacro);
+
+            if(currentMacro) {
+                if(preprocessorMacroSetIdentifier(
+                        currentMacro, identifier))
+                {
+                    preprocessorStateAddMacro(
+                        state, currentMacro);
+                } else {
+                    destroyPreprocessorMacro(currentMacro);
+                    currentMacro = NULL;
+                }
+            }
         }
 
         // Update to whatever it is now.
-        if(!strcmpWrapper(identifier, "__FILE__")) {
-            preprocessorMacroSetDefinition(currentMacro, state->filename);
-        } else if(!strcmpWrapper(identifier, "__LINE__")) {
-            char tmp[128];
-            sprintf(tmp, "%lu", (unsigned long)state->lineNumber);
-            preprocessorMacroSetDefinition(currentMacro, tmp);
+        if(currentMacro) {
+            if(!strcmpWrapper(identifier, "__FILE__")) {
+                preprocessorMacroSetDefinition(currentMacro, state->filename);
+            } else if(!strcmpWrapper(identifier, "__LINE__")) {
+                char tmp[128];
+                sprintf(tmp, "%lu", (unsigned long)state->lineNumber);
+                preprocessorMacroSetDefinition(currentMacro, tmp);
+            }
         }
     }
 

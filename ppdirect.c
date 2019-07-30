@@ -4,48 +4,59 @@
 #include "ppmacro.h"
 #include "ppstring.h"
 
-// FIXME: Make MEMSAFE
+// MEMSAFE
 nkbool handleIfdefReal(
     struct PreprocessorState *state,
     const char *restOfLine,
     nkbool invert)
 {
-    nkbool ret = nktrue;
+    nkbool ret = nkfalse;
     struct PreprocessorState *directiveParseState =
         createPreprocessorState(state->errorState);
-    struct PreprocessorToken *identifierToken;
+    struct PreprocessorToken *identifierToken = NULL;
+    struct PreprocessorMacro *macro = NULL;
 
-    directiveParseState->str = restOfLine;
+    if(directiveParseState) {
 
-    // Get identifier.
-    identifierToken =
-        getNextToken(directiveParseState, nkfalse);
+        directiveParseState->str = restOfLine;
 
-    if(identifierToken->type == NK_PPTOKEN_IDENTIFIER) {
+        // Get identifier.
+        identifierToken =
+            getNextToken(directiveParseState, nkfalse);
 
-        struct PreprocessorMacro *macro =
-            preprocessorStateFindMacro(
-                state, identifierToken->str);
+        if(identifierToken) {
 
-        if(macro) {
-            preprocessorStatePushIfResult(state, !invert);
-        } else {
-            preprocessorStatePushIfResult(state, invert);
+            if(identifierToken->type == NK_PPTOKEN_IDENTIFIER) {
+
+                macro = preprocessorStateFindMacro(
+                    state, identifierToken->str);
+
+                if(macro) {
+                    preprocessorStatePushIfResult(state, !invert);
+                } else {
+                    preprocessorStatePushIfResult(state, invert);
+                }
+
+                ret = nktrue;
+
+            } else {
+
+                // That's not an identifier.
+                preprocessorStateAddError(state, "Expected identifier after #ifdef/ifndef.");
+            }
         }
-
-    } else {
-
-        // That's not an identifier.
-        preprocessorStateAddError(state, "Expected identifier after #ifdef/ifndef.");
-        ret = nkfalse;
     }
 
-    destroyToken(identifierToken);
-    destroyPreprocessorState(directiveParseState);
+    if(identifierToken) {
+        destroyToken(identifierToken);
+    }
+    if(directiveParseState) {
+        destroyPreprocessorState(directiveParseState);
+    }
     return ret;
 }
 
-// FIXME: Make MEMSAFE
+// MEMSAFE
 nkbool handleIfdef(
     struct PreprocessorState *state,
     const char *restOfLine)
@@ -53,7 +64,7 @@ nkbool handleIfdef(
     return handleIfdefReal(state, restOfLine, nkfalse);
 }
 
-// FIXME: Make MEMSAFE
+// MEMSAFE
 nkbool handleIfndef(
     struct PreprocessorState *state,
     const char *restOfLine)

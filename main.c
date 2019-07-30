@@ -489,6 +489,56 @@ executeMacro_cleanup:
     return ret;
 }
 
+// MEMSAFE (ish)
+nkbool handleStringification(
+    struct PreprocessorState *state,
+    const char *macroName,
+    nkuint32_t recursionLevel)
+{
+    nkbool ret = nkfalse;
+    char *escapedStr = NULL;
+    struct PreprocessorState *macroState = NULL;
+    struct PreprocessorMacro *macro =
+        preprocessorStateFindMacro(
+            state, macroName);
+
+    if(macro) {
+
+        macroState = preprocessorStateClone(state);
+        if(macroState) {
+
+            preprocessorStateClearOutput(macroState);
+
+            if(executeMacro(macroState, macro, recursionLevel)) {
+
+                // Escape the string and add it to the output.
+                escapedStr = escapeString(macroState->output);
+                if(escapedStr) {
+                    appendString(state, "\"");
+                    appendString(state, escapedStr);
+                    appendString(state, "\"");
+                    freeWrapper(escapedStr);
+                }
+
+                // Skip past the stuff we read in the
+                // cloned state.
+                state->index = macroState->index;
+
+                destroyPreprocessorState(macroState);
+
+                ret = nktrue;
+            }
+        }
+
+    } else {
+        preprocessorStateAddError(
+            state,
+            "Unknown input for stringification.");
+    }
+
+    return ret;
+}
+
 // FIXME: Make MEMSAFE
 nkbool preprocess(
     struct PreprocessorState *state,
@@ -496,6 +546,9 @@ nkbool preprocess(
     nkuint32_t recursionLevel)
 {
     nkbool ret = nktrue;
+    struct PreprocessorToken *token = NULL;
+    struct PreprocessorToken *directiveNameToken = NULL;
+    char *line = NULL;
 
     // FIXME: Maybe make this less arbitraty.
     if(recursionLevel > 20) {
@@ -508,7 +561,7 @@ nkbool preprocess(
 
     while(state->str[state->index]) {
 
-        struct PreprocessorToken *token = getNextToken(state, nktrue);
+        token = getNextToken(state, nktrue);
 
         if(token) {
 
@@ -526,7 +579,7 @@ nkbool preprocess(
                 if(nkiCompilerIsValidIdentifierCharacter(state->str[state->index], nktrue)) {
 
                     // Get the directive name.
-                    struct PreprocessorToken *directiveNameToken = getNextToken(state, nktrue);
+                    directiveNameToken = getNextToken(state, nktrue);
 
                     if(!directiveNameToken) {
 
@@ -540,7 +593,7 @@ nkbool preprocess(
                         if(directiveIsValid(directiveNameToken->str)) {
 
                             nkuint32_t lineCount = 0;
-                            char *line = readRestOfLine(state, &lineCount);
+                            line = readRestOfLine(state, &lineCount);
 
                             if(handleDirective(
                                     state,
@@ -564,52 +617,60 @@ nkbool preprocess(
 
                             // Clean up.
                             freeWrapper(line);
+                            line = NULL;
 
                         } else {
 
-                            // Stringification.
-                            struct PreprocessorMacro *macro =
-                                preprocessorStateFindMacro(
-                                    state, directiveNameToken->str);
-
-                            if(macro) {
-
-                                struct PreprocessorState *macroState =
-                                    preprocessorStateClone(state);
-
-                                preprocessorStateClearOutput(macroState);
-
-                                executeMacro(macroState, macro, recursionLevel);
-
-                                {
-                                    char *escapedStr = escapeString(macroState->output);
-
-                                    appendString(state, "\"");
-                                    appendString(state, escapedStr);
-                                    appendString(state, "\"");
-
-                                    freeWrapper(escapedStr);
-                                }
-
-
-                                // Skip past the stuff we read in the
-                                // cloned state.
-                                state->index = macroState->index;
-
-                                destroyPreprocessorState(macroState);
-
-                            } else {
-
-                                preprocessorStateAddError(
-                                    state,
-                                    "Unknown input for stringification.");
+                            if(!handleStringification(state, directiveNameToken->str, recursionLevel)) {
                                 ret = nkfalse;
-
                             }
+
+                            //         // Stringification.
+                            //         struct PreprocessorMacro *macro =
+                            //             preprocessorStateFindMacro(
+                            //                 state, directiveNameToken->str);
+
+                            //         if(macro) {
+
+                            //             struct PreprocessorState *macroState =
+                            //                 preprocessorStateClone(state);
+
+                            //             preprocessorStateClearOutput(macroState);
+
+                            //             executeMacro(macroState, macro, recursionLevel);
+
+                            //             {
+                            //                 char *escapedStr = escapeString(macroState->output);
+
+                            //                 appendString(state, "\"");
+                            //                 appendString(state, escapedStr);
+                            //                 appendString(state, "\"");
+
+                            //                 freeWrapper(escapedStr);
+                            //             }
+
+
+                            //             // Skip past the stuff we read in the
+                            //             // cloned state.
+                            //             state->index = macroState->index;
+
+                            //             destroyPreprocessorState(macroState);
+
+                            //         } else {
+
+                            //             preprocessorStateAddError(
+                            //                 state,
+                            //                 "Unknown input for stringification.");
+                            //             ret = nkfalse;
+
+                            //         }
+
+                            //     }
 
                         }
 
                         destroyToken(directiveNameToken);
+                        directiveNameToken = NULL;
 
                     }
 
@@ -654,6 +715,7 @@ nkbool preprocess(
             }
 
             destroyToken(token);
+            token = NULL;
 
         } else {
             break;
@@ -714,7 +776,8 @@ int main(int argc, char *argv[])
     // for(nkuint32_t counter = 4200; counter < 2000000; counter++) {
     // for(nkuint32_t counter = 0; counter < 2430; counter++) {
     // for(nkuint32_t counter = 0; counter < 1; counter++) {
-    for(nkuint32_t counter = 11141; counter < 2000000; counter++) {
+    // for(nkuint32_t counter = 18830; counter < 2000000; counter++) {
+    for(nkuint32_t counter = 18830; counter < 18831; counter++) {
 
         struct PreprocessorErrorState errorState;
         struct PreprocessorState *state;
