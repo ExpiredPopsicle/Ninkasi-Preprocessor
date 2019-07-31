@@ -33,20 +33,18 @@ struct PreprocessorMacro *createPreprocessorMacro(void)
     return ret;
 }
 
-// FIXME: Make MEMSAFE
+// MEMSAFE
 nkbool preprocessorMacroAddArgument(
     struct PreprocessorMacro *macro,
     const char *name)
 {
     struct PreprocessorMacroArgument *arg =
         mallocWrapper(sizeof(struct PreprocessorMacroArgument));
-
     if(!arg) {
         return nkfalse;
     }
 
     arg->name = strdupWrapper(name);
-
     if(!arg->name) {
         freeWrapper(arg);
         return nkfalse;
@@ -60,8 +58,10 @@ nkbool preprocessorMacroAddArgument(
     {
         struct PreprocessorMacroArgument *existingArg = macro->arguments;
         if(!existingArg) {
+            // First in the list.
             macro->arguments = arg;
         } else {
+            // Search through the list and add to the end.
             while(existingArg->next) {
                 existingArg = existingArg->next;
             }
@@ -69,13 +69,10 @@ nkbool preprocessorMacroAddArgument(
         }
     }
 
-    // arg->next = macro->arguments;
-    // macro->arguments = arg;
-
     return nktrue;
 }
 
-// FIXME: Make MEMSAFE
+// MEMSAFE
 nkbool preprocessorMacroSetIdentifier(
     struct PreprocessorMacro *macro,
     const char *identifier)
@@ -85,7 +82,8 @@ nkbool preprocessorMacroSetIdentifier(
         macro->identifier = NULL;
     }
 
-    macro->identifier = strdupWrapper(identifier);
+    macro->identifier =
+        strdupWrapper(identifier ? identifier : "");
 
     if(!macro->identifier) {
         return nkfalse;

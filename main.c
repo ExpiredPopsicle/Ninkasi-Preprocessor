@@ -480,7 +480,8 @@ nkbool executeMacro(
 
         // Feed the macro definition through it.
         if(!preprocess(
-                clonedState, macro->definition,
+                clonedState,
+                macro->definition ? macro->definition : "",
                 recursionLevel + 1))
         {
             ret = nkfalse;
@@ -586,7 +587,7 @@ nkbool preprocess(
     state->str = str;
     state->index = 0;
 
-    while(state->str[state->index]) {
+    while(state->str && state->str[state->index]) {
 
         token = getNextToken(state, nktrue);
 

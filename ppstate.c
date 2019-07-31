@@ -158,7 +158,7 @@ nkbool FIXME_REMOVETHIS_writenumber(struct PreprocessorState *state, nkuint32_t 
     return ret;
 }
 
-// FIXME: Make MEMSAFE (Just check it. This one might be good.)
+// MEMSAFE
 nkbool appendChar(struct PreprocessorState *state, char c)
 {
     nkbool ret = nktrue;
@@ -178,7 +178,7 @@ nkbool appendChar(struct PreprocessorState *state, char c)
             // nkuint32_t lnMask = 10000;
 
             {
-                const char *filename = state->filename;
+                const char *filename = state->filename ? state->filename : "???";
                 nkuint32_t fnameLen = strlenWrapper(filename);
                 nkuint32_t i;
                 for(i = 0; i < 12; i++) {
@@ -323,7 +323,7 @@ void preprocessorStateAddMacro(
     state->macros = macro;
 }
 
-// FIXME: Make MEMSAFE
+// MEMSAFE
 struct PreprocessorMacro *preprocessorStateFindMacro(
     struct PreprocessorState *state,
     const char *identifier)
@@ -577,31 +577,39 @@ char *readQuotedString(struct PreprocessorState *state)
     return ret;
 }
 
-// FIXME: Make MEMSAFE (overflow checks)
+// MEMSAFE
 char *readInteger(struct PreprocessorState *state)
 {
     const char *str = state->str;
-    nkuint32_t *i = &state->index;
-
-    nkuint32_t start = *i;
+    nkuint32_t start = state->index;
     nkuint32_t end;
     nkuint32_t len;
+    nkuint32_t bufLen;
     char *ret;
+    nkbool overflow = nkfalse;
 
-    while(nkiCompilerIsNumber(str[*i])) {
-        (*i)++;
+    while(nkiCompilerIsNumber(str[state->index])) {
+        if(!skipChar(state, nkfalse)) {
+            return NULL;
+        }
     }
 
-    end = *i;
-
+    end = state->index;
     len = end - start;
 
-    // TODO: Check overflow.
-    ret = mallocWrapper(len + 1);
+    // Add null terminator to length.
+    NK_CHECK_OVERFLOW_UINT_ADD(len, 1, bufLen, overflow);
+    if(overflow) {
+        return NULL;
+    }
+
+    // Allocate.
+    ret = mallocWrapper(bufLen);
     if(!ret) {
         return NULL;
     }
 
+    // Copy and null-terminate.
     memcpyWrapper(ret, str + start, len);
     ret[len] = 0;
 
@@ -705,7 +713,7 @@ void preprocessorStateClearOutput(struct PreprocessorState *state)
     state->outputLineNumber = 1;
 }
 
-// FIXME: Make MEMSAFE
+// MEMSAFE
 void preprocessorStateAddError(
     struct PreprocessorState *state,
     const char *errorMessage)
@@ -769,16 +777,18 @@ nkbool preprocessorStateSetFilename(
 
 // ----------------------------------------------------------------------
 
-// FIXME: Make MEMSAFE (overflow checks)
+// MEMSAFE
 nkbool preprocessorStatePushIfResult(
     struct PreprocessorState *state,
     nkbool ifResult)
 {
-    // TODO: Check overflow on these.
+    nkbool overflow = nkfalse;
 
     if(!ifResult) {
 
-        state->nestedFailedIfs++;
+        NK_CHECK_OVERFLOW_UINT_ADD(
+            state->nestedFailedIfs, 1,
+            state->nestedFailedIfs, overflow);
 
     } else {
 
@@ -786,16 +796,20 @@ nkbool preprocessorStatePushIfResult(
 
             // If we're inside a failed "if" block, then we're going
             // to count this result as failed, too.
-            state->nestedFailedIfs++;
+            NK_CHECK_OVERFLOW_UINT_ADD(
+                state->nestedFailedIfs, 1,
+                state->nestedFailedIfs, overflow);
 
         } else {
 
-            state->nestedPassedIfs++;
+            NK_CHECK_OVERFLOW_UINT_ADD(
+                state->nestedPassedIfs, 1,
+                state->nestedPassedIfs, overflow);
 
         }
     }
 
-    return nktrue;
+    return !overflow;
 }
 
 // MEMSAFE
@@ -816,10 +830,12 @@ nkbool preprocessorStatePopIfResult(
     return nktrue;
 }
 
-// FIXME: Make MEMSAFE (overflows)
+// MEMSAFE
 nkbool preprocessorStateFlipIfResult(
     struct PreprocessorState *state)
 {
+    nkbool overflow = nkfalse;
+
     if(!state->nestedPassedIfs && !state->nestedFailedIfs) {
         preprocessorStateAddError(
             state,
@@ -828,14 +844,17 @@ nkbool preprocessorStateFlipIfResult(
     }
 
     if(state->nestedFailedIfs == 1) {
-        // TODO: Check overflow.
-        state->nestedPassedIfs++;
         state->nestedFailedIfs--;
+        NK_CHECK_OVERFLOW_UINT_ADD(
+            state->nestedPassedIfs, 1,
+            state->nestedPassedIfs, overflow);
     } else if(state->nestedPassedIfs) {
         state->nestedPassedIfs--;
-        state->nestedFailedIfs++;
+        NK_CHECK_OVERFLOW_UINT_ADD(
+            state->nestedFailedIfs, 1,
+            state->nestedFailedIfs, overflow);
     }
 
-    return nktrue;
+    return !overflow;
 }
 
