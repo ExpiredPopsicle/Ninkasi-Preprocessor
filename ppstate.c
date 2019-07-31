@@ -101,22 +101,36 @@ nkbool appendString(struct PreprocessorState *state, const char *str)
     return nktrue;
 }
 
-// FIXME: Make MEMSAFE (overflow checks)
+// MEMSAFE
 nkbool appendChar_real(struct PreprocessorState *state, char c)
 {
-    // TODO: Check overflow.
-    nkuint32_t oldLen = state->output ? strlenWrapper(state->output) : 0;
-    nkuint32_t newLen = oldLen + 1;
-    // TODO: Check overflow.
-    nkuint32_t allocLen = newLen + 1;
+    // FIXME: We should obviously avoid reallocating and copying the
+    //   entire output string every time we add a new character! This
+    //   was simpler in the short term than setting up a larger buffer
+    //   with a capacity to fill in before reallocating.
 
-    char *newChunk = reallocWrapper(state->output, allocLen);
+    nkuint32_t oldLen;
+    nkuint32_t newLen;
+    nkuint32_t allocLen;
+    nkbool overflow = nkfalse;
+    char *newChunk;
+
+    // Calculate new size with overflow check.
+    oldLen = state->output ? strlenWrapper(state->output) : 0;
+    NK_CHECK_OVERFLOW_UINT_ADD(oldLen, 1, newLen, overflow);
+    NK_CHECK_OVERFLOW_UINT_ADD(newLen, 1, allocLen, overflow);
+    if(overflow) {
+        return nkfalse;
+    }
+
+    // Reallocate chunk.
+    newChunk = reallocWrapper(state->output, allocLen);
     if(!newChunk) {
-        // Handle alloc fail.
         return nkfalse;
     }
     state->output = newChunk;
 
+    // Add the new character and a null terminator.
     state->output[oldLen] = c;
     state->output[newLen] = 0;
 
@@ -169,45 +183,45 @@ nkbool appendChar(struct PreprocessorState *state, char c)
                 nkuint32_t i;
                 for(i = 0; i < 12; i++) {
                     if(i < fnameLen) {
-                        ret &= appendChar_real(state, filename[i]);
+                        ret = ret && appendChar_real(state, filename[i]);
                     } else {
-                        ret &= appendChar_real(state, ' ');
+                        ret = ret && appendChar_real(state, ' ');
                     }
                 }
             }
 
-            ret &= appendChar_real(state, ':');
+            ret = ret && appendChar_real(state, ':');
 
-            ret &= FIXME_REMOVETHIS_writenumber(state, state->lineNumber);
-            ret &= FIXME_REMOVETHIS_writenumber(state, state->outputLineNumber);
+            ret = ret && FIXME_REMOVETHIS_writenumber(state, state->lineNumber);
+            ret = ret && FIXME_REMOVETHIS_writenumber(state, state->outputLineNumber);
 
-            ret &= FIXME_REMOVETHIS_writenumber(state, state->nestedFailedIfs);
-            ret &= FIXME_REMOVETHIS_writenumber(state, state->nestedPassedIfs);
+            ret = ret && FIXME_REMOVETHIS_writenumber(state, state->nestedFailedIfs);
+            ret = ret && FIXME_REMOVETHIS_writenumber(state, state->nestedPassedIfs);
 
-            ret &= appendChar_real(state, ' ');
-            ret &= appendChar_real(state, state->updateMarkers ? 'U' : ' ');
+            ret = ret && appendChar_real(state, ' ');
+            ret = ret && appendChar_real(state, state->updateMarkers ? 'U' : ' ');
 
-            ret &= appendChar_real(state, ' ');
+            ret = ret && appendChar_real(state, ' ');
 
             if(state->outputLineNumber != state->lineNumber) {
-                ret &= appendChar_real(state, '-');
-                ret &= appendChar_real(state, ' ');
+                ret = ret && appendChar_real(state, '-');
+                ret = ret && appendChar_real(state, ' ');
 
                 // Add in a position marker and set the output line
                 // number.
                 if(state->updateMarkers) {
                     state->outputLineNumber = state->lineNumber;
                     state->updateMarkers = nkfalse;
-                    ret &= preprocessorStateWritePositionMarker(state);
+                    ret = ret && preprocessorStateWritePositionMarker(state);
 
                     // Send in a character we purposely won't do anything
                     // with just to pump the line-start debug info stuff.
-                    ret &= appendChar(state, 0);
+                    ret = ret && appendChar(state, 0);
                 }
 
             } else {
-                ret &= appendChar_real(state, '|');
-                ret &= appendChar_real(state, ' ');
+                ret = ret && appendChar_real(state, '|');
+                ret = ret && appendChar_real(state, ' ');
             }
 
             // If we hit this case, we may have had a redundant use of
@@ -225,7 +239,7 @@ nkbool appendChar(struct PreprocessorState *state, char c)
 
     if(c) {
         if(!state->nestedFailedIfs || c == '\n') {
-            ret &= appendChar_real(state, c);
+            ret = ret && appendChar_real(state, c);
         }
     }
 

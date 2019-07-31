@@ -336,18 +336,19 @@ nkbool preprocess(
     const char *str,
     nkuint32_t recursionLevel);
 
-// FIXME: Make MEMSAFE (check called functions)
+// MEMSAFE (except call to preprocess())
 nkbool executeMacro(
     struct PreprocessorState *state,
     struct PreprocessorMacro *macro,
     nkuint32_t recursionLevel)
 {
-    struct PreprocessorState *clonedState = preprocessorStateClone(state);
+    struct PreprocessorState *clonedState;
     nkbool ret = nktrue;
     char *unstrippedArgumentText = NULL;
     char *argumentText = NULL;
     struct PreprocessorMacro *newMacro = NULL;
 
+    clonedState = preprocessorStateClone(state);
     if(!clonedState) {
         return nkfalse;
     }
@@ -486,9 +487,11 @@ nkbool executeMacro(
         }
 
         // Write output.
-        if(!appendString(state, clonedState->output)) {
-            ret = nkfalse;
-            goto executeMacro_cleanup;
+        if(clonedState->output) {
+            if(!appendString(state, clonedState->output)) {
+                ret = nkfalse;
+                goto executeMacro_cleanup;
+            }
         }
 
         preprocessorStateFlagFileLineMarkersForUpdate(state);
