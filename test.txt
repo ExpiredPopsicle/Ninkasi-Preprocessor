@@ -1,0 +1,138 @@
+Test file whatever blah.
+dscskldcdfv
+df
+
+#define foo bar
+foo
+#undef foo
+#define foo(x) (x+x)
+foo(12345)
+"string test"
+"quoted \"string\" test"
+#undef foo
+#define multiarg(x, y, z, butts) \
+  (x + x - y + (butts))
+#define multiarg(x, y, z, butts  \
+  (x + x - y + (butts))
+#define multiarg(x, y, z,        \
+  (x + x - y + (butts))
+#define multiarg(x, y, z         \
+  (x + x - y + (butts))
+#define multiarg(x, y,           \
+  (x + x - y + (butts))
+#include "test.txt"
+#include "test.txt"
+#define stringTest "some \"quoted\" string"
+stringTest
+// comment
+#define \
+  multiline \
+    definition \
+    thingy
+// comment after multiline
+
+LINE RIGHT BEFORE A MULTILINE USAGE
+multiline
+LINE RIGHT AFTER A MULTILINE USAGE
+
+LINE RIGHT BEFORE A MULTILINE DEF
+#define testjunk(x, y, z) \
+    ASDF x x y y z z ASDF
+LINE RIGHT AFTER A MULTILINE DEF
+
+testjunk(a, testjunk(u, v, w), (c+d));
+
+#define concat(x, y) x##y
+concat(thing1, thing2)
+
+// args error test
+concat(thing1)
+concat()
+concat
+concat(,)
+
+#define foo 1234 // ASF
+#undef foo
+#define foo
+foo is foo
+#undef ASDFADSCSCSDC
+
+#define mttest(x) \
+    ASDF-x-ASDF
+
+mttest(
+    skdlmldsfkv // Hope this comment gets nuked.
+    dklfmvldfsk
+    );
+
+mttest("this string has a \"quoted\" string and // has a comment inside of it");
+
+mttest("this one has // comment in a
+multiline string" // and then a comment
+    );
+some text
+
+#define errortest \
+        #define junk ASDF \
+        #define junk ASDF2
+
+errortest
+
+
+mttest()
+
+#thisisanunknowndirective
+
+#define 1234
+
+#
+
+#define noargs(x, y, z) foobar x y z foobar
+
+noargs(,,)
+
+
+Stringification test start
+#noargs(123,456,768)
+Stringification test end
+
+#define stringifyme(x) #x
+
+concat(stringifyme(
+shitfuckcrap whatever
+"here's some quotes"
+noargs(1, 2, 3)
+), (butts))
+
+
+womp
+
+
+
+#define IFTEST1
+#define IFTEST2
+
+#ifdef IFTEST1
+#ifndef IFTEST3
+iftest1!
+#endif
+#else
+NOT iftest1!
+#endif
+
+
+----------------------------------------------------------------------
+__FILE__
+#__FILE__
+__LINE__
+----------------------------------------------------------------------
+
+#define printLine() do { print(__LINE__, "\n"); } while(0)
+
+printLine();
+printLine();
+printLine();
+printLine();
+printLine();
+printLine;
+
