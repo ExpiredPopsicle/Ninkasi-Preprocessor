@@ -37,7 +37,7 @@ char *testStr =
     "// comment after multiline\n";
 
 // TODO: Move this into ppstate.c
-// FIXME: Make MEMSAFE (doublecheck)
+// MEMSAFE
 struct PreprocessorToken *getNextToken(
     struct PreprocessorState *state,
     nkbool outputWhitespace)
@@ -175,7 +175,7 @@ struct PreprocessorToken *getNextToken(
     return ret;
 }
 
-// FIXME: Make MEMSAFE
+// MEMSAFE
 char *readRestOfLine(
     struct PreprocessorState *state,
     nkuint32_t *actualLineCount)
@@ -184,7 +184,9 @@ char *readRestOfLine(
     nkuint32_t lineStart = state->index;
     nkuint32_t lineEnd = lineStart;
     nkuint32_t lineLen = 0;
+    nkuint32_t lineBufLen = 0;
     char *ret = NULL;
+    nkbool overflow = nkfalse;
 
     while(state->str[state->index]) {
 
@@ -209,7 +211,9 @@ char *readRestOfLine(
                 // Skip that newline and bail out. We're done. Only
                 // output if it's a newline to keep lines in sync
                 // between input and output.
-                skipChar(state, state->str[state->index] == '\n');
+                if(!skipChar(state, state->str[state->index] == '\n')) {
+                    return NULL;
+                }
                 break;
 
             }
@@ -221,15 +225,27 @@ char *readRestOfLine(
 
         // Skip this character. Only output if it's a newline to keep
         // lines in sync between input and output.
-        skipChar(state, state->str[state->index] == '\n');
+        if(!skipChar(state, state->str[state->index] == '\n')) {
+            return NULL;
+        }
     }
 
     // Save the whole line.
     lineEnd = state->index;
-    // TODO: Check overflow.
+
+    if(lineEnd < lineStart) {
+        return NULL;
+    }
     lineLen = lineEnd - lineStart;
-    // TODO: Check overflow.
-    ret = mallocWrapper(lineLen + 1);
+
+    // Add room for a NULL terminator.
+    NK_CHECK_OVERFLOW_UINT_ADD(lineLen, 1, lineBufLen, overflow);
+    if(overflow) {
+        return NULL;
+    }
+
+    // Create and fill the return buffer.
+    ret = mallocWrapper(lineBufLen);
     if(ret) {
         memcpyWrapper(ret, state->str + lineStart, lineLen);
         ret[lineLen] = 0;
@@ -276,16 +292,24 @@ nkbool directiveIsValid(
     return nkfalse;
 }
 
-// FIXME: Make MEMSAFE
+// MEMSAFE
 nkbool handleDirective(
     struct PreprocessorState *state,
     const char *directive,
     const char *restOfLine)
 {
     nkbool ret = nkfalse;
-    char *deletedBackslashes = deleteBackslashNewlines(restOfLine);
+    char *deletedBackslashes;
     nkuint32_t i;
 
+    // Reformat the block so we don't have to worry about escaped
+    // newlines and stuff.
+    deletedBackslashes = deleteBackslashNewlines(restOfLine);
+    if(!deletedBackslashes) {
+        return nkfalse;
+    }
+
+    // Figure out which handler this corresponds to and execute it.
     for(i = 0; i < directiveMappingLen; i++) {
         if(!strcmpWrapper(directive, directiveMapping[i].identifier)) {
             ret = directiveMapping[i].handler(state, deletedBackslashes);
@@ -624,49 +648,6 @@ nkbool preprocess(
                             if(!handleStringification(state, directiveNameToken->str, recursionLevel)) {
                                 ret = nkfalse;
                             }
-
-                            //         // Stringification.
-                            //         struct PreprocessorMacro *macro =
-                            //             preprocessorStateFindMacro(
-                            //                 state, directiveNameToken->str);
-
-                            //         if(macro) {
-
-                            //             struct PreprocessorState *macroState =
-                            //                 preprocessorStateClone(state);
-
-                            //             preprocessorStateClearOutput(macroState);
-
-                            //             executeMacro(macroState, macro, recursionLevel);
-
-                            //             {
-                            //                 char *escapedStr = escapeString(macroState->output);
-
-                            //                 appendString(state, "\"");
-                            //                 appendString(state, escapedStr);
-                            //                 appendString(state, "\"");
-
-                            //                 freeWrapper(escapedStr);
-                            //             }
-
-
-                            //             // Skip past the stuff we read in the
-                            //             // cloned state.
-                            //             state->index = macroState->index;
-
-                            //             destroyPreprocessorState(macroState);
-
-                            //         } else {
-
-                            //             preprocessorStateAddError(
-                            //                 state,
-                            //                 "Unknown input for stringification.");
-                            //             ret = nkfalse;
-
-                            //         }
-
-                            //     }
-
                         }
 
                         destroyToken(directiveNameToken);
@@ -776,8 +757,10 @@ int main(int argc, char *argv[])
     // for(nkuint32_t counter = 4200; counter < 2000000; counter++) {
     // for(nkuint32_t counter = 0; counter < 2430; counter++) {
     // for(nkuint32_t counter = 0; counter < 1; counter++) {
-    // for(nkuint32_t counter = 18830; counter < 2000000; counter++) {
-    for(nkuint32_t counter = 18830; counter < 18831; counter++) {
+    for(nkuint32_t counter = 18830; counter < 2000000; counter++) {
+    // for(nkuint32_t counter = 18830; counter < 18831; counter++) {
+    // for(nkuint32_t counter = 0; counter < 18831; counter++) {
+    // for(nkuint32_t counter = 2432; counter < 18831; counter++) {
 
         struct PreprocessorErrorState errorState;
         struct PreprocessorState *state;
