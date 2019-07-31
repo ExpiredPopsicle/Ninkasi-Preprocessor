@@ -3,6 +3,7 @@
 // ----------------------------------------------------------------------
 // Stuff copied from nktoken.c
 
+// MEMSAFE
 nkbool nkiCompilerIsValidIdentifierCharacter(char c, nkbool isFirstCharacter)
 {
     if(!isFirstCharacter) {
@@ -18,6 +19,7 @@ nkbool nkiCompilerIsValidIdentifierCharacter(char c, nkbool isFirstCharacter)
     return nkfalse;
 }
 
+// MEMSAFE
 nkbool nkiCompilerIsWhitespace(char c)
 {
     if(c == ' ' || c == '\n' || c == '\t' || c == '\r') {
@@ -26,26 +28,28 @@ nkbool nkiCompilerIsWhitespace(char c)
     return nkfalse;
 }
 
-void nkiCompilerPreprocessorSkipWhitespace(
-    const char *str,
-    nkuint32_t *k)
-{
-    while(str[*k] && nkiCompilerIsWhitespace(str[*k])) {
+// void nkiCompilerPreprocessorSkipWhitespace(
+//     const char *str,
+//     nkuint32_t *k)
+// {
+//     while(str[*k] && nkiCompilerIsWhitespace(str[*k])) {
 
-        // Bail out when we get to the end of the line.
-        if(str[*k] == '\n') {
-            break;
-        }
+//         // Bail out when we get to the end of the line.
+//         if(str[*k] == '\n') {
+//             break;
+//         }
 
-        (*k)++;
-    }
-}
+//         (*k)++;
+//     }
+// }
 
+// MEMSAFE
 nkbool nkiCompilerIsNumber(char c)
 {
     return (c >= '0' && c <= '9');
 }
 
+// MEMSAFE
 void nkiMemcpy(void *dst, const void *src, nkuint32_t len)
 {
     nkuint32_t i;
@@ -54,12 +58,15 @@ void nkiMemcpy(void *dst, const void *src, nkuint32_t len)
     }
 }
 
-// FIXME: Make MEMSAFE (overflow)
+// MEMSAFE
 void nkiDbgAppendEscaped(nkuint32_t bufSize, char *dst, const char *src)
 {
     nkuint32_t i = strlenWrapper(dst);
 
-    // TODO: Check for overflow.
+    // Avoid overflows at the cost of truncating strings near the end.
+    if(i > NK_UINT_MAX - 3) {
+        return;
+    }
 
     while(i + 2 < bufSize && *src) {
         switch(*src) {
@@ -80,15 +87,24 @@ void nkiDbgAppendEscaped(nkuint32_t bufSize, char *dst, const char *src)
                 break;
         }
         src++;
+
+        // Avoid overflows at the cost of truncating strings near the
+        // end.
+        if(i > NK_UINT_MAX - 3) {
+            break;
+        }
+
     }
+
     dst[i] = 0;
 }
 
-// FIXME: Make MEMSAFE (call to nkiDbgAppendEscaped)
+// MEMSAFE
 char *escapeString(const char *src)
 {
     char *output;
     nkuint32_t bufferLen;
+    nkbool overflow = nkfalse;
 
     // Return an empty string if input is MULL.
     if(!src) {
@@ -99,16 +115,13 @@ char *escapeString(const char *src)
         return output;
     }
 
-    // TODO: Check overflow.
-    // bufferLen = strlenWrapper(src) * 2 + 1;
-    {
-        nkbool overflow = nkfalse;
-        bufferLen = strlenWrapper(src);
-        NK_CHECK_OVERFLOW_UINT_MUL(bufferLen, 2, bufferLen, overflow);
-        NK_CHECK_OVERFLOW_UINT_ADD(bufferLen, 1, bufferLen, overflow);
-        if(overflow) {
-            return NULL;
-        }
+    // Just make a buffer that's twice as big in case literally every
+    // single character needs to be escaped.
+    bufferLen = strlenWrapper(src);
+    NK_CHECK_OVERFLOW_UINT_MUL(bufferLen, 2, bufferLen, overflow);
+    NK_CHECK_OVERFLOW_UINT_ADD(bufferLen, 1, bufferLen, overflow);
+    if(overflow) {
+        return NULL;
     }
 
     output = mallocWrapper(bufferLen);
@@ -241,6 +254,7 @@ void *reallocWrapper(void *ptr, nkuint32_t size)
     }
 }
 
+// FIXME: Make MEMSAFE
 char *strdupWrapper(const char *s)
 {
     // FIXME: Check overflow.

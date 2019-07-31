@@ -42,19 +42,25 @@ char *deleteBackslashNewlines(const char *str)
     return NULL;
 }
 
-// FIXME: Make MEMSAFE (overflow)
+// MEMSAFE
 char *stripCommentsAndTrim(const char *in)
 {
     char *ret;
     nkuint32_t readIndex = 0;
     nkuint32_t writeIndex = 0;
+    nkuint32_t bufLen = 0;
+    nkbool overflow = nkfalse;
 
     if(!in) {
         return NULL;
     }
 
-    // FIXME: Check overflow.
-    ret = mallocWrapper(strlenWrapper(in) + 1);
+    NK_CHECK_OVERFLOW_UINT_ADD(strlenWrapper(in), 1, bufLen, overflow);
+    if(overflow) {
+        return NULL;
+    }
+
+    ret = mallocWrapper(bufLen);
     if(!ret) {
         return NULL;
     }
@@ -118,7 +124,6 @@ char *stripCommentsAndTrim(const char *in)
         }
         writeIndex--;
     }
-
 
     ret[writeIndex] = 0;
     return ret;
