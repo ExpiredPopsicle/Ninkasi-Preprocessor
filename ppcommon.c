@@ -229,6 +229,7 @@ void freeWrapper(void *ptr)
     //     (long)maxUsage);
 }
 
+// MEMSAFE
 void *reallocWrapper(void *ptr, nkuint32_t size)
 {
     if(!ptr) {
@@ -237,31 +238,39 @@ void *reallocWrapper(void *ptr, nkuint32_t size)
 
     } else {
 
+        struct AllocHeader *oldHeader;
+        nkuint32_t oldSize;
+
         void *newChunk = mallocWrapper(size);
         if(!newChunk) {
             return NULL;
         }
 
-        struct AllocHeader *oldHeader = getAllocHeader(ptr);
-        nkuint32_t oldSize = oldHeader->size;
+        oldHeader = getAllocHeader(ptr);
+        oldSize = oldHeader->size;
 
         memcpyWrapper(newChunk, ptr, size > oldSize ? oldSize : size);
 
-        // free(oldHeader);
         freeWrapper(ptr);
 
         return newChunk;
     }
 }
 
-// FIXME: Make MEMSAFE
+// MEMSAFE
 char *strdupWrapper(const char *s)
 {
-    // FIXME: Check overflow.
     nkuint32_t len = strlenWrapper(s);
-    nkuint32_t size = len + 1;
+    nkuint32_t size;
+    nkbool overflow = nkfalse;
+    char *ret;
 
-    char *ret = (char*)mallocWrapper(size);
+    NK_CHECK_OVERFLOW_UINT_ADD(len, 1, size, overflow);
+    if(overflow) {
+        return NULL;
+    }
+
+    ret = (char*)mallocWrapper(size);
     if(!ret) {
         return NULL;
     }
