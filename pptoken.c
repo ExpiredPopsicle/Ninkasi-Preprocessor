@@ -1,3 +1,4 @@
+#include "ppstate.h"
 #include "ppcommon.h"
 #include "pptoken.h"
 
@@ -8,8 +9,8 @@ void destroyToken(
 {
     if(token) {
         if(token->str) {
-            freeWrapper(token->str);
+            nkppFree(state, token->str);
         }
-        freeWrapper(token);
+        nkppFree(state, token);
     }
 }

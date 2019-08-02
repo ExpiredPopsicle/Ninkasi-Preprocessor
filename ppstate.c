@@ -118,7 +118,7 @@ nkbool preprocessorStateWritePositionMarker(struct PreprocessorState *state)
 
     state->outputLineNumber = state->lineNumber;
 
-    freeWrapper(escapedFilenameStr);
+    nkppFree(state, escapedFilenameStr);
 
     return ret;
 }
