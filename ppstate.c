@@ -5,12 +5,47 @@
 
 #include <assert.h>
 
+void *nkppDefaultMallocWrapper(void *userData, nkuint32_t size)
+{
+    return mallocWrapper(size);
+}
+
+void nkppDefaultFreeWrapper(void *userData, void *ptr)
+{
+    return freeWrapper(ptr);
+}
+
+void *nkppMalloc(struct PreprocessorState *state, nkuint32_t size)
+{
+    if(state->memoryCallbacks) {
+        return state->memoryCallbacks->mallocWrapper(
+            state->memoryCallbacks->userData, size);
+    }
+    return nkppDefaultMallocWrapper(NULL, size);
+}
+
+void nkppFree(struct PreprocessorState *state, void *ptr)
+{
+    if(state->memoryCallbacks) {
+        state->memoryCallbacks->freeWrapper(
+            state->memoryCallbacks->userData, ptr);
+    }
+    nkppDefaultFreeWrapper(NULL, ptr);
+}
+
 // MEMSAFE
 struct PreprocessorState *createPreprocessorState(
-    struct PreprocessorErrorState *errorState)
+    struct PreprocessorErrorState *errorState,
+    struct PreprocessorMemoryCallbacks *memoryCallbacks)
 {
+    NkppMallocWrapper localMallocWrapper =
+        memoryCallbacks ? memoryCallbacks->mallocWrapper : nkppDefaultMallocWrapper;
+    NkppFreeWrapper localFreeWrapper =
+        memoryCallbacks ? memoryCallbacks->freeWrapper : nkppDefaultFreeWrapper;
+    void *userData = memoryCallbacks ? memoryCallbacks->userData : NULL;
+
     struct PreprocessorState *ret =
-        mallocWrapper(sizeof(struct PreprocessorState));
+        localMallocWrapper(userData, sizeof(struct PreprocessorState));
 
     if(ret) {
         ret->str = NULL;
@@ -25,9 +60,10 @@ struct PreprocessorState *createPreprocessorState(
         ret->errorState = errorState;
         ret->nestedPassedIfs = 0;
         ret->nestedFailedIfs = 0;
+        ret->memoryCallbacks = memoryCallbacks;
 
         if(!ret->filename) {
-            freeWrapper(ret);
+            localFreeWrapper(userData, ret);
             return NULL;
         }
     }
@@ -38,15 +74,21 @@ struct PreprocessorState *createPreprocessorState(
 // MEMSAFE
 void destroyPreprocessorState(struct PreprocessorState *state)
 {
+    NkppFreeWrapper localFreeWrapper =
+        state->memoryCallbacks ? state->memoryCallbacks->freeWrapper : nkppDefaultFreeWrapper;
+    void *userData =
+        state->memoryCallbacks ? state->memoryCallbacks->userData : NULL;
+
     struct PreprocessorMacro *currentMacro = state->macros;
     while(currentMacro) {
         struct PreprocessorMacro *next = currentMacro->next;
         destroyPreprocessorMacro(currentMacro);
         currentMacro = next;
     }
-    freeWrapper(state->output);
-    freeWrapper(state->filename);
-    freeWrapper(state);
+
+    localFreeWrapper(userData, state->output);
+    localFreeWrapper(userData, state->filename);
+    localFreeWrapper(userData, state);
 }
 
 // This should only ever be called when we're about to output a
@@ -56,7 +98,7 @@ void destroyPreprocessorState(struct PreprocessorState *state)
 nkbool preprocessorStateWritePositionMarker(struct PreprocessorState *state)
 {
     char numberStr[128];
-    char *escapedFilenameStr = escapeString(state->filename);
+    char *escapedFilenameStr = escapeString(state, state->filename);
     nkbool ret = nktrue;
 
     if(!escapedFilenameStr) {
@@ -354,7 +396,7 @@ struct PreprocessorMacro *preprocessorStateFindMacro(
 
             if(currentMacro) {
                 if(preprocessorMacroSetIdentifier(
-                        currentMacro, identifier))
+                        state, currentMacro, identifier))
                 {
                     preprocessorStateAddMacro(
                         state, currentMacro);
@@ -368,11 +410,11 @@ struct PreprocessorMacro *preprocessorStateFindMacro(
         // Update to whatever it is now.
         if(currentMacro) {
             if(!strcmpWrapper(identifier, "__FILE__")) {
-                preprocessorMacroSetDefinition(currentMacro, state->filename);
+                preprocessorMacroSetDefinition(state, currentMacro, state->filename);
             } else if(!strcmpWrapper(identifier, "__LINE__")) {
                 char tmp[128];
                 sprintf(tmp, "%lu", (unsigned long)state->lineNumber);
-                preprocessorMacroSetDefinition(currentMacro, tmp);
+                preprocessorMacroSetDefinition(state, currentMacro, tmp);
             }
         }
     }
@@ -413,7 +455,7 @@ struct PreprocessorState *preprocessorStateClone(
     const struct PreprocessorState *state)
 {
     struct PreprocessorState *ret = createPreprocessorState(
-        state->errorState);
+        state->errorState, state->memoryCallbacks);
     struct PreprocessorMacro *currentMacro;
     struct PreprocessorMacro **macroWritePtr;
 
@@ -494,7 +536,7 @@ char *readIdentifier(struct PreprocessorState *state)
             return NULL;
         }
 
-        ret = mallocWrapper(memLen);
+        ret = nkppMalloc(state, memLen);
     }
 
     if(!ret) {
@@ -564,7 +606,7 @@ char *readQuotedString(struct PreprocessorState *state)
             return NULL;
         }
 
-        ret = mallocWrapper(memLen);
+        ret = nkppMalloc(state, memLen);
     }
 
     if(!ret) {
@@ -604,7 +646,7 @@ char *readInteger(struct PreprocessorState *state)
     }
 
     // Allocate.
-    ret = mallocWrapper(bufLen);
+    ret = nkppMalloc(state, bufLen);
     if(!ret) {
         return NULL;
     }
@@ -626,7 +668,7 @@ char *readMacroArgument(struct PreprocessorState *state)
     struct PreprocessorToken *token = NULL;
 
     readerState = createPreprocessorState(
-        state->errorState);
+        state->errorState, state->memoryCallbacks);
     if(!readerState) {
         return NULL;
     }
@@ -637,7 +679,7 @@ char *readMacroArgument(struct PreprocessorState *state)
 
     // Start off with an allocated-but-empty string, because we have
     // to return something not-NULL to indicate a success.
-    readerState->output = mallocWrapper(1);
+    readerState->output = nkppMalloc(state, 1);
     if(!readerState->output) {
         destroyPreprocessorState(readerState);
         return NULL;
@@ -721,7 +763,7 @@ void preprocessorStateAddError(
     if(state->errorState) {
 
         struct PreprocessorError *newError =
-            mallocWrapper(sizeof(struct PreprocessorError));
+            nkppMalloc(state, sizeof(struct PreprocessorError));
 
         if(newError) {
 

@@ -1,4 +1,5 @@
 #include "ppcommon.h"
+#include "ppstate.h"
 
 // ----------------------------------------------------------------------
 // Stuff copied from nktoken.c
@@ -100,7 +101,9 @@ void nkiDbgAppendEscaped(nkuint32_t bufSize, char *dst, const char *src)
 }
 
 // MEMSAFE
-char *escapeString(const char *src)
+char *escapeString(
+    struct PreprocessorState *state,
+    const char *src)
 {
     char *output;
     nkuint32_t bufferLen;
@@ -108,7 +111,7 @@ char *escapeString(const char *src)
 
     // Return an empty string if input is MULL.
     if(!src) {
-        output = mallocWrapper(1);
+        output = nkppMalloc(state, 1);
         if(output) {
             output[0] = 0;
         }
@@ -124,7 +127,7 @@ char *escapeString(const char *src)
         return NULL;
     }
 
-    output = mallocWrapper(bufferLen);
+    output = nkppMalloc(state, bufferLen);
     if(!output) {
         return NULL;
     }
@@ -257,7 +260,12 @@ void *reallocWrapper(void *ptr, nkuint32_t size)
     }
 }
 
-// MEMSAFE
+char *nkppStrdup(struct PreprocessorState *state, const char *s)
+{
+    return strdupWrapper(s);
+}
+
+// FIXME: Remove this.
 char *strdupWrapper(const char *s)
 {
     nkuint32_t len = strlenWrapper(s);
@@ -270,6 +278,7 @@ char *strdupWrapper(const char *s)
         return NULL;
     }
 
+    // ret = (char*)nkppMalloc(state, size);
     ret = (char*)mallocWrapper(size);
     if(!ret) {
         return NULL;

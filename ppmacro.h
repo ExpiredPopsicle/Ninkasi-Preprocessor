@@ -31,14 +31,17 @@ void destroyPreprocessorMacro(
 struct PreprocessorMacro *createPreprocessorMacro(void);
 
 nkbool preprocessorMacroAddArgument(
+    struct PreprocessorState *state,
     struct PreprocessorMacro *macro,
     const char *name);
 
 nkbool preprocessorMacroSetIdentifier(
+    struct PreprocessorState *state,
     struct PreprocessorMacro *macro,
     const char *identifier);
 
 nkbool preprocessorMacroSetDefinition(
+    struct PreprocessorState *state,
     struct PreprocessorMacro *macro,
     const char *definition);
 

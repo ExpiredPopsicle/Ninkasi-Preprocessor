@@ -43,7 +43,8 @@ struct PreprocessorToken *getNextToken(
     nkbool outputWhitespace)
 {
     nkbool success = nktrue;
-    struct PreprocessorToken *ret = mallocWrapper(sizeof(struct PreprocessorToken));
+    struct PreprocessorToken *ret = nkppMalloc(
+        state, sizeof(struct PreprocessorToken));
     if(!ret) {
         return NULL;
     }
@@ -90,7 +91,7 @@ struct PreprocessorToken *getNextToken(
     {
         // Double-hash (concatenation) symbol.
 
-        ret->str = mallocWrapper(3);
+        ret->str = nkppMalloc(state, 3);
         if(ret->str) {
             ret->str[0] = state->str[state->index];
             ret->str[1] = state->str[state->index+1];
@@ -105,7 +106,7 @@ struct PreprocessorToken *getNextToken(
 
         // Hash symbol.
 
-        ret->str = mallocWrapper(2);
+        ret->str = nkppMalloc(state, 2);
         if(ret->str) {
             ret->str[0] = state->str[state->index];
             ret->str[1] = 0;
@@ -118,7 +119,7 @@ struct PreprocessorToken *getNextToken(
 
         // Comma.
 
-        ret->str = mallocWrapper(2);
+        ret->str = nkppMalloc(state, 2);
         if(ret->str) {
             ret->str[0] = state->str[state->index];
             ret->str[1] = 0;
@@ -131,7 +132,7 @@ struct PreprocessorToken *getNextToken(
 
         // Open parenthesis.
 
-        ret->str = mallocWrapper(2);
+        ret->str = nkppMalloc(state, 2);
         if(ret->str) {
             ret->str[0] = state->str[state->index];
             ret->str[1] = 0;
@@ -144,7 +145,7 @@ struct PreprocessorToken *getNextToken(
 
         // Open parenthesis.
 
-        ret->str = mallocWrapper(2);
+        ret->str = nkppMalloc(state, 2);
         if(ret->str) {
             ret->str[0] = state->str[state->index];
             ret->str[1] = 0;
@@ -157,7 +158,7 @@ struct PreprocessorToken *getNextToken(
 
         // Unknown.
 
-        ret->str = mallocWrapper(2);
+        ret->str = nkppMalloc(state, 2);
         if(ret->str) {
             ret->str[0] = state->str[state->index];
             ret->str[1] = 0;
@@ -245,7 +246,7 @@ char *readRestOfLine(
     }
 
     // Create and fill the return buffer.
-    ret = mallocWrapper(lineBufLen);
+    ret = nkppMalloc(state, lineBufLen);
     if(ret) {
         memcpyWrapper(ret, state->str + lineStart, lineLen);
         ret[lineLen] = 0;
@@ -400,12 +401,12 @@ nkbool executeMacro(
                         goto executeMacro_cleanup;
                     }
 
-                    if(!preprocessorMacroSetIdentifier(newMacro, argument->name)) {
+                    if(!preprocessorMacroSetIdentifier(state, newMacro, argument->name)) {
                         ret = nkfalse;
                         goto executeMacro_cleanup;
                     }
 
-                    if(!preprocessorMacroSetDefinition(newMacro, argumentText)) {
+                    if(!preprocessorMacroSetDefinition(state, newMacro, argumentText)) {
                         ret = nkfalse;
                         goto executeMacro_cleanup;
                     }
@@ -540,7 +541,7 @@ nkbool handleStringification(
             if(executeMacro(macroState, macro, recursionLevel)) {
 
                 // Escape the string and add it to the output.
-                escapedStr = escapeString(macroState->output);
+                escapedStr = escapeString(state, macroState->output);
                 if(escapedStr) {
                     appendString(state, "\"");
                     appendString(state, escapedStr);
@@ -797,7 +798,7 @@ int main(int argc, char *argv[])
         setAllocationFailureTestLimits(
             ~(nkuint32_t)0, counter);
 
-        state = createPreprocessorState(&errorState);
+        state = createPreprocessorState(&errorState, NULL);
         if(!state) {
             printf("Allocation failure on state creation.\n");
             // return 0;

@@ -12,7 +12,7 @@ nkbool handleIfdefReal(
 {
     nkbool ret = nkfalse;
     struct PreprocessorState *directiveParseState =
-        createPreprocessorState(state->errorState);
+        createPreprocessorState(state->errorState, state->memoryCallbacks);
     struct PreprocessorToken *identifierToken = NULL;
     struct PreprocessorMacro *macro = NULL;
 
@@ -98,7 +98,7 @@ nkbool handleUndef(
     struct PreprocessorToken *identifierToken = NULL;
 
     directiveParseState =
-        createPreprocessorState(state->errorState);
+        createPreprocessorState(state->errorState, state->memoryCallbacks);
     if(!directiveParseState) {
         return nkfalse;
     }
@@ -152,7 +152,8 @@ nkbool handleDefine(
     struct PreprocessorToken *argToken = NULL;
 
     // Setup pp state.
-    directiveParseState = createPreprocessorState(state->errorState);
+    directiveParseState = createPreprocessorState(
+        state->errorState, state->memoryCallbacks);
     if(!directiveParseState) {
         ret = nkfalse;
         goto handleDefine_cleanup;
@@ -182,8 +183,7 @@ nkbool handleDefine(
     }
 
     if(!preprocessorMacroSetIdentifier(
-        macro,
-        identifierToken->str))
+            state, macro, identifierToken->str))
     {
         ret = nkfalse;
         goto handleDefine_cleanup;
@@ -261,7 +261,9 @@ nkbool handleDefine(
                     if(argToken->type == NK_PPTOKEN_IDENTIFIER) {
 
                         // Valid identifier.
-                        if(!preprocessorMacroAddArgument(macro, argToken->str)) {
+                        if(!preprocessorMacroAddArgument(
+                                state, macro, argToken->str))
+                        {
                             ret = nkfalse;
                         }
                         expectingComma = nktrue;
@@ -308,7 +310,7 @@ nkbool handleDefine(
 
     // Set it.
     if(!preprocessorMacroSetDefinition(
-            macro, definition))
+            state, macro, definition))
     {
         ret = nkfalse;
         goto handleDefine_cleanup;

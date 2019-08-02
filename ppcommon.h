@@ -19,6 +19,8 @@ typedef unsigned char nkuint8_t;
 #define strcmpWrapper(x, y) strcmp(x, y)
 #define memcpy(x, y, z) dont_use_memcpy_directly
 
+struct PreprocessorState;
+
 nkbool nkiCompilerIsValidIdentifierCharacter(char c, nkbool isFirstCharacter);
 nkbool nkiCompilerIsWhitespace(char c);
 void nkiCompilerPreprocessorSkipWhitespace(
@@ -27,7 +29,7 @@ void nkiCompilerPreprocessorSkipWhitespace(
 nkbool nkiCompilerIsNumber(char c);
 void nkiMemcpy(void *dst, const void *src, nkuint32_t len);
 void nkiDbgAppendEscaped(nkuint32_t bufSize, char *dst, const char *src);
-char *escapeString(const char *src);
+char *escapeString(struct PreprocessorState *state, const char *src);
 
 
 
@@ -40,6 +42,7 @@ void *mallocWrapper(nkuint32_t size);
 void freeWrapper(void *ptr);
 void *reallocWrapper(void *ptr, nkuint32_t size);
 char *strdupWrapper(const char *s);
+char *nkppStrdup(struct PreprocessorState *state, const char *s);
 
 void setAllocationFailureTestLimits(
     nkuint32_t limitMemory,

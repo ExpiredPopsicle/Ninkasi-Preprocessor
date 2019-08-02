@@ -35,6 +35,7 @@ struct PreprocessorMacro *createPreprocessorMacro(void)
 
 // MEMSAFE
 nkbool preprocessorMacroAddArgument(
+    struct PreprocessorState *state,
     struct PreprocessorMacro *macro,
     const char *name)
 {
@@ -44,7 +45,7 @@ nkbool preprocessorMacroAddArgument(
         return nkfalse;
     }
 
-    arg->name = strdupWrapper(name);
+    arg->name = nkppStrdup(state, name);
     if(!arg->name) {
         freeWrapper(arg);
         return nkfalse;
@@ -74,6 +75,7 @@ nkbool preprocessorMacroAddArgument(
 
 // MEMSAFE
 nkbool preprocessorMacroSetIdentifier(
+    struct PreprocessorState *state,
     struct PreprocessorMacro *macro,
     const char *identifier)
 {
@@ -94,6 +96,7 @@ nkbool preprocessorMacroSetIdentifier(
 
 // MEMSAFE
 nkbool preprocessorMacroSetDefinition(
+    struct PreprocessorState *state,
     struct PreprocessorMacro *macro,
     const char *definition)
 {

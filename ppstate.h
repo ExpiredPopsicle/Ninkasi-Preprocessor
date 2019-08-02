@@ -22,6 +22,16 @@ struct PreprocessorErrorState
     struct PreprocessorError *lastError;
 };
 
+typedef void *(*NkppMallocWrapper)(void *userData, nkuint32_t size);
+typedef void (*NkppFreeWrapper)(void *userData, void *ptr);
+
+struct PreprocessorMemoryCallbacks
+{
+    NkppFreeWrapper freeWrapper;
+    NkppMallocWrapper mallocWrapper;
+    void *userData;
+};
+
 // Main preprocessor state object.
 struct PreprocessorState
 {
@@ -64,13 +74,16 @@ struct PreprocessorState
 
     nkuint32_t nestedPassedIfs;
     nkuint32_t nestedFailedIfs;
+
+    struct PreprocessorMemoryCallbacks *memoryCallbacks;
 };
 
 // ----------------------------------------------------------------------
 // General state object
 
 struct PreprocessorState *createPreprocessorState(
-    struct PreprocessorErrorState *errorState);
+    struct PreprocessorErrorState *errorState,
+    struct PreprocessorMemoryCallbacks *memoryCallbacks);
 
 void destroyPreprocessorState(struct PreprocessorState *state);
 
@@ -167,5 +180,12 @@ nkbool preprocessorStatePopIfResult(
 /// For handling the topmost "else" statement.
 nkbool preprocessorStateFlipIfResult(
     struct PreprocessorState *state);
+
+// ----------------------------------------------------------------------
+// Allocations within the parser
+
+void *nkppMalloc(struct PreprocessorState *state, nkuint32_t size);
+
+void nkppFree(struct PreprocessorState *state, void *ptr);
 
 #endif // NK_PPSTATE_H
