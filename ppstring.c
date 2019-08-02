@@ -1,7 +1,7 @@
 #include "ppstate.h"
 #include "ppstring.h"
 
-char *deleteBackslashNewlines(
+char *nkppDeleteBackslashNewlines(
     struct PreprocessorState *state,
     const char *str)
 {
@@ -44,7 +44,7 @@ char *deleteBackslashNewlines(
     return NULL;
 }
 
-char *stripCommentsAndTrim(
+char *nkppStripCommentsAndTrim(
     struct PreprocessorState *state,
     const char *in)
 {
@@ -112,6 +112,20 @@ char *stripCommentsAndTrim(
                 readIndex++;
             }
 
+        } else if(in[readIndex] == '/' && in[readIndex + 1] == '*') {
+
+            // C-style comment. Run through until we hit the end or a "*/".
+
+            readIndex += 2; // Skip initial comment maker.
+
+            while(in[readIndex] && in[readIndex+1]) {
+                if(in[readIndex] == '*' && in[readIndex + 1] == '/') {
+                    readIndex += 2;
+                    break;
+                }
+                readIndex++;
+            }
+
         } else {
 
             // Just write the character.
@@ -130,4 +144,41 @@ char *stripCommentsAndTrim(
 
     ret[writeIndex] = 0;
     return ret;
+}
+
+char *nkppEscapeString(
+    struct PreprocessorState *state,
+    const char *src)
+{
+    char *output;
+    nkuint32_t bufferLen;
+    nkbool overflow = nkfalse;
+
+    // Return an empty string if input is MULL.
+    if(!src) {
+        output = nkppMalloc(state, 1);
+        if(output) {
+            output[0] = 0;
+        }
+        return output;
+    }
+
+    // Just make a buffer that's twice as big in case literally every
+    // single character needs to be escaped.
+    bufferLen = strlenWrapper(src);
+    NK_CHECK_OVERFLOW_UINT_MUL(bufferLen, 2, bufferLen, overflow);
+    NK_CHECK_OVERFLOW_UINT_ADD(bufferLen, 1, bufferLen, overflow);
+    if(overflow) {
+        return NULL;
+    }
+
+    output = nkppMalloc(state, bufferLen);
+    if(!output) {
+        return NULL;
+    }
+
+    output[0] = 0;
+    nkiDbgAppendEscaped(bufferLen, output, src);
+
+    return output;
 }

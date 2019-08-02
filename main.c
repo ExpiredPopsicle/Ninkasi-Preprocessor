@@ -177,7 +177,7 @@ struct PreprocessorToken *getNextToken(
 }
 
 // MEMSAFE
-char *readRestOfLine(
+char *nkppReadRestOfLine(
     struct PreprocessorState *state,
     nkuint32_t *actualLineCount)
 {
@@ -191,7 +191,30 @@ char *readRestOfLine(
 
     while(state->str[state->index]) {
 
-        if(state->str[state->index] == '\\') {
+        if(state->str[state->index] == '/' && state->str[state->index + 1] == '*') {
+
+            // C-style comment.
+
+            // Skip initial comment maker.
+            if(!skipChar(state, nktrue) || !skipChar(state, nktrue)) {
+                return nkfalse;
+            }
+
+            while(state->str[state->index] && state->str[state->index + 1]) {
+                if(state->str[state->index] == '*' && state->str[state->index + 1] == '/') {
+                    if(!skipChar(state, nktrue) || !skipChar(state, nktrue)) {
+                        return nkfalse;
+                    }
+                    break;
+                }
+                if(!skipChar(state, nktrue)) {
+                    return nkfalse;
+                }
+            }
+
+            lastCharWasBackslash = nkfalse;
+
+        } else if(state->str[state->index] == '\\') {
 
             lastCharWasBackslash = !lastCharWasBackslash;
 
@@ -305,7 +328,10 @@ nkbool handleDirective(
 
     // Reformat the block so we don't have to worry about escaped
     // newlines and stuff.
-    deletedBackslashes = deleteBackslashNewlines(state, restOfLine);
+    deletedBackslashes =
+        nkppDeleteBackslashNewlines(
+            state,
+            restOfLine);
     if(!deletedBackslashes) {
         return nkfalse;
     }
@@ -383,7 +409,7 @@ nkbool executeMacro(
                     goto executeMacro_cleanup;
                 }
 
-                argumentText = stripCommentsAndTrim(
+                argumentText = nkppStripCommentsAndTrim(
                     state, unstrippedArgumentText);
                 if(!argumentText) {
                     ret = nkfalse;
@@ -542,7 +568,8 @@ nkbool handleStringification(
             if(executeMacro(macroState, macro, recursionLevel)) {
 
                 // Escape the string and add it to the output.
-                escapedStr = escapeString(state, macroState->output);
+                escapedStr = nkppEscapeString(
+                    state, macroState->output);
                 if(escapedStr) {
                     appendString(state, "\"");
                     appendString(state, escapedStr);
@@ -623,7 +650,10 @@ nkbool preprocess(
                         if(directiveIsValid(directiveNameToken->str)) {
 
                             nkuint32_t lineCount = 0;
-                            line = readRestOfLine(state, &lineCount);
+
+                            line = nkppReadRestOfLine(
+                                state, &lineCount);
+
                             if(!line) {
 
                                 ret = nkfalse;

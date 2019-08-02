@@ -136,3 +136,12 @@ printLine();
 printLine();
 printLine;
 
+
+#undef foo
+#define foo /* this is a c-style comment
+with a new line */ asdf
+foo
+
+/*
+#define stuff inside
+*/

@@ -301,7 +301,7 @@ nkbool handleDefine(
     }
 
     // Read the macro definition.
-    definition = stripCommentsAndTrim(
+    definition = nkppStripCommentsAndTrim(
         state,
         directiveParseState->str + directiveParseState->index);
     if(!definition) {

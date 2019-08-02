@@ -2,6 +2,7 @@
 #include "ppstate.h"
 #include "ppmacro.h"
 #include "pptoken.h"
+#include "ppstring.h"
 
 #include <assert.h>
 
@@ -100,7 +101,8 @@ void destroyPreprocessorState(struct PreprocessorState *state)
 nkbool preprocessorStateWritePositionMarker(struct PreprocessorState *state)
 {
     char numberStr[128];
-    char *escapedFilenameStr = escapeString(state, state->filename);
+    char *escapedFilenameStr =
+        nkppEscapeString(state, state->filename);
     nkbool ret = nktrue;
 
     if(!escapedFilenameStr) {
@@ -324,9 +326,31 @@ nkbool skipWhitespaceAndComments(
     while(state->str[state->index]) {
 
         // Skip comments (but output them).
-        if(state->str[state->index] == '/' && state->str[state->index] == '/') {
+        if(state->str[state->index] == '/' && state->str[state->index + 1] == '/') {
 
+            // C++-style comment.
             while(state->str[state->index] && state->str[state->index] != '\n') {
+                if(!skipChar(state, output)) {
+                    return nkfalse;
+                }
+            }
+
+        } else if(state->str[state->index] == '/' && state->str[state->index + 1] == '*') {
+
+            // C-style comment.
+
+            // Skip initial comment maker.
+            if(!skipChar(state, output) || !skipChar(state, output)) {
+                return nkfalse;
+            }
+
+            while(state->str[state->index] && state->str[state->index + 1]) {
+                if(state->str[state->index] == '*' && state->str[state->index + 1] == '/') {
+                    if(!skipChar(state, output) || !skipChar(state, output)) {
+                        return nkfalse;
+                    }
+                    break;
+                }
                 if(!skipChar(state, output)) {
                     return nkfalse;
                 }

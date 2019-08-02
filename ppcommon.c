@@ -100,43 +100,6 @@ void nkiDbgAppendEscaped(nkuint32_t bufSize, char *dst, const char *src)
     dst[i] = 0;
 }
 
-// MEMSAFE
-char *escapeString(
-    struct PreprocessorState *state,
-    const char *src)
-{
-    char *output;
-    nkuint32_t bufferLen;
-    nkbool overflow = nkfalse;
-
-    // Return an empty string if input is MULL.
-    if(!src) {
-        output = nkppMalloc(state, 1);
-        if(output) {
-            output[0] = 0;
-        }
-        return output;
-    }
-
-    // Just make a buffer that's twice as big in case literally every
-    // single character needs to be escaped.
-    bufferLen = strlenWrapper(src);
-    NK_CHECK_OVERFLOW_UINT_MUL(bufferLen, 2, bufferLen, overflow);
-    NK_CHECK_OVERFLOW_UINT_ADD(bufferLen, 1, bufferLen, overflow);
-    if(overflow) {
-        return NULL;
-    }
-
-    output = nkppMalloc(state, bufferLen);
-    if(!output) {
-        return NULL;
-    }
-
-    output[0] = 0;
-    nkiDbgAppendEscaped(bufferLen, output, src);
-
-    return output;
-}
 
 
 struct AllocHeader

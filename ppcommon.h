@@ -29,7 +29,6 @@ void nkiCompilerPreprocessorSkipWhitespace(
 nkbool nkiCompilerIsNumber(char c);
 void nkiMemcpy(void *dst, const void *src, nkuint32_t len);
 void nkiDbgAppendEscaped(nkuint32_t bufSize, char *dst, const char *src);
-char *escapeString(struct PreprocessorState *state, const char *src);
 
 
 

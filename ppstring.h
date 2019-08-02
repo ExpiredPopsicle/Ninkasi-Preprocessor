@@ -3,8 +3,17 @@
 
 #include "ppcommon.h"
 
-char *deleteBackslashNewlines(struct PreprocessorState *state, const char *str);
-char *stripCommentsAndTrim(struct PreprocessorState *state, const char *in);
+/// Return a new copy of a string with all the special characters
+/// escaped with backslashes.
+char *nkppEscapeString(struct PreprocessorState *state, const char *src);
+
+/// Return a new copy of a string with all the escaped newlines
+/// removed.
+char *nkppDeleteBackslashNewlines(struct PreprocessorState *state, const char *str);
+
+/// Return a new copy of a string with comments removed, and any
+/// whitespace at the start and end trimmed off.
+char *nkppStripCommentsAndTrim(struct PreprocessorState *state, const char *in);
 
 #endif // NK_PPSTRING_H
 
