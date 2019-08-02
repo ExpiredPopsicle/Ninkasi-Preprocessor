@@ -567,7 +567,7 @@ nkbool handleStringification(
     return ret;
 }
 
-// FIXME: Make MEMSAFE
+// MEMSAFE
 nkbool preprocess(
     struct PreprocessorState *state,
     const char *str,
@@ -622,30 +622,37 @@ nkbool preprocess(
 
                             nkuint32_t lineCount = 0;
                             line = readRestOfLine(state, &lineCount);
+                            if(!line) {
 
-                            if(handleDirective(
-                                    state,
-                                    directiveNameToken->str,
-                                    line))
-                            {
-
-                                // That went well.
+                                ret = nkfalse;
 
                             } else {
 
-                                // I don't know if we really need to
-                                // report an error here, because an error
-                                // would have been added in
-                                // handleDirective() for whatever went
-                                // wrong.
-                                preprocessorStateAddError(
-                                    state, "Bad directive.");
-                                ret = nkfalse;
-                            }
+                                if(handleDirective(
+                                        state,
+                                        directiveNameToken->str,
+                                        line))
+                                {
 
-                            // Clean up.
-                            freeWrapper(line);
-                            line = NULL;
+                                    // That went well.
+
+                                } else {
+
+                                    // I don't know if we really need
+                                    // to report an error here,
+                                    // because an error would have
+                                    // been added in handleDirective()
+                                    // for whatever went wrong.
+                                    preprocessorStateAddError(
+                                        state, "Bad directive.");
+                                    ret = nkfalse;
+                                }
+
+                                // Clean up.
+                                freeWrapper(line);
+                                line = NULL;
+
+                            }
 
                         } else {
 
@@ -665,29 +672,34 @@ nkbool preprocess(
                     // '#', so we're going to ignore it and just
                     // output it directly as though it's not a
                     // preprocessor directive.
-                    appendString(state, token->str);
+                    if(!appendString(state, token->str)) {
+                        ret = nkfalse;
+                    }
 
                 }
 
 
             } else if(token->type == NK_PPTOKEN_IDENTIFIER) {
 
-                // TODO: Check for macro, then do a thing if it is,
-                // otherwise just output.
-
+                // See if we can find a macro with this name.
                 struct PreprocessorMacro *macro =
                     preprocessorStateFindMacro(
                         state, token->str);
 
                 if(macro) {
 
-                    executeMacro(state, macro, recursionLevel);
+                    // Execute that macro.
+                    if(!executeMacro(state, macro, recursionLevel)) {
+                        ret = nkfalse;
+                    }
 
                 } else {
 
                     // This is an identifier, but it's not a defined
                     // macro.
-                    appendString(state, token->str);
+                    if(!appendString(state, token->str)) {
+                        ret = nkfalse;
+                    }
 
                 }
 
@@ -695,7 +707,9 @@ nkbool preprocess(
 
                 // We don't know what this is. It's probably not for
                 // us. Just pass it through.
-                appendString(state, token->str);
+                if(!appendString(state, token->str)) {
+                    ret = nkfalse;
+                }
 
             }
 
@@ -724,7 +738,6 @@ char *loadFile(const char *filename)
     }
 
     ret = mallocWrapper(fileSize + 1);
-
     if(!ret) {
         fclose(in);
         return NULL;
@@ -761,8 +774,8 @@ int main(int argc, char *argv[])
     // for(nkuint32_t counter = 4200; counter < 2000000; counter++) {
     // for(nkuint32_t counter = 0; counter < 2430; counter++) {
     // for(nkuint32_t counter = 0; counter < 1; counter++) {
-    for(nkuint32_t counter = 18830; counter < 2000000; counter++) {
-    // for(nkuint32_t counter = 18830; counter < 18831; counter++) {
+    // for(nkuint32_t counter = 18830; counter < 2000000; counter++) {
+    for(nkuint32_t counter = 18830; counter < 18831; counter++) {
     // for(nkuint32_t counter = 0; counter < 18831; counter++) {
     // for(nkuint32_t counter = 2432; counter < 18831; counter++) {
 
