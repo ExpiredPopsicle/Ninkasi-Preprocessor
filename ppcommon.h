@@ -33,8 +33,6 @@ char *escapeString(struct PreprocessorState *state, const char *src);
 
 
 
-// #define mallocWrapper(x) malloc(x)
-// #define freeWrapper(x) free(x)
 
 void *mallocWrapper(nkuint32_t size);
 void freeWrapper(void *ptr);

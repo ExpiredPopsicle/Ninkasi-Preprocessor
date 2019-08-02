@@ -1,7 +1,9 @@
+#include "ppstate.h"
 #include "ppstring.h"
 
-// MEMSAFE
-char *deleteBackslashNewlines(const char *str)
+char *deleteBackslashNewlines(
+    struct PreprocessorState *state,
+    const char *str)
 {
     if(str) {
 
@@ -14,7 +16,7 @@ char *deleteBackslashNewlines(const char *str)
 
         if(!overflow) {
 
-            outputStr = mallocWrapper(outputLen);
+            outputStr = nkppMalloc(state, outputLen);
 
             if(outputStr) {
 
@@ -42,8 +44,9 @@ char *deleteBackslashNewlines(const char *str)
     return NULL;
 }
 
-// MEMSAFE
-char *stripCommentsAndTrim(const char *in)
+char *stripCommentsAndTrim(
+    struct PreprocessorState *state,
+    const char *in)
 {
     char *ret;
     nkuint32_t readIndex = 0;
@@ -60,7 +63,7 @@ char *stripCommentsAndTrim(const char *in)
         return NULL;
     }
 
-    ret = mallocWrapper(bufLen);
+    ret = nkppMalloc(state, bufLen);
     if(!ret) {
         return NULL;
     }

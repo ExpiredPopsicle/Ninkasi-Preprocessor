@@ -18,10 +18,11 @@ void destroyPreprocessorMacro(struct PreprocessorMacro *macro)
 }
 
 // MEMSAFE
-struct PreprocessorMacro *createPreprocessorMacro(void)
+struct PreprocessorMacro *createPreprocessorMacro(
+    struct PreprocessorState *state)
 {
     struct PreprocessorMacro *ret =
-        mallocWrapper(sizeof(struct PreprocessorMacro));
+        nkppMalloc(state, sizeof(struct PreprocessorMacro));
 
     if(ret) {
         ret->identifier = NULL;
@@ -41,7 +42,9 @@ nkbool preprocessorMacroAddArgument(
     const char *name)
 {
     struct PreprocessorMacroArgument *arg =
-        mallocWrapper(sizeof(struct PreprocessorMacroArgument));
+        nkppMalloc(
+            state,
+            sizeof(struct PreprocessorMacroArgument));
     if(!arg) {
         return nkfalse;
     }
@@ -125,7 +128,7 @@ struct PreprocessorMacro *preprocessorMacroClone(
     struct PreprocessorMacroArgument *currentArgument;
     struct PreprocessorMacroArgument **argumentWritePtr;
 
-    ret = createPreprocessorMacro();
+    ret = createPreprocessorMacro(state);
     if(!ret) {
         return NULL;
     }
@@ -150,7 +153,9 @@ struct PreprocessorMacro *preprocessorMacroClone(
     while(currentArgument) {
 
         struct PreprocessorMacroArgument *clonedArg =
-            mallocWrapper(sizeof(struct PreprocessorMacroArgument));
+            nkppMalloc(
+                state,
+                sizeof(struct PreprocessorMacroArgument));
         if(!clonedArg) {
             destroyPreprocessorMacro(ret);
             return NULL;

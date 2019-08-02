@@ -395,7 +395,7 @@ struct PreprocessorMacro *preprocessorStateFindMacro(
         if(!currentMacro) {
 
             currentMacro =
-                createPreprocessorMacro();
+                createPreprocessorMacro(state);
 
             if(currentMacro) {
                 if(preprocessorMacroSetIdentifier(

@@ -28,7 +28,8 @@ struct PreprocessorMacro
 void destroyPreprocessorMacro(
     struct PreprocessorMacro *macro);
 
-struct PreprocessorMacro *createPreprocessorMacro(void);
+struct PreprocessorMacro *createPreprocessorMacro(
+    struct PreprocessorState *state);
 
 nkbool preprocessorMacroAddArgument(
     struct PreprocessorState *state,

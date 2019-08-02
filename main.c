@@ -53,7 +53,7 @@ struct PreprocessorToken *getNextToken(
     ret->type = NK_PPTOKEN_UNKNOWN;
 
     if(!skipWhitespaceAndComments(state, outputWhitespace, nkfalse)) {
-        freeWrapper(ret);
+        nkppFree(state, ret);
         return NULL;
     }
 
@@ -61,7 +61,7 @@ struct PreprocessorToken *getNextToken(
 
     // Bail out if we're at the end.
     if(!state->str[state->index]) {
-        freeWrapper(ret);
+        nkppFree(state, ret);
         return NULL;
     }
 
@@ -168,8 +168,8 @@ struct PreprocessorToken *getNextToken(
     }
 
     if(!ret->str || !success) {
-        freeWrapper(ret->str);
-        freeWrapper(ret);
+        nkppFree(state, ret->str);
+        nkppFree(state, ret);
         ret = NULL;
     }
 
@@ -305,7 +305,7 @@ nkbool handleDirective(
 
     // Reformat the block so we don't have to worry about escaped
     // newlines and stuff.
-    deletedBackslashes = deleteBackslashNewlines(restOfLine);
+    deletedBackslashes = deleteBackslashNewlines(state, restOfLine);
     if(!deletedBackslashes) {
         return nkfalse;
     }
@@ -327,7 +327,7 @@ nkbool handleDirective(
     // Update file/line markers, in case they've changed.
     preprocessorStateFlagFileLineMarkersForUpdate(state);
 
-    freeWrapper(deletedBackslashes);
+    nkppFree(state, deletedBackslashes);
 
     return ret;
 }
@@ -383,19 +383,20 @@ nkbool executeMacro(
                     goto executeMacro_cleanup;
                 }
 
-                argumentText = stripCommentsAndTrim(unstrippedArgumentText);
+                argumentText = stripCommentsAndTrim(
+                    state, unstrippedArgumentText);
                 if(!argumentText) {
                     ret = nkfalse;
                     goto executeMacro_cleanup;
                 }
 
-                freeWrapper(unstrippedArgumentText);
+                nkppFree(state, unstrippedArgumentText);
                 unstrippedArgumentText = NULL;
 
                 // Add the argument as a macro to
                 // the new cloned state.
                 {
-                    newMacro = createPreprocessorMacro();
+                    newMacro = createPreprocessorMacro(state);
                     if(!newMacro) {
                         ret = nkfalse;
                         goto executeMacro_cleanup;
@@ -415,7 +416,7 @@ nkbool executeMacro(
                     newMacro = NULL;
                 }
 
-                freeWrapper(argumentText);
+                nkppFree(state, argumentText);
                 argumentText = NULL;
 
                 if(!skipWhitespaceAndComments(state, nkfalse, nkfalse)) {
@@ -506,10 +507,10 @@ executeMacro_cleanup:
         destroyPreprocessorState(clonedState);
     }
     if(unstrippedArgumentText) {
-        freeWrapper(unstrippedArgumentText);
+        nkppFree(state, unstrippedArgumentText);
     }
     if(argumentText) {
-        freeWrapper(argumentText);
+        nkppFree(state, argumentText);
     }
     if(newMacro) {
         destroyPreprocessorMacro(newMacro);
@@ -546,7 +547,7 @@ nkbool handleStringification(
                     appendString(state, "\"");
                     appendString(state, escapedStr);
                     appendString(state, "\"");
-                    freeWrapper(escapedStr);
+                    nkppFree(state, escapedStr);
                 }
 
                 // Skip past the stuff we read in the
@@ -650,7 +651,7 @@ nkbool preprocess(
                                 }
 
                                 // Clean up.
-                                freeWrapper(line);
+                                nkppFree(state, line);
                                 line = NULL;
 
                             }
@@ -757,7 +758,7 @@ char *loadFile(
         // Allocate new chunk.
         newRet = nkppRealloc(state, ret, fileSize + 1);
         if(!newRet) {
-            freeWrapper(ret);
+            nkppFree(state, ret);
             fclose(in);
             return NULL;
         }
@@ -838,8 +839,6 @@ int main(int argc, char *argv[])
                 printf("%s\n", state->output);
             }
 
-            // freeWrapper(preprocessed);
-            destroyPreprocessorState(state);
         }
 
         while(errorState.firstError) {
@@ -851,14 +850,17 @@ int main(int argc, char *argv[])
 
             {
                 struct PreprocessorError *next = errorState.firstError->next;
-                freeWrapper(errorState.firstError->filename);
-                freeWrapper(errorState.firstError->text);
-                freeWrapper(errorState.firstError);
+                nkppFree(state, errorState.firstError->filename);
+                nkppFree(state, errorState.firstError->text);
+                nkppFree(state, errorState.firstError);
                 errorState.firstError = next;
             }
         }
 
-        freeWrapper(testStr2);
+        nkppFree(state, testStr2);
+
+        destroyPreprocessorState(state);
+
     }
 
     return 0;

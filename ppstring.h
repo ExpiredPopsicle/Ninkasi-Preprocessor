@@ -3,8 +3,8 @@
 
 #include "ppcommon.h"
 
-char *deleteBackslashNewlines(const char *str);
-char *stripCommentsAndTrim(const char *in);
+char *deleteBackslashNewlines(struct PreprocessorState *state, const char *str);
+char *stripCommentsAndTrim(struct PreprocessorState *state, const char *in);
 
 #endif // NK_PPSTRING_H
 

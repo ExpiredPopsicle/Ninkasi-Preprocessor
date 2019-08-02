@@ -161,7 +161,7 @@ nkbool handleDefine(
     directiveParseState->str = restOfLine;
 
     // Setup new macro.
-    macro = createPreprocessorMacro();
+    macro = createPreprocessorMacro(state);
     if(!macro) {
         ret = nkfalse;
         goto handleDefine_cleanup;
@@ -302,6 +302,7 @@ nkbool handleDefine(
 
     // Read the macro definition.
     definition = stripCommentsAndTrim(
+        state,
         directiveParseState->str + directiveParseState->index);
     if(!definition) {
         ret = nkfalse;
@@ -341,7 +342,7 @@ handleDefine_cleanup:
         destroyToken(identifierToken);
     }
     if(definition) {
-        freeWrapper(definition);
+        nkppFree(state, definition);
     }
     if(openParenToken) {
         destroyToken(openParenToken);
