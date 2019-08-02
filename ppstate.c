@@ -56,12 +56,14 @@ struct PreprocessorState *createPreprocessorState(
         ret->macros = NULL;
         ret->writePositionMarkers = nkfalse;
         ret->updateMarkers = nkfalse;
-        ret->filename = strdupWrapper("<unknown>");
         ret->errorState = errorState;
         ret->nestedPassedIfs = 0;
         ret->nestedFailedIfs = 0;
         ret->memoryCallbacks = memoryCallbacks;
 
+        // Memory callbacks now set up. Can use normal functions that
+        // require allocations.
+        ret->filename = nkppStrdup(ret, "<unknown>");
         if(!ret->filename) {
             localFreeWrapper(userData, ret);
             return NULL;
@@ -166,7 +168,8 @@ nkbool appendChar_real(struct PreprocessorState *state, char c)
     }
 
     // Reallocate chunk.
-    newChunk = reallocWrapper(state->output, allocLen);
+    newChunk = nkppRealloc(
+        state, state->output, allocLen);
     if(!newChunk) {
         return nkfalse;
     }
@@ -452,7 +455,7 @@ nkbool preprocessorStateDeleteMacro(
 
 // MEMSAFE
 struct PreprocessorState *preprocessorStateClone(
-    const struct PreprocessorState *state)
+    struct PreprocessorState *state)
 {
     struct PreprocessorState *ret = createPreprocessorState(
         state->errorState, state->memoryCallbacks);
@@ -467,7 +470,7 @@ struct PreprocessorState *preprocessorStateClone(
     ret->index = state->index;
     ret->lineNumber = state->lineNumber;
     ret->outputLineNumber = state->outputLineNumber;
-    ret->output = state->output ? strdupWrapper(state->output) : NULL;
+    ret->output = state->output ? nkppStrdup(state, state->output) : NULL;
 
     if(state->output && !ret->output) {
         destroyPreprocessorState(ret);
@@ -490,7 +493,7 @@ struct PreprocessorState *preprocessorStateClone(
     while(currentMacro) {
 
         struct PreprocessorMacro *clonedMacro =
-            preprocessorMacroClone(currentMacro);
+            preprocessorMacroClone(state, currentMacro);
         if(!clonedMacro) {
             destroyPreprocessorState(ret);
             return NULL;
@@ -767,9 +770,9 @@ void preprocessorStateAddError(
 
         if(newError) {
 
-            newError->filename = strdupWrapper(state->filename);
+            newError->filename = nkppStrdup(state, state->filename);
             newError->lineNumber = state->lineNumber;
-            newError->text = strdupWrapper(errorMessage);
+            newError->text = nkppStrdup(state, errorMessage);
             newError->next = NULL;
 
             if(state->errorState->lastError) {
@@ -809,7 +812,7 @@ nkbool preprocessorStateSetFilename(
         state->filename = NULL;
     }
 
-    state->filename = strdupWrapper(filename);
+    state->filename = nkppStrdup(state, filename);
 
     if(!state->filename) {
         return nkfalse;

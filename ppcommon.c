@@ -232,19 +232,21 @@ void freeWrapper(void *ptr)
     //     (long)maxUsage);
 }
 
-// MEMSAFE
-void *reallocWrapper(void *ptr, nkuint32_t size)
+void *nkppRealloc(
+    struct PreprocessorState *state,
+    void *ptr,
+    nkuint32_t size)
 {
     if(!ptr) {
 
-        return mallocWrapper(size);
+        return nkppMalloc(state, size);
 
     } else {
 
         struct AllocHeader *oldHeader;
         nkuint32_t oldSize;
 
-        void *newChunk = mallocWrapper(size);
+        void *newChunk = nkppMalloc(state, size);
         if(!newChunk) {
             return NULL;
         }
@@ -254,19 +256,13 @@ void *reallocWrapper(void *ptr, nkuint32_t size)
 
         memcpyWrapper(newChunk, ptr, size > oldSize ? oldSize : size);
 
-        freeWrapper(ptr);
+        nkppFree(state, ptr);
 
         return newChunk;
     }
 }
 
 char *nkppStrdup(struct PreprocessorState *state, const char *s)
-{
-    return strdupWrapper(s);
-}
-
-// FIXME: Remove this.
-char *strdupWrapper(const char *s)
 {
     nkuint32_t len = strlenWrapper(s);
     nkuint32_t size;
@@ -278,8 +274,7 @@ char *strdupWrapper(const char *s)
         return NULL;
     }
 
-    // ret = (char*)nkppMalloc(state, size);
-    ret = (char*)mallocWrapper(size);
+    ret = (char*)nkppMalloc(state, size);
     if(!ret) {
         return NULL;
     }

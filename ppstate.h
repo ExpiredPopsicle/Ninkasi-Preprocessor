@@ -88,7 +88,7 @@ struct PreprocessorState *createPreprocessorState(
 void destroyPreprocessorState(struct PreprocessorState *state);
 
 struct PreprocessorState *preprocessorStateClone(
-    const struct PreprocessorState *state);
+    struct PreprocessorState *state);
 
 /// Set the current file name. Used for error tracking.
 nkbool preprocessorStateSetFilename(

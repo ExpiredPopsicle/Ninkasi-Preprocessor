@@ -46,6 +46,7 @@ nkbool preprocessorMacroSetDefinition(
     const char *definition);
 
 struct PreprocessorMacro *preprocessorMacroClone(
+    struct PreprocessorState *state,
     const struct PreprocessorMacro *macro);
 
 #endif // NK_PPMACRO_H

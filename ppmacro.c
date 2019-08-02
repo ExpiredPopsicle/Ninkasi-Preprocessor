@@ -1,3 +1,4 @@
+#include "ppstate.h"
 #include "ppmacro.h"
 
 // MEMSAFE
@@ -80,12 +81,12 @@ nkbool preprocessorMacroSetIdentifier(
     const char *identifier)
 {
     if(macro->identifier) {
-        freeWrapper(macro->identifier);
+        nkppFree(state, macro->identifier);
         macro->identifier = NULL;
     }
 
     macro->identifier =
-        strdupWrapper(identifier ? identifier : "");
+        nkppStrdup(state, identifier ? identifier : "");
 
     if(!macro->identifier) {
         return nkfalse;
@@ -101,12 +102,12 @@ nkbool preprocessorMacroSetDefinition(
     const char *definition)
 {
     if(macro->definition) {
-        freeWrapper(macro->definition);
+        nkppFree(state, macro->definition);
         macro->definition = NULL;
     }
 
     macro->definition =
-        strdupWrapper(definition ? definition : "");
+        nkppStrdup(state, definition ? definition : "");
 
     if(!macro->definition) {
         return nkfalse;
@@ -117,6 +118,7 @@ nkbool preprocessorMacroSetDefinition(
 
 // MEMSAFE
 struct PreprocessorMacro *preprocessorMacroClone(
+    struct PreprocessorState *state,
     const struct PreprocessorMacro *macro)
 {
     struct PreprocessorMacro *ret;
@@ -128,13 +130,13 @@ struct PreprocessorMacro *preprocessorMacroClone(
         return NULL;
     }
 
-    ret->identifier = strdupWrapper(macro->identifier);
+    ret->identifier = nkppStrdup(state, macro->identifier);
     if(!ret->identifier) {
         destroyPreprocessorMacro(ret);
         return NULL;
     }
 
-    ret->definition = strdupWrapper(macro->definition);
+    ret->definition = nkppStrdup(state, macro->definition);
     if(!ret->definition) {
         destroyPreprocessorMacro(ret);
         return NULL;
@@ -155,7 +157,7 @@ struct PreprocessorMacro *preprocessorMacroClone(
         }
 
         clonedArg->next = NULL;
-        clonedArg->name = strdupWrapper(currentArgument->name);
+        clonedArg->name = nkppStrdup(state, currentArgument->name);
         if(!clonedArg->name) {
             destroyPreprocessorMacro(ret);
             return NULL;

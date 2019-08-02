@@ -35,14 +35,18 @@ char *escapeString(struct PreprocessorState *state, const char *src);
 
 // #define mallocWrapper(x) malloc(x)
 // #define freeWrapper(x) free(x)
-// #define reallocWrapper(x, y) realloc(x, y)
-// #define strdupWrapper(x) strdup(x)
 
 void *mallocWrapper(nkuint32_t size);
 void freeWrapper(void *ptr);
-void *reallocWrapper(void *ptr, nkuint32_t size);
-char *strdupWrapper(const char *s);
-char *nkppStrdup(struct PreprocessorState *state, const char *s);
+
+void *nkppRealloc(
+    struct PreprocessorState *state,
+    void *ptr,
+    nkuint32_t size);
+
+char *nkppStrdup(
+    struct PreprocessorState *state,
+    const char *s);
 
 void setAllocationFailureTestLimits(
     nkuint32_t limitMemory,

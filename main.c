@@ -727,7 +727,9 @@ nkbool preprocess(
 }
 
 // MEMSAFE
-char *loadFile(const char *filename)
+char *loadFile(
+    struct PreprocessorState *state,
+    const char *filename)
 {
     FILE *in = fopen(filename, "rb");
     nkuint32_t fileSize = 0;
@@ -738,7 +740,7 @@ char *loadFile(const char *filename)
         return NULL;
     }
 
-    ret = mallocWrapper(fileSize + 1);
+    ret = nkppMalloc(state, fileSize + 1);
     if(!ret) {
         fclose(in);
         return NULL;
@@ -753,7 +755,7 @@ char *loadFile(const char *filename)
         fileSize++;
 
         // Allocate new chunk.
-        newRet = reallocWrapper(ret, fileSize + 1);
+        newRet = nkppRealloc(state, ret, fileSize + 1);
         if(!newRet) {
             freeWrapper(ret);
             fclose(in);
@@ -805,7 +807,7 @@ int main(int argc, char *argv[])
             continue;
         }
 
-        testStr2 = loadFile("test.txt");
+        testStr2 = loadFile(state, "test.txt");
         if(!testStr2) {
             printf("Allocation failure on file load.\n");
             destroyPreprocessorState(state);
