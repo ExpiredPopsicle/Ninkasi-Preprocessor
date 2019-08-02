@@ -12,7 +12,7 @@ void *nkppDefaultMallocWrapper(void *userData, nkuint32_t size)
 
 void nkppDefaultFreeWrapper(void *userData, void *ptr)
 {
-    return freeWrapper(ptr);
+    freeWrapper(ptr);
 }
 
 void *nkppMalloc(struct PreprocessorState *state, nkuint32_t size)
@@ -84,7 +84,7 @@ void destroyPreprocessorState(struct PreprocessorState *state)
     struct PreprocessorMacro *currentMacro = state->macros;
     while(currentMacro) {
         struct PreprocessorMacro *next = currentMacro->next;
-        destroyPreprocessorMacro(currentMacro);
+        destroyPreprocessorMacro(state, currentMacro);
         currentMacro = next;
     }
 
@@ -404,7 +404,8 @@ struct PreprocessorMacro *preprocessorStateFindMacro(
                     preprocessorStateAddMacro(
                         state, currentMacro);
                 } else {
-                    destroyPreprocessorMacro(currentMacro);
+                    destroyPreprocessorMacro(
+                        state, currentMacro);
                     currentMacro = NULL;
                 }
             }
@@ -440,7 +441,8 @@ nkbool preprocessorStateDeleteMacro(
             *lastPtr = currentMacro->next;
             currentMacro->next = NULL;
 
-            destroyPreprocessorMacro(currentMacro);
+            destroyPreprocessorMacro(
+                state, currentMacro);
 
             return nktrue;
         }
@@ -727,12 +729,12 @@ char *readMacroArgument(struct PreprocessorState *state)
 
             // Add it.
             if(!appendString(readerState, token->str)) {
-                destroyToken(token);
+                destroyToken(state, token);
                 destroyPreprocessorState(readerState);
                 return NULL;
             }
 
-            destroyToken(token);
+            destroyToken(state, token);
         }
 
     } while(token);
@@ -753,7 +755,7 @@ char *readMacroArgument(struct PreprocessorState *state)
 // MEMSAFE
 void preprocessorStateClearOutput(struct PreprocessorState *state)
 {
-    freeWrapper(state->output);
+    nkppFree(state, state->output);
     state->output = NULL;
     state->outputLineNumber = 1;
 }
@@ -808,7 +810,7 @@ nkbool preprocessorStateSetFilename(
     const char *filename)
 {
     if(state->filename) {
-        freeWrapper(state->filename);
+        nkppFree(state, state->filename);
         state->filename = NULL;
     }
 

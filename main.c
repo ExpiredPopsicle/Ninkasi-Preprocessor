@@ -513,7 +513,7 @@ executeMacro_cleanup:
         nkppFree(state, argumentText);
     }
     if(newMacro) {
-        destroyPreprocessorMacro(newMacro);
+        destroyPreprocessorMacro(state, newMacro);
     }
 
     return ret;
@@ -663,7 +663,7 @@ nkbool preprocess(
                             }
                         }
 
-                        destroyToken(directiveNameToken);
+                        destroyToken(state, directiveNameToken);
                         directiveNameToken = NULL;
 
                     }
@@ -715,7 +715,7 @@ nkbool preprocess(
 
             }
 
-            destroyToken(token);
+            destroyToken(state, token);
             token = NULL;
 
         } else {

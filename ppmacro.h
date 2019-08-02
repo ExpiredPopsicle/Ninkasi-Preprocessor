@@ -26,6 +26,7 @@ struct PreprocessorMacro
 };
 
 void destroyPreprocessorMacro(
+    struct PreprocessorState *state,
     struct PreprocessorMacro *macro);
 
 struct PreprocessorMacro *createPreprocessorMacro(

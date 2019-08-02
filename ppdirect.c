@@ -48,7 +48,7 @@ nkbool handleIfdefReal(
     }
 
     if(identifierToken) {
-        destroyToken(identifierToken);
+        destroyToken(state, identifierToken);
     }
     if(directiveParseState) {
         destroyPreprocessorState(directiveParseState);
@@ -132,7 +132,7 @@ nkbool handleUndef(
 
     }
 
-    destroyToken(identifierToken);
+    destroyToken(state, identifierToken);
     destroyPreprocessorState(directiveParseState);
     return ret;
 }
@@ -207,7 +207,7 @@ nkbool handleDefine(
             goto handleDefine_cleanup;
         }
 
-        destroyToken(openParenToken);
+        destroyToken(state, openParenToken);
         openParenToken = NULL;
 
         // Parse the argument list.
@@ -226,7 +226,7 @@ nkbool handleDefine(
         } else if(argToken->type == NK_PPTOKEN_CLOSEPAREN) {
 
             // Zero-argument list. Nothing to do here.
-            destroyToken(argToken);
+            destroyToken(state, argToken);
             argToken = NULL;
 
         } else {
@@ -240,7 +240,7 @@ nkbool handleDefine(
                     if(argToken->type == NK_PPTOKEN_CLOSEPAREN) {
 
                         // We're done. Bail out.
-                        destroyToken(argToken);
+                        destroyToken(state, argToken);
                         argToken = NULL;
                         break;
 
@@ -272,7 +272,7 @@ nkbool handleDefine(
 
                         // Not a valid identifier.
                         ret = nkfalse;
-                        destroyToken(argToken);
+                        destroyToken(state, argToken);
                         argToken = NULL;
                         break;
 
@@ -280,7 +280,7 @@ nkbool handleDefine(
                 }
 
                 // Next token.
-                destroyToken(argToken);
+                destroyToken(state, argToken);
                 argToken = getNextToken(directiveParseState, nkfalse);
 
                 // We're not supposed to hit the end of the
@@ -328,7 +328,7 @@ nkbool handleDefine(
         preprocessorStateAddMacro(state, macro);
         macro = NULL;
     } else {
-        destroyPreprocessorMacro(macro);
+        destroyPreprocessorMacro(state, macro);
         macro = NULL;
     }
 
@@ -339,16 +339,16 @@ handleDefine_cleanup:
         destroyPreprocessorState(directiveParseState);
     }
     if(identifierToken) {
-        destroyToken(identifierToken);
+        destroyToken(state, identifierToken);
     }
     if(definition) {
         nkppFree(state, definition);
     }
     if(openParenToken) {
-        destroyToken(openParenToken);
+        destroyToken(state, openParenToken);
     }
     if(macro) {
-        destroyPreprocessorMacro(macro);
+        destroyPreprocessorMacro(state, macro);
     }
 
     return ret;

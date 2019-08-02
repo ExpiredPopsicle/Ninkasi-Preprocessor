@@ -2,19 +2,21 @@
 #include "ppmacro.h"
 
 // MEMSAFE
-void destroyPreprocessorMacro(struct PreprocessorMacro *macro)
+void destroyPreprocessorMacro(
+    struct PreprocessorState *state,
+    struct PreprocessorMacro *macro)
 {
     struct PreprocessorMacroArgument *args = macro->arguments;
     while(args) {
         struct PreprocessorMacroArgument *next = args->next;
-        freeWrapper(args->name);
-        freeWrapper(args);
+        nkppFree(state, args->name);
+        nkppFree(state, args);
         args = next;
     }
 
-    freeWrapper(macro->identifier);
-    freeWrapper(macro->definition);
-    freeWrapper(macro);
+    nkppFree(state, macro->identifier);
+    nkppFree(state, macro->definition);
+    nkppFree(state, macro);
 }
 
 // MEMSAFE
@@ -51,7 +53,7 @@ nkbool preprocessorMacroAddArgument(
 
     arg->name = nkppStrdup(state, name);
     if(!arg->name) {
-        freeWrapper(arg);
+        nkppFree(state, arg);
         return nkfalse;
     }
 
@@ -135,13 +137,13 @@ struct PreprocessorMacro *preprocessorMacroClone(
 
     ret->identifier = nkppStrdup(state, macro->identifier);
     if(!ret->identifier) {
-        destroyPreprocessorMacro(ret);
+        destroyPreprocessorMacro(state, ret);
         return NULL;
     }
 
     ret->definition = nkppStrdup(state, macro->definition);
     if(!ret->definition) {
-        destroyPreprocessorMacro(ret);
+        destroyPreprocessorMacro(state, ret);
         return NULL;
     }
 
@@ -157,14 +159,14 @@ struct PreprocessorMacro *preprocessorMacroClone(
                 state,
                 sizeof(struct PreprocessorMacroArgument));
         if(!clonedArg) {
-            destroyPreprocessorMacro(ret);
+            destroyPreprocessorMacro(state, ret);
             return NULL;
         }
 
         clonedArg->next = NULL;
         clonedArg->name = nkppStrdup(state, currentArgument->name);
         if(!clonedArg->name) {
-            destroyPreprocessorMacro(ret);
+            destroyPreprocessorMacro(state, ret);
             return NULL;
         }
 
