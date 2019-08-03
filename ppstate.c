@@ -384,7 +384,7 @@ nkbool skipWhitespaceAndComments(
 }
 
 // MEMSAFE
-void preprocessorStateAddMacro(
+void nkppStateAddMacro(
     struct NkppState *state,
     struct NkppMacro *macro)
 {
@@ -393,7 +393,7 @@ void preprocessorStateAddMacro(
 }
 
 // MEMSAFE
-struct NkppMacro *preprocessorStateFindMacro(
+struct NkppMacro *nkppStateFindMacro(
     struct NkppState *state,
     const char *identifier)
 {
@@ -425,7 +425,7 @@ struct NkppMacro *preprocessorStateFindMacro(
                 if(preprocessorMacroSetIdentifier(
                         state, currentMacro, identifier))
                 {
-                    preprocessorStateAddMacro(
+                    nkppStateAddMacro(
                         state, currentMacro);
                 } else {
                     destroyNkppMacro(
@@ -451,7 +451,7 @@ struct NkppMacro *preprocessorStateFindMacro(
 }
 
 // MEMSAFE
-nkbool preprocessorStateDeleteMacro(
+nkbool nkppStateDeleteMacro(
     struct NkppState *state,
     const char *identifier)
 {

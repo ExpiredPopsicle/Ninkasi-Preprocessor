@@ -98,13 +98,13 @@ nkbool nkppStateSetFilename(
 // ----------------------------------------------------------------------
 // Macros
 
-void preprocessorStateAddMacro(
+void nkppStateAddMacro(
     struct NkppState *state,
     struct NkppMacro *macro);
-struct NkppMacro *preprocessorStateFindMacro(
+struct NkppMacro *nkppStateFindMacro(
     struct NkppState *state,
     const char *identifier);
-nkbool preprocessorStateDeleteMacro(
+nkbool nkppStateDeleteMacro(
     struct NkppState *state,
     const char *identifier);
 

@@ -438,7 +438,7 @@ nkbool executeMacro(
                         goto executeMacro_cleanup;
                     }
 
-                    preprocessorStateAddMacro(clonedState, newMacro);
+                    nkppStateAddMacro(clonedState, newMacro);
                     newMacro = NULL;
                 }
 
@@ -555,7 +555,7 @@ nkbool handleStringification(
     char *escapedStr = NULL;
     struct NkppState *macroState = NULL;
     struct NkppMacro *macro =
-        preprocessorStateFindMacro(
+        nkppStateFindMacro(
             state, macroName);
 
     if(macro) {
@@ -715,7 +715,7 @@ nkbool preprocess(
 
                 // See if we can find a macro with this name.
                 struct NkppMacro *macro =
-                    preprocessorStateFindMacro(
+                    nkppStateFindMacro(
                         state, token->str);
 
                 if(macro) {

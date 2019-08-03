@@ -28,7 +28,7 @@ nkbool handleIfdefReal(
 
             if(identifierToken->type == NK_PPTOKEN_IDENTIFIER) {
 
-                macro = preprocessorStateFindMacro(
+                macro = nkppStateFindMacro(
                     state, identifierToken->str);
 
                 if(macro) {
@@ -114,7 +114,7 @@ nkbool handleUndef(
 
     if(identifierToken->type == NK_PPTOKEN_IDENTIFIER) {
 
-        if(preprocessorStateDeleteMacro(state, identifierToken->str)) {
+        if(nkppStateDeleteMacro(state, identifierToken->str)) {
 
             // Success!
 
@@ -318,14 +318,14 @@ nkbool handleDefine(
     }
 
     // Disallow multiple definitions.
-    if(preprocessorStateFindMacro(state, macro->identifier)) {
+    if(nkppStateFindMacro(state, macro->identifier)) {
         preprocessorStateAddError(state, "Multiple definitions of the same macro.");
         ret = nkfalse;
     }
 
     // Add definition to list, or clean up if we had an error.
     if(ret) {
-        preprocessorStateAddMacro(state, macro);
+        nkppStateAddMacro(state, macro);
         macro = NULL;
     } else {
         destroyNkppMacro(state, macro);
