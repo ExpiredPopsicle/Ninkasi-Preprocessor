@@ -694,7 +694,7 @@ char *readMacroArgument(struct PreprocessorState *state)
     struct PreprocessorState *readerState = NULL;
     nkuint32_t parenLevel = 0;
     char *ret = NULL;
-    struct PreprocessorToken *token = NULL;
+    struct NkppToken *token = NULL;
 
     readerState = createPreprocessorState(
         state->errorState, state->memoryCallbacks);
@@ -740,7 +740,7 @@ char *readMacroArgument(struct PreprocessorState *state)
         }
 
         // Read token and output it.
-        token = getNextToken(readerState, nktrue);
+        token = nkppGetNextToken(readerState, nktrue);
 
         if(token) {
 

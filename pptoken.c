@@ -5,7 +5,7 @@
 // MEMSAFE
 void destroyToken(
     struct PreprocessorState *state,
-    struct PreprocessorToken *token)
+    struct NkppToken *token)
 {
     if(token) {
         if(token->str) {

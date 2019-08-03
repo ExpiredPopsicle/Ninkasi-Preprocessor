@@ -13,7 +13,7 @@ nkbool handleIfdefReal(
     nkbool ret = nkfalse;
     struct PreprocessorState *directiveParseState =
         createPreprocessorState(state->errorState, state->memoryCallbacks);
-    struct PreprocessorToken *identifierToken = NULL;
+    struct NkppToken *identifierToken = NULL;
     struct PreprocessorMacro *macro = NULL;
 
     if(directiveParseState) {
@@ -22,7 +22,7 @@ nkbool handleIfdefReal(
 
         // Get identifier.
         identifierToken =
-            getNextToken(directiveParseState, nkfalse);
+            nkppGetNextToken(directiveParseState, nkfalse);
 
         if(identifierToken) {
 
@@ -95,7 +95,7 @@ nkbool handleUndef(
 {
     nkbool ret = nktrue;
     struct PreprocessorState *directiveParseState = NULL;
-    struct PreprocessorToken *identifierToken = NULL;
+    struct NkppToken *identifierToken = NULL;
 
     directiveParseState =
         createPreprocessorState(state->errorState, state->memoryCallbacks);
@@ -106,7 +106,7 @@ nkbool handleUndef(
     directiveParseState->str = restOfLine;
 
     // Get identifier.
-    identifierToken = getNextToken(directiveParseState, nkfalse);
+    identifierToken = nkppGetNextToken(directiveParseState, nkfalse);
     if(!identifierToken) {
         destroyPreprocessorState(directiveParseState);
         return nkfalse;
@@ -145,11 +145,11 @@ nkbool handleDefine(
     nkbool ret = nktrue;
     struct PreprocessorState *directiveParseState = NULL;
     struct PreprocessorMacro *macro = NULL;
-    struct PreprocessorToken *identifierToken = NULL;
+    struct NkppToken *identifierToken = NULL;
     char *definition = NULL;
     nkbool expectingComma = nkfalse;
-    struct PreprocessorToken *openParenToken = NULL;
-    struct PreprocessorToken *argToken = NULL;
+    struct NkppToken *openParenToken = NULL;
+    struct NkppToken *argToken = NULL;
 
     // Setup pp state.
     directiveParseState = createPreprocessorState(
@@ -169,7 +169,7 @@ nkbool handleDefine(
 
     // Get identifier.
     identifierToken =
-        getNextToken(directiveParseState, nkfalse);
+        nkppGetNextToken(directiveParseState, nkfalse);
     if(!identifierToken) {
         ret = nkfalse;
         goto handleDefine_cleanup;
@@ -201,7 +201,7 @@ nkbool handleDefine(
 
         // Skip the open paren.
         openParenToken =
-            getNextToken(directiveParseState, nkfalse);
+            nkppGetNextToken(directiveParseState, nkfalse);
         if(!openParenToken) {
             ret = nkfalse;
             goto handleDefine_cleanup;
@@ -212,7 +212,7 @@ nkbool handleDefine(
 
         // Parse the argument list.
 
-        argToken = getNextToken(directiveParseState, nkfalse);
+        argToken = nkppGetNextToken(directiveParseState, nkfalse);
 
         macro->functionStyleMacro = nktrue;
 
@@ -281,7 +281,7 @@ nkbool handleDefine(
 
                 // Next token.
                 destroyToken(state, argToken);
-                argToken = getNextToken(directiveParseState, nkfalse);
+                argToken = nkppGetNextToken(directiveParseState, nkfalse);
 
                 // We're not supposed to hit the end of the
                 // list here.

@@ -150,7 +150,7 @@ void preprocessorStateClearOutput(struct PreprocessorState *state);
 // ----------------------------------------------------------------------
 // Tokenization
 
-struct PreprocessorToken *getNextToken(
+struct NkppToken *nkppGetNextToken(
     struct PreprocessorState *state,
     nkbool outputWhitespace);
 char *readIdentifier(struct PreprocessorState *state);

@@ -38,13 +38,13 @@ char *testStr =
 
 // TODO: Move this into ppstate.c
 // MEMSAFE
-struct PreprocessorToken *getNextToken(
+struct NkppToken *nkppGetNextToken(
     struct PreprocessorState *state,
     nkbool outputWhitespace)
 {
     nkbool success = nktrue;
-    struct PreprocessorToken *ret = nkppMalloc(
-        state, sizeof(struct PreprocessorToken));
+    struct NkppToken *ret = nkppMalloc(
+        state, sizeof(struct NkppToken));
     if(!ret) {
         return NULL;
     }
@@ -603,8 +603,8 @@ nkbool preprocess(
     nkuint32_t recursionLevel)
 {
     nkbool ret = nktrue;
-    struct PreprocessorToken *token = NULL;
-    struct PreprocessorToken *directiveNameToken = NULL;
+    struct NkppToken *token = NULL;
+    struct NkppToken *directiveNameToken = NULL;
     char *line = NULL;
 
     // FIXME: Maybe make this less arbitraty.
@@ -618,7 +618,7 @@ nkbool preprocess(
 
     while(state->str && state->str[state->index]) {
 
-        token = getNextToken(state, nktrue);
+        token = nkppGetNextToken(state, nktrue);
 
         if(token) {
 
@@ -636,7 +636,7 @@ nkbool preprocess(
                 if(nkiCompilerIsValidIdentifierCharacter(state->str[state->index], nktrue)) {
 
                     // Get the directive name.
-                    directiveNameToken = getNextToken(state, nktrue);
+                    directiveNameToken = nkppGetNextToken(state, nktrue);
 
                     if(!directiveNameToken) {
 

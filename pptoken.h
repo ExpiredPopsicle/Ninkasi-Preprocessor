@@ -3,7 +3,7 @@
 
 #include "ppcommon.h"
 
-enum PreprocessorTokenType
+enum NkppTokenType
 {
     NK_PPTOKEN_IDENTIFIER,
     NK_PPTOKEN_QUOTEDSTRING, // str is string with escape characters unconverted and quotes intact!
@@ -19,7 +19,7 @@ enum PreprocessorTokenType
     NK_PPTOKEN_UNKNOWN
 };
 
-struct PreprocessorToken
+struct NkppToken
 {
     char *str;
     nkuint32_t type;
@@ -28,6 +28,6 @@ struct PreprocessorToken
 
 void destroyToken(
     struct PreprocessorState *state,
-    struct PreprocessorToken *token);
+    struct NkppToken *token);
 
 #endif // NK_PPTOKEN_H
