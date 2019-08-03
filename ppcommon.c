@@ -196,7 +196,7 @@ void freeWrapper(void *ptr)
 }
 
 void *nkppRealloc(
-    struct PreprocessorState *state,
+    struct NkppState *state,
     void *ptr,
     nkuint32_t size)
 {
@@ -225,7 +225,7 @@ void *nkppRealloc(
     }
 }
 
-char *nkppStrdup(struct PreprocessorState *state, const char *s)
+char *nkppStrdup(struct NkppState *state, const char *s)
 {
     nkuint32_t len = strlenWrapper(s);
     nkuint32_t size;

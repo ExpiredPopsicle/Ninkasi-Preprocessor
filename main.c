@@ -39,7 +39,7 @@ char *testStr =
 // TODO: Move this into ppstate.c
 // MEMSAFE
 struct NkppToken *nkppGetNextToken(
-    struct PreprocessorState *state,
+    struct NkppState *state,
     nkbool outputWhitespace)
 {
     nkbool success = nktrue;
@@ -178,7 +178,7 @@ struct NkppToken *nkppGetNextToken(
 
 // MEMSAFE
 char *nkppReadRestOfLine(
-    struct PreprocessorState *state,
+    struct NkppState *state,
     nkuint32_t *actualLineCount)
 {
     nkbool lastCharWasBackslash = nkfalse;
@@ -281,7 +281,7 @@ char *nkppReadRestOfLine(
 struct PreprocessorDirectiveMapping
 {
     const char *identifier;
-    nkbool (*handler)(struct PreprocessorState *, const char*);
+    nkbool (*handler)(struct NkppState *, const char*);
 };
 
 // TODO: Add these...
@@ -318,7 +318,7 @@ nkbool directiveIsValid(
 
 // MEMSAFE
 nkbool handleDirective(
-    struct PreprocessorState *state,
+    struct NkppState *state,
     const char *directive,
     const char *restOfLine)
 {
@@ -359,23 +359,23 @@ nkbool handleDirective(
 }
 
 nkbool preprocess(
-    struct PreprocessorState *state,
+    struct NkppState *state,
     const char *str,
     nkuint32_t recursionLevel);
 
 // MEMSAFE (except call to preprocess())
 nkbool executeMacro(
-    struct PreprocessorState *state,
-    struct PreprocessorMacro *macro,
+    struct NkppState *state,
+    struct NkppMacro *macro,
     nkuint32_t recursionLevel)
 {
-    struct PreprocessorState *clonedState;
+    struct NkppState *clonedState;
     nkbool ret = nktrue;
     char *unstrippedArgumentText = NULL;
     char *argumentText = NULL;
-    struct PreprocessorMacro *newMacro = NULL;
+    struct NkppMacro *newMacro = NULL;
 
-    clonedState = preprocessorStateClone(state);
+    clonedState = nkppCloneState(state);
     if(!clonedState) {
         return nkfalse;
     }
@@ -392,7 +392,7 @@ nkbool executeMacro(
 
         if(state->str[state->index] == '(') {
 
-            struct PreprocessorMacroArgument *argument = macro->arguments;
+            struct NkppMacroArgument *argument = macro->arguments;
 
             // Skip open paren.
             if(!skipChar(state, nkfalse)) {
@@ -422,7 +422,7 @@ nkbool executeMacro(
                 // Add the argument as a macro to
                 // the new cloned state.
                 {
-                    newMacro = createPreprocessorMacro(state);
+                    newMacro = createNkppMacro(state);
                     if(!newMacro) {
                         ret = nkfalse;
                         goto executeMacro_cleanup;
@@ -530,7 +530,7 @@ executeMacro_cleanup:
 
     // Clean up.
     if(clonedState) {
-        destroyPreprocessorState(clonedState);
+        nkppDestroyState(clonedState);
     }
     if(unstrippedArgumentText) {
         nkppFree(state, unstrippedArgumentText);
@@ -539,7 +539,7 @@ executeMacro_cleanup:
         nkppFree(state, argumentText);
     }
     if(newMacro) {
-        destroyPreprocessorMacro(state, newMacro);
+        destroyNkppMacro(state, newMacro);
     }
 
     return ret;
@@ -547,20 +547,20 @@ executeMacro_cleanup:
 
 // MEMSAFE (ish)
 nkbool handleStringification(
-    struct PreprocessorState *state,
+    struct NkppState *state,
     const char *macroName,
     nkuint32_t recursionLevel)
 {
     nkbool ret = nkfalse;
     char *escapedStr = NULL;
-    struct PreprocessorState *macroState = NULL;
-    struct PreprocessorMacro *macro =
+    struct NkppState *macroState = NULL;
+    struct NkppMacro *macro =
         preprocessorStateFindMacro(
             state, macroName);
 
     if(macro) {
 
-        macroState = preprocessorStateClone(state);
+        macroState = nkppCloneState(state);
         if(macroState) {
 
             preprocessorStateClearOutput(macroState);
@@ -581,7 +581,7 @@ nkbool handleStringification(
                 // cloned state.
                 state->index = macroState->index;
 
-                destroyPreprocessorState(macroState);
+                nkppDestroyState(macroState);
 
                 ret = nktrue;
             }
@@ -598,7 +598,7 @@ nkbool handleStringification(
 
 // MEMSAFE
 nkbool preprocess(
-    struct PreprocessorState *state,
+    struct NkppState *state,
     const char *str,
     nkuint32_t recursionLevel)
 {
@@ -714,7 +714,7 @@ nkbool preprocess(
             } else if(token->type == NK_PPTOKEN_IDENTIFIER) {
 
                 // See if we can find a macro with this name.
-                struct PreprocessorMacro *macro =
+                struct NkppMacro *macro =
                     preprocessorStateFindMacro(
                         state, token->str);
 
@@ -759,7 +759,7 @@ nkbool preprocess(
 
 // MEMSAFE
 char *loadFile(
-    struct PreprocessorState *state,
+    struct NkppState *state,
     const char *filename)
 {
     FILE *in = fopen(filename, "rb");
@@ -813,8 +813,8 @@ int main(int argc, char *argv[])
     // for(nkuint32_t counter = 0; counter < 18831; counter++) {
     // for(nkuint32_t counter = 2432; counter < 18831; counter++) {
 
-        struct PreprocessorErrorState errorState;
-        struct PreprocessorState *state;
+        struct NkppErrorState errorState;
+        struct NkppState *state;
         char *testStr2;
 
         // nkuint32_t allocLimit = ~(nkuint32_t)0;
@@ -831,7 +831,7 @@ int main(int argc, char *argv[])
         setAllocationFailureTestLimits(
             ~(nkuint32_t)0, counter);
 
-        state = createPreprocessorState(&errorState, NULL);
+        state = nkppCreateState(&errorState, NULL);
         if(!state) {
             printf("Allocation failure on state creation.\n");
             // return 0;
@@ -841,7 +841,7 @@ int main(int argc, char *argv[])
         testStr2 = loadFile(state, "test.txt");
         if(!testStr2) {
             printf("Allocation failure on file load.\n");
-            destroyPreprocessorState(state);
+            nkppDestroyState(state);
             // return 0;
             continue;
         }
@@ -879,7 +879,7 @@ int main(int argc, char *argv[])
                 errorState.firstError->text);
 
             {
-                struct PreprocessorError *next = errorState.firstError->next;
+                struct NkppError *next = errorState.firstError->next;
                 nkppFree(state, errorState.firstError->filename);
                 nkppFree(state, errorState.firstError->text);
                 nkppFree(state, errorState.firstError);
@@ -889,7 +889,7 @@ int main(int argc, char *argv[])
 
         nkppFree(state, testStr2);
 
-        destroyPreprocessorState(state);
+        nkppDestroyState(state);
 
     }
 

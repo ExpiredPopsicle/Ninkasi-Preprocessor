@@ -2,13 +2,13 @@
 #include "ppmacro.h"
 
 // MEMSAFE
-void destroyPreprocessorMacro(
-    struct PreprocessorState *state,
-    struct PreprocessorMacro *macro)
+void destroyNkppMacro(
+    struct NkppState *state,
+    struct NkppMacro *macro)
 {
-    struct PreprocessorMacroArgument *args = macro->arguments;
+    struct NkppMacroArgument *args = macro->arguments;
     while(args) {
-        struct PreprocessorMacroArgument *next = args->next;
+        struct NkppMacroArgument *next = args->next;
         nkppFree(state, args->name);
         nkppFree(state, args);
         args = next;
@@ -20,11 +20,11 @@ void destroyPreprocessorMacro(
 }
 
 // MEMSAFE
-struct PreprocessorMacro *createPreprocessorMacro(
-    struct PreprocessorState *state)
+struct NkppMacro *createNkppMacro(
+    struct NkppState *state)
 {
-    struct PreprocessorMacro *ret =
-        nkppMalloc(state, sizeof(struct PreprocessorMacro));
+    struct NkppMacro *ret =
+        nkppMalloc(state, sizeof(struct NkppMacro));
 
     if(ret) {
         ret->identifier = NULL;
@@ -39,14 +39,14 @@ struct PreprocessorMacro *createPreprocessorMacro(
 
 // MEMSAFE
 nkbool preprocessorMacroAddArgument(
-    struct PreprocessorState *state,
-    struct PreprocessorMacro *macro,
+    struct NkppState *state,
+    struct NkppMacro *macro,
     const char *name)
 {
-    struct PreprocessorMacroArgument *arg =
+    struct NkppMacroArgument *arg =
         nkppMalloc(
             state,
-            sizeof(struct PreprocessorMacroArgument));
+            sizeof(struct NkppMacroArgument));
     if(!arg) {
         return nkfalse;
     }
@@ -63,7 +63,7 @@ nkbool preprocessorMacroAddArgument(
     // order for later, we need to go all the way to the end of the
     // list and add the new pointer there.
     {
-        struct PreprocessorMacroArgument *existingArg = macro->arguments;
+        struct NkppMacroArgument *existingArg = macro->arguments;
         if(!existingArg) {
             // First in the list.
             macro->arguments = arg;
@@ -81,8 +81,8 @@ nkbool preprocessorMacroAddArgument(
 
 // MEMSAFE
 nkbool preprocessorMacroSetIdentifier(
-    struct PreprocessorState *state,
-    struct PreprocessorMacro *macro,
+    struct NkppState *state,
+    struct NkppMacro *macro,
     const char *identifier)
 {
     if(macro->identifier) {
@@ -102,8 +102,8 @@ nkbool preprocessorMacroSetIdentifier(
 
 // MEMSAFE
 nkbool preprocessorMacroSetDefinition(
-    struct PreprocessorState *state,
-    struct PreprocessorMacro *macro,
+    struct NkppState *state,
+    struct NkppMacro *macro,
     const char *definition)
 {
     if(macro->definition) {
@@ -122,28 +122,28 @@ nkbool preprocessorMacroSetDefinition(
 }
 
 // MEMSAFE
-struct PreprocessorMacro *preprocessorMacroClone(
-    struct PreprocessorState *state,
-    const struct PreprocessorMacro *macro)
+struct NkppMacro *preprocessorMacroClone(
+    struct NkppState *state,
+    const struct NkppMacro *macro)
 {
-    struct PreprocessorMacro *ret;
-    struct PreprocessorMacroArgument *currentArgument;
-    struct PreprocessorMacroArgument **argumentWritePtr;
+    struct NkppMacro *ret;
+    struct NkppMacroArgument *currentArgument;
+    struct NkppMacroArgument **argumentWritePtr;
 
-    ret = createPreprocessorMacro(state);
+    ret = createNkppMacro(state);
     if(!ret) {
         return NULL;
     }
 
     ret->identifier = nkppStrdup(state, macro->identifier);
     if(!ret->identifier) {
-        destroyPreprocessorMacro(state, ret);
+        destroyNkppMacro(state, ret);
         return NULL;
     }
 
     ret->definition = nkppStrdup(state, macro->definition);
     if(!ret->definition) {
-        destroyPreprocessorMacro(state, ret);
+        destroyNkppMacro(state, ret);
         return NULL;
     }
 
@@ -154,19 +154,19 @@ struct PreprocessorMacro *preprocessorMacroClone(
 
     while(currentArgument) {
 
-        struct PreprocessorMacroArgument *clonedArg =
+        struct NkppMacroArgument *clonedArg =
             nkppMalloc(
                 state,
-                sizeof(struct PreprocessorMacroArgument));
+                sizeof(struct NkppMacroArgument));
         if(!clonedArg) {
-            destroyPreprocessorMacro(state, ret);
+            destroyNkppMacro(state, ret);
             return NULL;
         }
 
         clonedArg->next = NULL;
         clonedArg->name = nkppStrdup(state, currentArgument->name);
         if(!clonedArg->name) {
-            destroyPreprocessorMacro(state, ret);
+            destroyNkppMacro(state, ret);
             return NULL;
         }
 

@@ -19,7 +19,7 @@ typedef unsigned char nkuint8_t;
 #define strcmpWrapper(x, y) strcmp(x, y)
 #define memcpy(x, y, z) dont_use_memcpy_directly
 
-struct PreprocessorState;
+struct NkppState;
 
 nkbool nkiCompilerIsValidIdentifierCharacter(char c, nkbool isFirstCharacter);
 nkbool nkiCompilerIsWhitespace(char c);
@@ -37,12 +37,12 @@ void *mallocWrapper(nkuint32_t size);
 void freeWrapper(void *ptr);
 
 void *nkppRealloc(
-    struct PreprocessorState *state,
+    struct NkppState *state,
     void *ptr,
     nkuint32_t size);
 
 char *nkppStrdup(
-    struct PreprocessorState *state,
+    struct NkppState *state,
     const char *s);
 
 void setAllocationFailureTestLimits(

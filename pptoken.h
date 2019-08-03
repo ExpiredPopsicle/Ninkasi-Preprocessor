@@ -27,7 +27,7 @@ struct NkppToken
 };
 
 void destroyToken(
-    struct PreprocessorState *state,
+    struct NkppState *state,
     struct NkppToken *token);
 
 #endif // NK_PPTOKEN_H

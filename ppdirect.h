@@ -3,30 +3,30 @@
 
 #include "ppcommon.h"
 
-struct PreprocessorState;
+struct NkppState;
 
 nkbool handleUndef(
-    struct PreprocessorState *state,
+    struct NkppState *state,
     const char *restOfLine);
 
 nkbool handleDefine(
-    struct PreprocessorState *state,
+    struct NkppState *state,
     const char *restOfLine);
 
 nkbool handleIfdef(
-    struct PreprocessorState *state,
+    struct NkppState *state,
     const char *restOfLine);
 
 nkbool handleIfndef(
-    struct PreprocessorState *state,
+    struct NkppState *state,
     const char *restOfLine);
 
 nkbool handleElse(
-    struct PreprocessorState *state,
+    struct NkppState *state,
     const char *restOfLine);
 
 nkbool handleEndif(
-    struct PreprocessorState *state,
+    struct NkppState *state,
     const char *restOfLine);
 
 #endif // PPDIRECT_H

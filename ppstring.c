@@ -2,7 +2,7 @@
 #include "ppstring.h"
 
 char *nkppDeleteBackslashNewlines(
-    struct PreprocessorState *state,
+    struct NkppState *state,
     const char *str)
 {
     if(str) {
@@ -45,7 +45,7 @@ char *nkppDeleteBackslashNewlines(
 }
 
 char *nkppStripCommentsAndTrim(
-    struct PreprocessorState *state,
+    struct NkppState *state,
     const char *in)
 {
     char *ret;
@@ -147,7 +147,7 @@ char *nkppStripCommentsAndTrim(
 }
 
 char *nkppEscapeString(
-    struct PreprocessorState *state,
+    struct NkppState *state,
     const char *src)
 {
     char *output;

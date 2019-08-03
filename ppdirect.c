@@ -6,15 +6,15 @@
 
 // MEMSAFE
 nkbool handleIfdefReal(
-    struct PreprocessorState *state,
+    struct NkppState *state,
     const char *restOfLine,
     nkbool invert)
 {
     nkbool ret = nkfalse;
-    struct PreprocessorState *directiveParseState =
-        createPreprocessorState(state->errorState, state->memoryCallbacks);
+    struct NkppState *directiveParseState =
+        nkppCreateState(state->errorState, state->memoryCallbacks);
     struct NkppToken *identifierToken = NULL;
-    struct PreprocessorMacro *macro = NULL;
+    struct NkppMacro *macro = NULL;
 
     if(directiveParseState) {
 
@@ -51,14 +51,14 @@ nkbool handleIfdefReal(
         destroyToken(state, identifierToken);
     }
     if(directiveParseState) {
-        destroyPreprocessorState(directiveParseState);
+        nkppDestroyState(directiveParseState);
     }
     return ret;
 }
 
 // MEMSAFE
 nkbool handleIfdef(
-    struct PreprocessorState *state,
+    struct NkppState *state,
     const char *restOfLine)
 {
     return handleIfdefReal(state, restOfLine, nkfalse);
@@ -66,7 +66,7 @@ nkbool handleIfdef(
 
 // MEMSAFE
 nkbool handleIfndef(
-    struct PreprocessorState *state,
+    struct NkppState *state,
     const char *restOfLine)
 {
     return handleIfdefReal(state, restOfLine, nktrue);
@@ -74,7 +74,7 @@ nkbool handleIfndef(
 
 // MEMSAFE
 nkbool handleElse(
-    struct PreprocessorState *state,
+    struct NkppState *state,
     const char *restOfLine)
 {
     return preprocessorStateFlipIfResult(state);
@@ -82,7 +82,7 @@ nkbool handleElse(
 
 // MEMSAFE
 nkbool handleEndif(
-    struct PreprocessorState *state,
+    struct NkppState *state,
     const char *restOfLine)
 {
     return preprocessorStatePopIfResult(state);
@@ -90,15 +90,15 @@ nkbool handleEndif(
 
 // MEMSAFE
 nkbool handleUndef(
-    struct PreprocessorState *state,
+    struct NkppState *state,
     const char *restOfLine)
 {
     nkbool ret = nktrue;
-    struct PreprocessorState *directiveParseState = NULL;
+    struct NkppState *directiveParseState = NULL;
     struct NkppToken *identifierToken = NULL;
 
     directiveParseState =
-        createPreprocessorState(state->errorState, state->memoryCallbacks);
+        nkppCreateState(state->errorState, state->memoryCallbacks);
     if(!directiveParseState) {
         return nkfalse;
     }
@@ -108,7 +108,7 @@ nkbool handleUndef(
     // Get identifier.
     identifierToken = nkppGetNextToken(directiveParseState, nkfalse);
     if(!identifierToken) {
-        destroyPreprocessorState(directiveParseState);
+        nkppDestroyState(directiveParseState);
         return nkfalse;
     }
 
@@ -133,18 +133,18 @@ nkbool handleUndef(
     }
 
     destroyToken(state, identifierToken);
-    destroyPreprocessorState(directiveParseState);
+    nkppDestroyState(directiveParseState);
     return ret;
 }
 
 // MEMSAFE
 nkbool handleDefine(
-    struct PreprocessorState *state,
+    struct NkppState *state,
     const char *restOfLine)
 {
     nkbool ret = nktrue;
-    struct PreprocessorState *directiveParseState = NULL;
-    struct PreprocessorMacro *macro = NULL;
+    struct NkppState *directiveParseState = NULL;
+    struct NkppMacro *macro = NULL;
     struct NkppToken *identifierToken = NULL;
     char *definition = NULL;
     nkbool expectingComma = nkfalse;
@@ -152,7 +152,7 @@ nkbool handleDefine(
     struct NkppToken *argToken = NULL;
 
     // Setup pp state.
-    directiveParseState = createPreprocessorState(
+    directiveParseState = nkppCreateState(
         state->errorState, state->memoryCallbacks);
     if(!directiveParseState) {
         ret = nkfalse;
@@ -161,7 +161,7 @@ nkbool handleDefine(
     directiveParseState->str = restOfLine;
 
     // Setup new macro.
-    macro = createPreprocessorMacro(state);
+    macro = createNkppMacro(state);
     if(!macro) {
         ret = nkfalse;
         goto handleDefine_cleanup;
@@ -328,7 +328,7 @@ nkbool handleDefine(
         preprocessorStateAddMacro(state, macro);
         macro = NULL;
     } else {
-        destroyPreprocessorMacro(state, macro);
+        destroyNkppMacro(state, macro);
         macro = NULL;
     }
 
@@ -336,7 +336,7 @@ handleDefine_cleanup:
 
     // Cleanup.
     if(directiveParseState) {
-        destroyPreprocessorState(directiveParseState);
+        nkppDestroyState(directiveParseState);
     }
     if(identifierToken) {
         destroyToken(state, identifierToken);
@@ -348,7 +348,7 @@ handleDefine_cleanup:
         destroyToken(state, openParenToken);
     }
     if(macro) {
-        destroyPreprocessorMacro(state, macro);
+        destroyNkppMacro(state, macro);
     }
 
     return ret;

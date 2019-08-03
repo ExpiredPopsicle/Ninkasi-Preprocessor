@@ -16,7 +16,7 @@ void nkppDefaultFreeWrapper(void *userData, void *ptr)
     freeWrapper(ptr);
 }
 
-void *nkppMalloc(struct PreprocessorState *state, nkuint32_t size)
+void *nkppMalloc(struct NkppState *state, nkuint32_t size)
 {
     if(state->memoryCallbacks) {
         return state->memoryCallbacks->mallocWrapper(
@@ -25,7 +25,7 @@ void *nkppMalloc(struct PreprocessorState *state, nkuint32_t size)
     return nkppDefaultMallocWrapper(NULL, size);
 }
 
-void nkppFree(struct PreprocessorState *state, void *ptr)
+void nkppFree(struct NkppState *state, void *ptr)
 {
     if(state->memoryCallbacks) {
         state->memoryCallbacks->freeWrapper(
@@ -35,9 +35,9 @@ void nkppFree(struct PreprocessorState *state, void *ptr)
 }
 
 // MEMSAFE
-struct PreprocessorState *createPreprocessorState(
-    struct PreprocessorErrorState *errorState,
-    struct PreprocessorMemoryCallbacks *memoryCallbacks)
+struct NkppState *nkppCreateState(
+    struct NkppErrorState *errorState,
+    struct NkppMemoryCallbacks *memoryCallbacks)
 {
     NkppMallocWrapper localMallocWrapper =
         memoryCallbacks ? memoryCallbacks->mallocWrapper : nkppDefaultMallocWrapper;
@@ -45,8 +45,8 @@ struct PreprocessorState *createPreprocessorState(
         memoryCallbacks ? memoryCallbacks->freeWrapper : nkppDefaultFreeWrapper;
     void *userData = memoryCallbacks ? memoryCallbacks->userData : NULL;
 
-    struct PreprocessorState *ret =
-        localMallocWrapper(userData, sizeof(struct PreprocessorState));
+    struct NkppState *ret =
+        localMallocWrapper(userData, sizeof(struct NkppState));
 
     if(ret) {
         ret->str = NULL;
@@ -75,17 +75,17 @@ struct PreprocessorState *createPreprocessorState(
 }
 
 // MEMSAFE
-void destroyPreprocessorState(struct PreprocessorState *state)
+void nkppDestroyState(struct NkppState *state)
 {
     NkppFreeWrapper localFreeWrapper =
         state->memoryCallbacks ? state->memoryCallbacks->freeWrapper : nkppDefaultFreeWrapper;
     void *userData =
         state->memoryCallbacks ? state->memoryCallbacks->userData : NULL;
 
-    struct PreprocessorMacro *currentMacro = state->macros;
+    struct NkppMacro *currentMacro = state->macros;
     while(currentMacro) {
-        struct PreprocessorMacro *next = currentMacro->next;
-        destroyPreprocessorMacro(state, currentMacro);
+        struct NkppMacro *next = currentMacro->next;
+        destroyNkppMacro(state, currentMacro);
         currentMacro = next;
     }
 
@@ -98,7 +98,7 @@ void destroyPreprocessorState(struct PreprocessorState *state)
 // newline anyway.
 //
 // MEMSAFE
-nkbool preprocessorStateWritePositionMarker(struct PreprocessorState *state)
+nkbool preprocessorStateWritePositionMarker(struct NkppState *state)
 {
     char numberStr[128];
     char *escapedFilenameStr =
@@ -126,7 +126,7 @@ nkbool preprocessorStateWritePositionMarker(struct PreprocessorState *state)
 }
 
 // MEMSAFE
-nkbool appendString(struct PreprocessorState *state, const char *str)
+nkbool appendString(struct NkppState *state, const char *str)
 {
     if(!str) {
 
@@ -148,7 +148,7 @@ nkbool appendString(struct PreprocessorState *state, const char *str)
 }
 
 // MEMSAFE
-nkbool appendChar_real(struct PreprocessorState *state, char c)
+nkbool appendChar_real(struct NkppState *state, char c)
 {
     // FIXME: We should obviously avoid reallocating and copying the
     //   entire output string every time we add a new character! This
@@ -185,7 +185,7 @@ nkbool appendChar_real(struct PreprocessorState *state, char c)
 }
 
 // MEMSAFE
-nkbool FIXME_REMOVETHIS_writenumber(struct PreprocessorState *state, nkuint32_t n)
+nkbool FIXME_REMOVETHIS_writenumber(struct NkppState *state, nkuint32_t n)
 {
     nkuint32_t lnMask = 10000;
     nkbool ret = nktrue;
@@ -206,7 +206,7 @@ nkbool FIXME_REMOVETHIS_writenumber(struct PreprocessorState *state, nkuint32_t 
 }
 
 // MEMSAFE
-nkbool appendChar(struct PreprocessorState *state, char c)
+nkbool appendChar(struct NkppState *state, char c)
 {
     nkbool ret = nktrue;
 
@@ -294,7 +294,7 @@ nkbool appendChar(struct PreprocessorState *state, char c)
 }
 
 // MEMSAFE
-nkbool skipChar(struct PreprocessorState *state, nkbool output)
+nkbool skipChar(struct NkppState *state, nkbool output)
 {
     assert(state->str[state->index]);
 
@@ -315,7 +315,7 @@ nkbool skipChar(struct PreprocessorState *state, nkbool output)
 
 // MEMSAFE
 nkbool skipWhitespaceAndComments(
-    struct PreprocessorState *state,
+    struct NkppState *state,
     nkbool output,
     nkbool stopAtNewline)
 {
@@ -385,19 +385,19 @@ nkbool skipWhitespaceAndComments(
 
 // MEMSAFE
 void preprocessorStateAddMacro(
-    struct PreprocessorState *state,
-    struct PreprocessorMacro *macro)
+    struct NkppState *state,
+    struct NkppMacro *macro)
 {
     macro->next = state->macros;
     state->macros = macro;
 }
 
 // MEMSAFE
-struct PreprocessorMacro *preprocessorStateFindMacro(
-    struct PreprocessorState *state,
+struct NkppMacro *preprocessorStateFindMacro(
+    struct NkppState *state,
     const char *identifier)
 {
-    struct PreprocessorMacro *currentMacro = state->macros;
+    struct NkppMacro *currentMacro = state->macros;
 
     if(!identifier) {
         return NULL;
@@ -419,7 +419,7 @@ struct PreprocessorMacro *preprocessorStateFindMacro(
         if(!currentMacro) {
 
             currentMacro =
-                createPreprocessorMacro(state);
+                createNkppMacro(state);
 
             if(currentMacro) {
                 if(preprocessorMacroSetIdentifier(
@@ -428,7 +428,7 @@ struct PreprocessorMacro *preprocessorStateFindMacro(
                     preprocessorStateAddMacro(
                         state, currentMacro);
                 } else {
-                    destroyPreprocessorMacro(
+                    destroyNkppMacro(
                         state, currentMacro);
                     currentMacro = NULL;
                 }
@@ -452,11 +452,11 @@ struct PreprocessorMacro *preprocessorStateFindMacro(
 
 // MEMSAFE
 nkbool preprocessorStateDeleteMacro(
-    struct PreprocessorState *state,
+    struct NkppState *state,
     const char *identifier)
 {
-    struct PreprocessorMacro *currentMacro = state->macros;
-    struct PreprocessorMacro **lastPtr = &state->macros;
+    struct NkppMacro *currentMacro = state->macros;
+    struct NkppMacro **lastPtr = &state->macros;
 
     while(currentMacro) {
 
@@ -465,7 +465,7 @@ nkbool preprocessorStateDeleteMacro(
             *lastPtr = currentMacro->next;
             currentMacro->next = NULL;
 
-            destroyPreprocessorMacro(
+            destroyNkppMacro(
                 state, currentMacro);
 
             return nktrue;
@@ -480,13 +480,13 @@ nkbool preprocessorStateDeleteMacro(
 }
 
 // MEMSAFE
-struct PreprocessorState *preprocessorStateClone(
-    struct PreprocessorState *state)
+struct NkppState *nkppCloneState(
+    struct NkppState *state)
 {
-    struct PreprocessorState *ret = createPreprocessorState(
+    struct NkppState *ret = nkppCreateState(
         state->errorState, state->memoryCallbacks);
-    struct PreprocessorMacro *currentMacro;
-    struct PreprocessorMacro **macroWritePtr;
+    struct NkppMacro *currentMacro;
+    struct NkppMacro **macroWritePtr;
 
     if(!ret) {
         return NULL;
@@ -499,15 +499,15 @@ struct PreprocessorState *preprocessorStateClone(
     ret->output = state->output ? nkppStrdup(state, state->output) : NULL;
 
     if(state->output && !ret->output) {
-        destroyPreprocessorState(ret);
+        nkppDestroyState(ret);
         return NULL;
     }
 
     // Note: We purposely don't write position markers or update
     // markers here.
     ret->errorState = state->errorState;
-    if(!preprocessorStateSetFilename(ret, state->filename)) {
-        destroyPreprocessorState(ret);
+    if(!nkppStateSetFilename(ret, state->filename)) {
+        nkppDestroyState(ret);
         return NULL;
     }
 
@@ -518,10 +518,10 @@ struct PreprocessorState *preprocessorStateClone(
 
     while(currentMacro) {
 
-        struct PreprocessorMacro *clonedMacro =
+        struct NkppMacro *clonedMacro =
             preprocessorMacroClone(state, currentMacro);
         if(!clonedMacro) {
-            destroyPreprocessorState(ret);
+            nkppDestroyState(ret);
             return NULL;
         }
 
@@ -538,7 +538,7 @@ struct PreprocessorState *preprocessorStateClone(
 // Read functions
 
 // MEMSAFE
-char *readIdentifier(struct PreprocessorState *state)
+char *readIdentifier(struct NkppState *state)
 {
     const char *str = state->str;
     nkuint32_t *i = &state->index;
@@ -579,7 +579,7 @@ char *readIdentifier(struct PreprocessorState *state)
 }
 
 // MEMSAFE
-char *readQuotedString(struct PreprocessorState *state)
+char *readQuotedString(struct NkppState *state)
 {
     const char *str = state->str;
     nkuint32_t *i = &state->index;
@@ -649,7 +649,7 @@ char *readQuotedString(struct PreprocessorState *state)
 }
 
 // MEMSAFE
-char *readInteger(struct PreprocessorState *state)
+char *readInteger(struct NkppState *state)
 {
     const char *str = state->str;
     nkuint32_t start = state->index;
@@ -688,15 +688,15 @@ char *readInteger(struct PreprocessorState *state)
 }
 
 // MEMSAFE
-char *readMacroArgument(struct PreprocessorState *state)
+char *readMacroArgument(struct NkppState *state)
 {
     // Create a pristine state to read the arguments with.
-    struct PreprocessorState *readerState = NULL;
+    struct NkppState *readerState = NULL;
     nkuint32_t parenLevel = 0;
     char *ret = NULL;
     struct NkppToken *token = NULL;
 
-    readerState = createPreprocessorState(
+    readerState = nkppCreateState(
         state->errorState, state->memoryCallbacks);
     if(!readerState) {
         return NULL;
@@ -710,7 +710,7 @@ char *readMacroArgument(struct PreprocessorState *state)
     // to return something not-NULL to indicate a success.
     readerState->output = nkppMalloc(state, 1);
     if(!readerState->output) {
-        destroyPreprocessorState(readerState);
+        nkppDestroyState(readerState);
         return NULL;
     }
     readerState->output[0] = 0;
@@ -718,14 +718,14 @@ char *readMacroArgument(struct PreprocessorState *state)
     // Skip whitespace up to the first token, but don't append
     // whitespace on this side of it.
     if(!skipWhitespaceAndComments(readerState, nkfalse, nkfalse)) {
-        destroyPreprocessorState(readerState);
+        nkppDestroyState(readerState);
         return NULL;
     }
 
     do {
         // Skip whitespace.
         if(!skipWhitespaceAndComments(readerState, nktrue, nkfalse)) {
-            destroyPreprocessorState(readerState);
+            nkppDestroyState(readerState);
             return NULL;
         }
 
@@ -754,7 +754,7 @@ char *readMacroArgument(struct PreprocessorState *state)
             // Add it.
             if(!appendString(readerState, token->str)) {
                 destroyToken(state, token);
-                destroyPreprocessorState(readerState);
+                nkppDestroyState(readerState);
                 return NULL;
             }
 
@@ -770,14 +770,14 @@ char *readMacroArgument(struct PreprocessorState *state)
     // Pull the output off the pp state and return it.
     ret = readerState->output;
     readerState->output = NULL;
-    destroyPreprocessorState(readerState);
+    nkppDestroyState(readerState);
     return ret;
 }
 
 // ----------------------------------------------------------------------
 
 // MEMSAFE
-void preprocessorStateClearOutput(struct PreprocessorState *state)
+void preprocessorStateClearOutput(struct NkppState *state)
 {
     nkppFree(state, state->output);
     state->output = NULL;
@@ -786,13 +786,13 @@ void preprocessorStateClearOutput(struct PreprocessorState *state)
 
 // MEMSAFE
 void preprocessorStateAddError(
-    struct PreprocessorState *state,
+    struct NkppState *state,
     const char *errorMessage)
 {
     if(state->errorState) {
 
-        struct PreprocessorError *newError =
-            nkppMalloc(state, sizeof(struct PreprocessorError));
+        struct NkppError *newError =
+            nkppMalloc(state, sizeof(struct NkppError));
 
         if(newError) {
 
@@ -823,14 +823,14 @@ void preprocessorStateAddError(
 
 // MEMSAFE
 void preprocessorStateFlagFileLineMarkersForUpdate(
-    struct PreprocessorState *state)
+    struct NkppState *state)
 {
     state->updateMarkers = nktrue;
 }
 
 // MEMSAFE
-nkbool preprocessorStateSetFilename(
-    struct PreprocessorState *state,
+nkbool nkppStateSetFilename(
+    struct NkppState *state,
     const char *filename)
 {
     if(state->filename) {
@@ -850,7 +850,7 @@ nkbool preprocessorStateSetFilename(
 
 // MEMSAFE
 nkbool preprocessorStatePushIfResult(
-    struct PreprocessorState *state,
+    struct NkppState *state,
     nkbool ifResult)
 {
     nkbool overflow = nkfalse;
@@ -885,7 +885,7 @@ nkbool preprocessorStatePushIfResult(
 
 // MEMSAFE
 nkbool preprocessorStatePopIfResult(
-    struct PreprocessorState *state)
+    struct NkppState *state)
 {
     if(state->nestedFailedIfs) {
         state->nestedFailedIfs--;
@@ -903,7 +903,7 @@ nkbool preprocessorStatePopIfResult(
 
 // MEMSAFE
 nkbool preprocessorStateFlipIfResult(
-    struct PreprocessorState *state)
+    struct NkppState *state)
 {
     nkbool overflow = nkfalse;
 

@@ -6,26 +6,26 @@
 // ----------------------------------------------------------------------
 // Types
 
-struct PreprocessorMacro;
+struct NkppMacro;
 
-struct PreprocessorError
+struct NkppError
 {
     char *filename;
     nkuint32_t lineNumber;
     char *text;
-    struct PreprocessorError *next;
+    struct NkppError *next;
 };
 
-struct PreprocessorErrorState
+struct NkppErrorState
 {
-    struct PreprocessorError *firstError;
-    struct PreprocessorError *lastError;
+    struct NkppError *firstError;
+    struct NkppError *lastError;
 };
 
 typedef void *(*NkppMallocWrapper)(void *userData, nkuint32_t size);
 typedef void (*NkppFreeWrapper)(void *userData, void *ptr);
 
-struct PreprocessorMemoryCallbacks
+struct NkppMemoryCallbacks
 {
     NkppFreeWrapper freeWrapper;
     NkppMallocWrapper mallocWrapper;
@@ -33,7 +33,7 @@ struct PreprocessorMemoryCallbacks
 };
 
 // Main preprocessor state object.
-struct PreprocessorState
+struct NkppState
 {
     // Input buffer and position.
     const char *str;
@@ -52,7 +52,7 @@ struct PreprocessorState
     nkuint32_t outputLineNumber;
 
     // Macro list.
-    struct PreprocessorMacro *macros;
+    struct NkppMacro *macros;
 
     // Whether we should be writing position markers or not. This gets
     // turned off when we're in the middle of outputting a macro, and
@@ -68,67 +68,67 @@ struct PreprocessorState
     char *filename;
 
     // Non-owning pointer to the error state. This will be shared
-    // between many PreprocessorStates. If this is NULL, then errors
+    // between many NkppStates. If this is NULL, then errors
     // will be directed to stderr.
-    struct PreprocessorErrorState *errorState;
+    struct NkppErrorState *errorState;
 
     nkuint32_t nestedPassedIfs;
     nkuint32_t nestedFailedIfs;
 
-    struct PreprocessorMemoryCallbacks *memoryCallbacks;
+    struct NkppMemoryCallbacks *memoryCallbacks;
 };
 
 // ----------------------------------------------------------------------
 // General state object
 
-struct PreprocessorState *createPreprocessorState(
-    struct PreprocessorErrorState *errorState,
-    struct PreprocessorMemoryCallbacks *memoryCallbacks);
+struct NkppState *nkppCreateState(
+    struct NkppErrorState *errorState,
+    struct NkppMemoryCallbacks *memoryCallbacks);
 
-void destroyPreprocessorState(struct PreprocessorState *state);
+void nkppDestroyState(struct NkppState *state);
 
-struct PreprocessorState *preprocessorStateClone(
-    struct PreprocessorState *state);
+struct NkppState *nkppCloneState(
+    struct NkppState *state);
 
 /// Set the current file name. Used for error tracking.
-nkbool preprocessorStateSetFilename(
-    struct PreprocessorState *state,
+nkbool nkppStateSetFilename(
+    struct NkppState *state,
     const char *filename);
 
 // ----------------------------------------------------------------------
 // Macros
 
 void preprocessorStateAddMacro(
-    struct PreprocessorState *state,
-    struct PreprocessorMacro *macro);
-struct PreprocessorMacro *preprocessorStateFindMacro(
-    struct PreprocessorState *state,
+    struct NkppState *state,
+    struct NkppMacro *macro);
+struct NkppMacro *preprocessorStateFindMacro(
+    struct NkppState *state,
     const char *identifier);
 nkbool preprocessorStateDeleteMacro(
-    struct PreprocessorState *state,
+    struct NkppState *state,
     const char *identifier);
 
 // ----------------------------------------------------------------------
 // Read/write functions
 
 /// Append a string to the output.
-nkbool appendString(struct PreprocessorState *state, const char *str);
+nkbool appendString(struct NkppState *state, const char *str);
 
 /// Append a character to the output. Output line number tracking
 /// happens here. Use this (or a function that calls it, like
 /// appendString()) to output instead of maually updating the buffer.
-nkbool appendChar(struct PreprocessorState *state, char c);
+nkbool appendChar(struct NkppState *state, char c);
 
 /// Advance the read pointer. Optionally outputting the character.
 /// Input line number tracking happens here, so always use this to
 /// advance the read pointer instead of messing with the index
 /// yourself.
-nkbool skipChar(struct PreprocessorState *state, nkbool output);
+nkbool skipChar(struct NkppState *state, nkbool output);
 
 /// Skip past whitespace and comments, optionally sending them to the
 /// output. This is to preserve formatting and comments in the output.
 nkbool skipWhitespaceAndComments(
-    struct PreprocessorState *state,
+    struct NkppState *state,
     nkbool output,
     nkbool stopAtNewline);
 
@@ -142,21 +142,21 @@ nkbool skipWhitespaceAndComments(
 /// this flag being set, to prevent us from outputting it in the
 /// middle of one of those multiline macros.
 void preprocessorStateFlagFileLineMarkersForUpdate(
-    struct PreprocessorState *state);
+    struct NkppState *state);
 
 /// Clear the output buffer entirely.
-void preprocessorStateClearOutput(struct PreprocessorState *state);
+void preprocessorStateClearOutput(struct NkppState *state);
 
 // ----------------------------------------------------------------------
 // Tokenization
 
 struct NkppToken *nkppGetNextToken(
-    struct PreprocessorState *state,
+    struct NkppState *state,
     nkbool outputWhitespace);
-char *readIdentifier(struct PreprocessorState *state);
-char *readQuotedString(struct PreprocessorState *state);
-char *readInteger(struct PreprocessorState *state);
-char *readMacroArgument(struct PreprocessorState *state);
+char *readIdentifier(struct NkppState *state);
+char *readQuotedString(struct NkppState *state);
+char *readInteger(struct NkppState *state);
+char *readMacroArgument(struct NkppState *state);
 
 // ----------------------------------------------------------------------
 // Errors
@@ -164,28 +164,28 @@ char *readMacroArgument(struct PreprocessorState *state);
 /// Record an error. The error will be attributed to the current line
 /// number and file name.
 void preprocessorStateAddError(
-    struct PreprocessorState *state,
+    struct NkppState *state,
     const char *errorMessage);
 
 // ----------------------------------------------------------------------
 // ifdef/ifndef/if/else/endif handling
 
 nkbool preprocessorStatePushIfResult(
-    struct PreprocessorState *state,
+    struct NkppState *state,
     nkbool ifResult);
 
 nkbool preprocessorStatePopIfResult(
-    struct PreprocessorState *state);
+    struct NkppState *state);
 
 /// For handling the topmost "else" statement.
 nkbool preprocessorStateFlipIfResult(
-    struct PreprocessorState *state);
+    struct NkppState *state);
 
 // ----------------------------------------------------------------------
 // Allocations within the parser
 
-void *nkppMalloc(struct PreprocessorState *state, nkuint32_t size);
+void *nkppMalloc(struct NkppState *state, nkuint32_t size);
 
-void nkppFree(struct PreprocessorState *state, void *ptr);
+void nkppFree(struct NkppState *state, void *ptr);
 
 #endif // NK_PPSTATE_H

@@ -3,52 +3,52 @@
 
 #include "ppcommon.h"
 
-struct PreprocessorState;
+struct NkppState;
 
-struct PreprocessorMacroArgument
+struct NkppMacroArgument
 {
     char *name;
-    struct PreprocessorMacroArgument *next;
+    struct NkppMacroArgument *next;
 };
 
-struct PreprocessorMacro
+struct NkppMacro
 {
     char *identifier;
     char *definition;
-    struct PreprocessorMacroArgument *arguments;
+    struct NkppMacroArgument *arguments;
 
     // Normally we'd just use arguments == NULL to see if this isn't a
     // function style macro, but if we have zero parameters, it'll be
     // NULL and we need this instead.
     nkbool functionStyleMacro;
 
-    struct PreprocessorMacro *next;
+    struct NkppMacro *next;
 };
 
-void destroyPreprocessorMacro(
-    struct PreprocessorState *state,
-    struct PreprocessorMacro *macro);
+void destroyNkppMacro(
+    struct NkppState *state,
+    struct NkppMacro *macro);
 
-struct PreprocessorMacro *createPreprocessorMacro(
-    struct PreprocessorState *state);
+struct NkppMacro *createNkppMacro(
+    struct NkppState *state);
 
 nkbool preprocessorMacroAddArgument(
-    struct PreprocessorState *state,
-    struct PreprocessorMacro *macro,
+    struct NkppState *state,
+    struct NkppMacro *macro,
     const char *name);
 
 nkbool preprocessorMacroSetIdentifier(
-    struct PreprocessorState *state,
-    struct PreprocessorMacro *macro,
+    struct NkppState *state,
+    struct NkppMacro *macro,
     const char *identifier);
 
 nkbool preprocessorMacroSetDefinition(
-    struct PreprocessorState *state,
-    struct PreprocessorMacro *macro,
+    struct NkppState *state,
+    struct NkppMacro *macro,
     const char *definition);
 
-struct PreprocessorMacro *preprocessorMacroClone(
-    struct PreprocessorState *state,
-    const struct PreprocessorMacro *macro);
+struct NkppMacro *preprocessorMacroClone(
+    struct NkppState *state,
+    const struct NkppMacro *macro);
 
 #endif // NK_PPMACRO_H
