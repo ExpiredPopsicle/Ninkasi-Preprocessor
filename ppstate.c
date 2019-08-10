@@ -538,7 +538,7 @@ struct NkppState *nkppCloneState(
 // Read functions
 
 // MEMSAFE
-char *readIdentifier(struct NkppState *state)
+char *nkppStateInputReadIdentifier(struct NkppState *state)
 {
     const char *str = state->str;
     nkuint32_t *i = &state->index;
@@ -579,7 +579,7 @@ char *readIdentifier(struct NkppState *state)
 }
 
 // MEMSAFE
-char *readQuotedString(struct NkppState *state)
+char *nkppStateInputReadQuotedString(struct NkppState *state)
 {
     const char *str = state->str;
     nkuint32_t *i = &state->index;
@@ -649,7 +649,7 @@ char *readQuotedString(struct NkppState *state)
 }
 
 // MEMSAFE
-char *readInteger(struct NkppState *state)
+char *nkppStateInputReadInteger(struct NkppState *state)
 {
     const char *str = state->str;
     nkuint32_t start = state->index;
@@ -688,7 +688,7 @@ char *readInteger(struct NkppState *state)
 }
 
 // MEMSAFE
-char *readMacroArgument(struct NkppState *state)
+char *nkppStateInputReadMacroArgument(struct NkppState *state)
 {
     // Create a pristine state to read the arguments with.
     struct NkppState *readerState = NULL;
@@ -777,7 +777,7 @@ char *readMacroArgument(struct NkppState *state)
 // ----------------------------------------------------------------------
 
 // MEMSAFE
-void preprocessorStateClearOutput(struct NkppState *state)
+void nkppStateOutputClear(struct NkppState *state)
 {
     nkppFree(state, state->output);
     state->output = NULL;
@@ -822,7 +822,7 @@ void preprocessorStateAddError(
 }
 
 // MEMSAFE
-void preprocessorStateFlagFileLineMarkersForUpdate(
+void nkppStateFlagFileLineMarkersForUpdate(
     struct NkppState *state)
 {
     state->updateMarkers = nktrue;

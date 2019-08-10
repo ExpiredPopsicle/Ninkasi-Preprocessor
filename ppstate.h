@@ -142,11 +142,11 @@ nkbool nkppStateInputSkipWhitespaceAndComments(
 /// The file/line directive doesn't automatically get inserted without
 /// this flag being set, to prevent us from outputting it in the
 /// middle of one of those multiline macros.
-void preprocessorStateFlagFileLineMarkersForUpdate(
+void nkppStateFlagFileLineMarkersForUpdate(
     struct NkppState *state);
 
 /// Clear the output buffer entirely.
-void preprocessorStateClearOutput(struct NkppState *state);
+void nkppStateOutputClear(struct NkppState *state);
 
 // ----------------------------------------------------------------------
 // Tokenization
@@ -154,10 +154,12 @@ void preprocessorStateClearOutput(struct NkppState *state);
 struct NkppToken *nkppGetNextToken(
     struct NkppState *state,
     nkbool outputWhitespace);
-char *readIdentifier(struct NkppState *state);
-char *readQuotedString(struct NkppState *state);
-char *readInteger(struct NkppState *state);
-char *readMacroArgument(struct NkppState *state);
+char *nkppStateInputReadIdentifier(struct NkppState *state);
+char *nkppStateInputReadQuotedString(struct NkppState *state);
+char *nkppStateInputReadInteger(struct NkppState *state);
+
+/// Read an argument on the *invocation* of a macro.
+char *nkppStateInputReadMacroArgument(struct NkppState *state);
 
 // ----------------------------------------------------------------------
 // Errors

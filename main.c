@@ -69,21 +69,21 @@ struct NkppToken *nkppGetNextToken(
 
         // Read identifiers (and directives).
 
-        ret->str = readIdentifier(state);
+        ret->str = nkppStateInputReadIdentifier(state);
         ret->type = NK_PPTOKEN_IDENTIFIER;
 
     } else if(nkiCompilerIsNumber(state->str[state->index])) {
 
         // Read number.
 
-        ret->str = readInteger(state);
+        ret->str = nkppStateInputReadInteger(state);
         ret->type = NK_PPTOKEN_NUMBER;
 
     } else if(state->str[state->index] == '"') {
 
         // Read quoted string.
 
-        ret->str = readQuotedString(state);
+        ret->str = nkppStateInputReadQuotedString(state);
         ret->type = NK_PPTOKEN_QUOTEDSTRING;
 
     } else if(state->str[state->index] == '#' &&
@@ -351,7 +351,7 @@ nkbool handleDirective(
     }
 
     // Update file/line markers, in case they've changed.
-    preprocessorStateFlagFileLineMarkersForUpdate(state);
+    nkppStateFlagFileLineMarkersForUpdate(state);
 
     nkppFree(state, deletedBackslashes);
 
@@ -403,7 +403,7 @@ nkbool executeMacro(
             while(argument) {
 
                 // Read the macro argument.
-                unstrippedArgumentText = readMacroArgument(state);
+                unstrippedArgumentText = nkppStateInputReadMacroArgument(state);
                 if(!unstrippedArgumentText) {
                     ret = nkfalse;
                     goto executeMacro_cleanup;
@@ -504,7 +504,7 @@ nkbool executeMacro(
     if(ret) {
 
         // Clear output from the cloned state.
-        preprocessorStateClearOutput(clonedState);
+        nkppStateOutputClear(clonedState);
 
         // Feed the macro definition through it.
         if(!preprocess(
@@ -523,7 +523,7 @@ nkbool executeMacro(
             }
         }
 
-        preprocessorStateFlagFileLineMarkersForUpdate(state);
+        nkppStateFlagFileLineMarkersForUpdate(state);
     }
 
 executeMacro_cleanup:
@@ -563,7 +563,7 @@ nkbool handleStringification(
         macroState = nkppCloneState(state);
         if(macroState) {
 
-            preprocessorStateClearOutput(macroState);
+            nkppStateOutputClear(macroState);
 
             if(executeMacro(macroState, macro, recursionLevel)) {
 
