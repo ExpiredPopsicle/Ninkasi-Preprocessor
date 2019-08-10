@@ -145,3 +145,12 @@ foo
 /*
 #define stuff inside
 */
+
+
+
+
+#define FOO BAR
+#define BAR 123
+FOO
+
+

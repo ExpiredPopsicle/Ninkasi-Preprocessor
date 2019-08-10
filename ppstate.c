@@ -690,7 +690,9 @@ char *nkppStateInputReadInteger(struct NkppState *state)
 // MEMSAFE
 char *nkppStateInputReadMacroArgument(struct NkppState *state)
 {
-    // Create a pristine state to read the arguments with.
+    // Create a pristine state to read the arguments with, because we
+    // don't want to evaluate any macros at this point. That'll happen
+    // on invocation.
     struct NkppState *readerState = NULL;
     nkuint32_t parenLevel = 0;
     char *ret = NULL;
