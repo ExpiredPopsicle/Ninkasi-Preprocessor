@@ -98,12 +98,16 @@ nkbool nkppStateSetFilename(
 // ----------------------------------------------------------------------
 // Macros
 
+// FIXME: Make a more accessible version of this for definitions
+// coming in from the hosting application.
 void nkppStateAddMacro(
     struct NkppState *state,
     struct NkppMacro *macro);
+
 struct NkppMacro *nkppStateFindMacro(
     struct NkppState *state,
     const char *identifier);
+
 nkbool nkppStateDeleteMacro(
     struct NkppState *state,
     const char *identifier);
@@ -151,7 +155,7 @@ void nkppStateOutputClear(struct NkppState *state);
 // ----------------------------------------------------------------------
 // Tokenization
 
-struct NkppToken *nkppGetNextToken(
+struct NkppToken *nkppStateInputGetNextToken(
     struct NkppState *state,
     nkbool outputWhitespace);
 char *nkppStateInputReadIdentifier(struct NkppState *state);

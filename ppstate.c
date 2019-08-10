@@ -740,7 +740,7 @@ char *nkppStateInputReadMacroArgument(struct NkppState *state)
         }
 
         // Read token and output it.
-        token = nkppGetNextToken(readerState, nktrue);
+        token = nkppStateInputGetNextToken(readerState, nktrue);
 
         if(token) {
 

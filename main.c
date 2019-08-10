@@ -38,7 +38,7 @@ char *testStr =
 
 // TODO: Move this into ppstate.c
 // MEMSAFE
-struct NkppToken *nkppGetNextToken(
+struct NkppToken *nkppStateInputGetNextToken(
     struct NkppState *state,
     nkbool outputWhitespace)
 {
@@ -618,7 +618,7 @@ nkbool preprocess(
 
     while(state->str && state->str[state->index]) {
 
-        token = nkppGetNextToken(state, nktrue);
+        token = nkppStateInputGetNextToken(state, nktrue);
 
         if(token) {
 
@@ -636,7 +636,7 @@ nkbool preprocess(
                 if(nkiCompilerIsValidIdentifierCharacter(state->str[state->index], nktrue)) {
 
                     // Get the directive name.
-                    directiveNameToken = nkppGetNextToken(state, nktrue);
+                    directiveNameToken = nkppStateInputGetNextToken(state, nktrue);
 
                     if(!directiveNameToken) {
 
