@@ -112,22 +112,23 @@ nkbool nkppStateDeleteMacro(
 // Read/write functions
 
 /// Append a string to the output.
-nkbool appendString(struct NkppState *state, const char *str);
+nkbool nkppStateOutputAppendString(struct NkppState *state, const char *str);
 
 /// Append a character to the output. Output line number tracking
 /// happens here. Use this (or a function that calls it, like
-/// appendString()) to output instead of maually updating the buffer.
-nkbool appendChar(struct NkppState *state, char c);
+/// nkppStateOutputAppendString()) to output instead of maually
+/// updating the buffer.
+nkbool nkppStateOutputAppendChar(struct NkppState *state, char c);
 
 /// Advance the read pointer. Optionally outputting the character.
 /// Input line number tracking happens here, so always use this to
 /// advance the read pointer instead of messing with the index
 /// yourself.
-nkbool skipChar(struct NkppState *state, nkbool output);
+nkbool nkppStateInputSkipChar(struct NkppState *state, nkbool output);
 
 /// Skip past whitespace and comments, optionally sending them to the
 /// output. This is to preserve formatting and comments in the output.
-nkbool skipWhitespaceAndComments(
+nkbool nkppStateInputSkipWhitespaceAndComments(
     struct NkppState *state,
     nkbool output,
     nkbool stopAtNewline);

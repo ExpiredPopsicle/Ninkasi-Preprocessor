@@ -52,7 +52,7 @@ struct NkppToken *nkppGetNextToken(
     ret->str = NULL;
     ret->type = NK_PPTOKEN_UNKNOWN;
 
-    if(!skipWhitespaceAndComments(state, outputWhitespace, nkfalse)) {
+    if(!nkppStateInputSkipWhitespaceAndComments(state, outputWhitespace, nkfalse)) {
         nkppFree(state, ret);
         return NULL;
     }
@@ -99,8 +99,8 @@ struct NkppToken *nkppGetNextToken(
         }
         ret->type = NK_PPTOKEN_DOUBLEHASH;
 
-        success = success && skipChar(state, nkfalse);
-        success = success && skipChar(state, nkfalse);
+        success = success && nkppStateInputSkipChar(state, nkfalse);
+        success = success && nkppStateInputSkipChar(state, nkfalse);
 
     } else if(state->str[state->index] == '#') {
 
@@ -113,7 +113,7 @@ struct NkppToken *nkppGetNextToken(
         }
         ret->type = NK_PPTOKEN_HASH;
 
-        success = success && skipChar(state, nkfalse);
+        success = success && nkppStateInputSkipChar(state, nkfalse);
 
     } else if(state->str[state->index] == ',') {
 
@@ -126,7 +126,7 @@ struct NkppToken *nkppGetNextToken(
         }
         ret->type = NK_PPTOKEN_COMMA;
 
-        success = success && skipChar(state, nkfalse);
+        success = success && nkppStateInputSkipChar(state, nkfalse);
 
     } else if(state->str[state->index] == '(') {
 
@@ -139,7 +139,7 @@ struct NkppToken *nkppGetNextToken(
         }
         ret->type = NK_PPTOKEN_OPENPAREN;
 
-        success = success && skipChar(state, nkfalse);
+        success = success && nkppStateInputSkipChar(state, nkfalse);
 
     } else if(state->str[state->index] == ')') {
 
@@ -152,7 +152,7 @@ struct NkppToken *nkppGetNextToken(
         }
         ret->type = NK_PPTOKEN_CLOSEPAREN;
 
-        success = success && skipChar(state, nkfalse);
+        success = success && nkppStateInputSkipChar(state, nkfalse);
 
     } else {
 
@@ -164,7 +164,7 @@ struct NkppToken *nkppGetNextToken(
             ret->str[1] = 0;
         }
 
-        success = success && skipChar(state, nkfalse);
+        success = success && nkppStateInputSkipChar(state, nkfalse);
     }
 
     if(!ret->str || !success) {
@@ -196,18 +196,18 @@ char *nkppReadRestOfLine(
             // C-style comment.
 
             // Skip initial comment maker.
-            if(!skipChar(state, nktrue) || !skipChar(state, nktrue)) {
+            if(!nkppStateInputSkipChar(state, nktrue) || !nkppStateInputSkipChar(state, nktrue)) {
                 return nkfalse;
             }
 
             while(state->str[state->index] && state->str[state->index + 1]) {
                 if(state->str[state->index] == '*' && state->str[state->index + 1] == '/') {
-                    if(!skipChar(state, nktrue) || !skipChar(state, nktrue)) {
+                    if(!nkppStateInputSkipChar(state, nktrue) || !nkppStateInputSkipChar(state, nktrue)) {
                         return nkfalse;
                     }
                     break;
                 }
-                if(!skipChar(state, nktrue)) {
+                if(!nkppStateInputSkipChar(state, nktrue)) {
                     return nkfalse;
                 }
             }
@@ -235,7 +235,7 @@ char *nkppReadRestOfLine(
                 // Skip that newline and bail out. We're done. Only
                 // output if it's a newline to keep lines in sync
                 // between input and output.
-                if(!skipChar(state, state->str[state->index] == '\n')) {
+                if(!nkppStateInputSkipChar(state, state->str[state->index] == '\n')) {
                     return NULL;
                 }
                 break;
@@ -249,7 +249,7 @@ char *nkppReadRestOfLine(
 
         // Skip this character. Only output if it's a newline to keep
         // lines in sync between input and output.
-        if(!skipChar(state, state->str[state->index] == '\n')) {
+        if(!nkppStateInputSkipChar(state, state->str[state->index] == '\n')) {
             return NULL;
         }
     }
@@ -385,7 +385,7 @@ nkbool executeMacro(
 
     if(macro->arguments || macro->functionStyleMacro) {
 
-        if(!skipWhitespaceAndComments(state, nkfalse, nkfalse)) {
+        if(!nkppStateInputSkipWhitespaceAndComments(state, nkfalse, nkfalse)) {
             ret = nkfalse;
             goto executeMacro_cleanup;
         }
@@ -395,7 +395,7 @@ nkbool executeMacro(
             struct NkppMacroArgument *argument = macro->arguments;
 
             // Skip open paren.
-            if(!skipChar(state, nkfalse)) {
+            if(!nkppStateInputSkipChar(state, nkfalse)) {
                 ret = nkfalse;
                 goto executeMacro_cleanup;
             }
@@ -445,7 +445,7 @@ nkbool executeMacro(
                 nkppFree(state, argumentText);
                 argumentText = NULL;
 
-                if(!skipWhitespaceAndComments(state, nkfalse, nkfalse)) {
+                if(!nkppStateInputSkipWhitespaceAndComments(state, nkfalse, nkfalse)) {
                     ret = nkfalse;
                     goto executeMacro_cleanup;
                 }
@@ -454,7 +454,7 @@ nkbool executeMacro(
 
                     // Expect ','
                     if(state->str[state->index] == ',') {
-                        if(!skipChar(state, nkfalse)) {
+                        if(!nkppStateInputSkipChar(state, nkfalse)) {
                             ret = nkfalse;
                             goto executeMacro_cleanup;
                         }
@@ -479,7 +479,7 @@ nkbool executeMacro(
 
             // Skip final ')'.
             if(state->str[state->index] == ')') {
-                if(!skipChar(state, nkfalse)) {
+                if(!nkppStateInputSkipChar(state, nkfalse)) {
                     ret = nkfalse;
                     goto executeMacro_cleanup;
                 }
@@ -517,7 +517,7 @@ nkbool executeMacro(
 
         // Write output.
         if(clonedState->output) {
-            if(!appendString(state, clonedState->output)) {
+            if(!nkppStateOutputAppendString(state, clonedState->output)) {
                 ret = nkfalse;
                 goto executeMacro_cleanup;
             }
@@ -571,9 +571,9 @@ nkbool handleStringification(
                 escapedStr = nkppEscapeString(
                     state, macroState->output);
                 if(escapedStr) {
-                    appendString(state, "\"");
-                    appendString(state, escapedStr);
-                    appendString(state, "\"");
+                    nkppStateOutputAppendString(state, "\"");
+                    nkppStateOutputAppendString(state, escapedStr);
+                    nkppStateOutputAppendString(state, "\"");
                     nkppFree(state, escapedStr);
                 }
 
@@ -704,7 +704,7 @@ nkbool preprocess(
                     // '#', so we're going to ignore it and just
                     // output it directly as though it's not a
                     // preprocessor directive.
-                    if(!appendString(state, token->str)) {
+                    if(!nkppStateOutputAppendString(state, token->str)) {
                         ret = nkfalse;
                     }
 
@@ -729,7 +729,7 @@ nkbool preprocess(
 
                     // This is an identifier, but it's not a defined
                     // macro.
-                    if(!appendString(state, token->str)) {
+                    if(!nkppStateOutputAppendString(state, token->str)) {
                         ret = nkfalse;
                     }
 
@@ -739,7 +739,7 @@ nkbool preprocess(
 
                 // We don't know what this is. It's probably not for
                 // us. Just pass it through.
-                if(!appendString(state, token->str)) {
+                if(!nkppStateOutputAppendString(state, token->str)) {
                     ret = nkfalse;
                 }
 

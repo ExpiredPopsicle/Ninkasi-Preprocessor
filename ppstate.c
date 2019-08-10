@@ -109,14 +109,14 @@ nkbool preprocessorStateWritePositionMarker(struct NkppState *state)
         return nkfalse;
     }
 
-    ret &= appendString(state, "#file \"");
-    ret &= appendString(state, escapedFilenameStr);
-    ret &= appendString(state, "\"");
+    ret &= nkppStateOutputAppendString(state, "#file \"");
+    ret &= nkppStateOutputAppendString(state, escapedFilenameStr);
+    ret &= nkppStateOutputAppendString(state, "\"");
 
     sprintf(
         numberStr, "\n#line %ld\n",
         (long)state->lineNumber);
-    ret &= appendString(state, numberStr);
+    ret &= nkppStateOutputAppendString(state, numberStr);
 
     state->outputLineNumber = state->lineNumber;
 
@@ -126,7 +126,7 @@ nkbool preprocessorStateWritePositionMarker(struct NkppState *state)
 }
 
 // MEMSAFE
-nkbool appendString(struct NkppState *state, const char *str)
+nkbool nkppStateOutputAppendString(struct NkppState *state, const char *str)
 {
     if(!str) {
 
@@ -138,7 +138,7 @@ nkbool appendString(struct NkppState *state, const char *str)
         nkuint32_t i;
 
         for(i = 0; i < len; i++) {
-            if(!appendChar(state, str[i])) {
+            if(!nkppStateOutputAppendChar(state, str[i])) {
                 return nkfalse;
             }
         }
@@ -148,7 +148,7 @@ nkbool appendString(struct NkppState *state, const char *str)
 }
 
 // MEMSAFE
-nkbool appendChar_real(struct NkppState *state, char c)
+nkbool nkppStateOutputAppendChar_real(struct NkppState *state, char c)
 {
     // FIXME: We should obviously avoid reallocating and copying the
     //   entire output string every time we add a new character! This
@@ -191,13 +191,13 @@ nkbool FIXME_REMOVETHIS_writenumber(struct NkppState *state, nkuint32_t n)
     nkbool ret = nktrue;
 
     while(!(n / lnMask)) {
-        ret &= appendChar_real(state, ' ');
+        ret &= nkppStateOutputAppendChar_real(state, ' ');
         n %= lnMask;
         lnMask /= 10;
     }
 
     while(lnMask) {
-        ret &= appendChar_real(state, '0' + (n / lnMask));
+        ret &= nkppStateOutputAppendChar_real(state, '0' + (n / lnMask));
         n %= lnMask;
         lnMask /= 10;
     }
@@ -206,7 +206,7 @@ nkbool FIXME_REMOVETHIS_writenumber(struct NkppState *state, nkuint32_t n)
 }
 
 // MEMSAFE
-nkbool appendChar(struct NkppState *state, char c)
+nkbool nkppStateOutputAppendChar(struct NkppState *state, char c)
 {
     nkbool ret = nktrue;
 
@@ -230,14 +230,14 @@ nkbool appendChar(struct NkppState *state, char c)
                 nkuint32_t i;
                 for(i = 0; i < 12; i++) {
                     if(i < fnameLen) {
-                        ret = ret && appendChar_real(state, filename[i]);
+                        ret = ret && nkppStateOutputAppendChar_real(state, filename[i]);
                     } else {
-                        ret = ret && appendChar_real(state, ' ');
+                        ret = ret && nkppStateOutputAppendChar_real(state, ' ');
                     }
                 }
             }
 
-            ret = ret && appendChar_real(state, ':');
+            ret = ret && nkppStateOutputAppendChar_real(state, ':');
 
             ret = ret && FIXME_REMOVETHIS_writenumber(state, state->lineNumber);
             ret = ret && FIXME_REMOVETHIS_writenumber(state, state->outputLineNumber);
@@ -245,14 +245,14 @@ nkbool appendChar(struct NkppState *state, char c)
             ret = ret && FIXME_REMOVETHIS_writenumber(state, state->nestedFailedIfs);
             ret = ret && FIXME_REMOVETHIS_writenumber(state, state->nestedPassedIfs);
 
-            ret = ret && appendChar_real(state, ' ');
-            ret = ret && appendChar_real(state, state->updateMarkers ? 'U' : ' ');
+            ret = ret && nkppStateOutputAppendChar_real(state, ' ');
+            ret = ret && nkppStateOutputAppendChar_real(state, state->updateMarkers ? 'U' : ' ');
 
-            ret = ret && appendChar_real(state, ' ');
+            ret = ret && nkppStateOutputAppendChar_real(state, ' ');
 
             if(state->outputLineNumber != state->lineNumber) {
-                ret = ret && appendChar_real(state, '-');
-                ret = ret && appendChar_real(state, ' ');
+                ret = ret && nkppStateOutputAppendChar_real(state, '-');
+                ret = ret && nkppStateOutputAppendChar_real(state, ' ');
 
                 // Add in a position marker and set the output line
                 // number.
@@ -263,12 +263,12 @@ nkbool appendChar(struct NkppState *state, char c)
 
                     // Send in a character we purposely won't do anything
                     // with just to pump the line-start debug info stuff.
-                    ret = ret && appendChar(state, 0);
+                    ret = ret && nkppStateOutputAppendChar(state, 0);
                 }
 
             } else {
-                ret = ret && appendChar_real(state, '|');
-                ret = ret && appendChar_real(state, ' ');
+                ret = ret && nkppStateOutputAppendChar_real(state, '|');
+                ret = ret && nkppStateOutputAppendChar_real(state, ' ');
             }
 
             // If we hit this case, we may have had a redundant use of
@@ -286,7 +286,7 @@ nkbool appendChar(struct NkppState *state, char c)
 
     if(c) {
         if(!state->nestedFailedIfs || c == '\n') {
-            ret = ret && appendChar_real(state, c);
+            ret = ret && nkppStateOutputAppendChar_real(state, c);
         }
     }
 
@@ -294,12 +294,12 @@ nkbool appendChar(struct NkppState *state, char c)
 }
 
 // MEMSAFE
-nkbool skipChar(struct NkppState *state, nkbool output)
+nkbool nkppStateInputSkipChar(struct NkppState *state, nkbool output)
 {
     assert(state->str[state->index]);
 
     if(output) {
-        if(!appendChar(state, state->str[state->index])) {
+        if(!nkppStateOutputAppendChar(state, state->str[state->index])) {
             return nkfalse;
         }
     }
@@ -314,7 +314,7 @@ nkbool skipChar(struct NkppState *state, nkbool output)
 }
 
 // MEMSAFE
-nkbool skipWhitespaceAndComments(
+nkbool nkppStateInputSkipWhitespaceAndComments(
     struct NkppState *state,
     nkbool output,
     nkbool stopAtNewline)
@@ -330,7 +330,7 @@ nkbool skipWhitespaceAndComments(
 
             // C++-style comment.
             while(state->str[state->index] && state->str[state->index] != '\n') {
-                if(!skipChar(state, output)) {
+                if(!nkppStateInputSkipChar(state, output)) {
                     return nkfalse;
                 }
             }
@@ -340,18 +340,18 @@ nkbool skipWhitespaceAndComments(
             // C-style comment.
 
             // Skip initial comment maker.
-            if(!skipChar(state, output) || !skipChar(state, output)) {
+            if(!nkppStateInputSkipChar(state, output) || !nkppStateInputSkipChar(state, output)) {
                 return nkfalse;
             }
 
             while(state->str[state->index] && state->str[state->index + 1]) {
                 if(state->str[state->index] == '*' && state->str[state->index + 1] == '/') {
-                    if(!skipChar(state, output) || !skipChar(state, output)) {
+                    if(!nkppStateInputSkipChar(state, output) || !nkppStateInputSkipChar(state, output)) {
                         return nkfalse;
                     }
                     break;
                 }
-                if(!skipChar(state, output)) {
+                if(!nkppStateInputSkipChar(state, output)) {
                     return nkfalse;
                 }
             }
@@ -375,7 +375,7 @@ nkbool skipWhitespaceAndComments(
             break;
         }
 
-        if(!skipChar(state, output)) {
+        if(!nkppStateInputSkipChar(state, output)) {
             return nkfalse;
         }
     }
@@ -593,7 +593,7 @@ char *readQuotedString(struct NkppState *state)
     assert(str[*i] == '"');
 
     // Skip initial quote.
-    if(!skipChar(state, nkfalse)) {
+    if(!nkppStateInputSkipChar(state, nkfalse)) {
         return NULL;
     }
 
@@ -606,7 +606,7 @@ char *readQuotedString(struct NkppState *state)
         } else if(!backslashed && str[*i] == '"') {
 
             // Skip final quote.
-            if(!skipChar(state, nkfalse)) {
+            if(!nkppStateInputSkipChar(state, nkfalse)) {
                 return NULL;
             }
             break;
@@ -617,7 +617,7 @@ char *readQuotedString(struct NkppState *state)
 
         }
 
-        if(!skipChar(state, nkfalse)) {
+        if(!nkppStateInputSkipChar(state, nkfalse)) {
             return NULL;
         }
     }
@@ -660,7 +660,7 @@ char *readInteger(struct NkppState *state)
     nkbool overflow = nkfalse;
 
     while(nkiCompilerIsNumber(str[state->index])) {
-        if(!skipChar(state, nkfalse)) {
+        if(!nkppStateInputSkipChar(state, nkfalse)) {
             return NULL;
         }
     }
@@ -717,14 +717,14 @@ char *readMacroArgument(struct NkppState *state)
 
     // Skip whitespace up to the first token, but don't append
     // whitespace on this side of it.
-    if(!skipWhitespaceAndComments(readerState, nkfalse, nkfalse)) {
+    if(!nkppStateInputSkipWhitespaceAndComments(readerState, nkfalse, nkfalse)) {
         nkppDestroyState(readerState);
         return NULL;
     }
 
     do {
         // Skip whitespace.
-        if(!skipWhitespaceAndComments(readerState, nktrue, nkfalse)) {
+        if(!nkppStateInputSkipWhitespaceAndComments(readerState, nktrue, nkfalse)) {
             nkppDestroyState(readerState);
             return NULL;
         }
@@ -752,7 +752,7 @@ char *readMacroArgument(struct NkppState *state)
             }
 
             // Add it.
-            if(!appendString(readerState, token->str)) {
+            if(!nkppStateOutputAppendString(readerState, token->str)) {
                 destroyToken(state, token);
                 nkppDestroyState(readerState);
                 return NULL;

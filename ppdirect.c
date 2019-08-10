@@ -189,7 +189,7 @@ nkbool handleDefine(
         goto handleDefine_cleanup;
     }
 
-    if(!skipWhitespaceAndComments(
+    if(!nkppStateInputSkipWhitespaceAndComments(
             directiveParseState, nkfalse, nkfalse))
     {
         ret = nkfalse;
@@ -294,7 +294,7 @@ nkbool handleDefine(
         }
 
         // Skip up to the actual definition.
-        if(!skipWhitespaceAndComments(directiveParseState, nkfalse, nkfalse)) {
+        if(!nkppStateInputSkipWhitespaceAndComments(directiveParseState, nkfalse, nkfalse)) {
             ret = nkfalse;
             goto handleDefine_cleanup;
         }
