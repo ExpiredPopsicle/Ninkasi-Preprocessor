@@ -291,12 +291,12 @@ struct PreprocessorDirectiveMapping
 //   if (with more complicated expressions)
 //   ... anything else I think of
 struct PreprocessorDirectiveMapping directiveMapping[] = {
-    { "undef",  handleUndef  },
-    { "define", handleDefine },
-    { "ifdef",  handleIfdef  },
-    { "ifndef", handleIfndef },
-    { "else",   handleElse   },
-    { "endif",  handleEndif  },
+    { "undef",  nkppDirective_undef  },
+    { "define", nkppDirective_define },
+    { "ifdef",  nkppDirective_ifdef  },
+    { "ifndef", nkppDirective_ifndef },
+    { "else",   nkppDirective_else   },
+    { "endif",  nkppDirective_endif  },
 };
 
 nkuint32_t directiveMappingLen =

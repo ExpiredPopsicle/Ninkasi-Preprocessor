@@ -5,27 +5,27 @@
 
 struct NkppState;
 
-nkbool handleUndef(
+nkbool nkppDirective_undef(
     struct NkppState *state,
     const char *restOfLine);
 
-nkbool handleDefine(
+nkbool nkppDirective_define(
     struct NkppState *state,
     const char *restOfLine);
 
-nkbool handleIfdef(
+nkbool nkppDirective_ifdef(
     struct NkppState *state,
     const char *restOfLine);
 
-nkbool handleIfndef(
+nkbool nkppDirective_ifndef(
     struct NkppState *state,
     const char *restOfLine);
 
-nkbool handleElse(
+nkbool nkppDirective_else(
     struct NkppState *state,
     const char *restOfLine);
 
-nkbool handleEndif(
+nkbool nkppDirective_endif(
     struct NkppState *state,
     const char *restOfLine);
 

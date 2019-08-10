@@ -5,7 +5,7 @@
 #include "ppstring.h"
 
 // MEMSAFE
-nkbool handleIfdefReal(
+nkbool nkppDirective_ifdefReal(
     struct NkppState *state,
     const char *restOfLine,
     nkbool invert)
@@ -57,23 +57,23 @@ nkbool handleIfdefReal(
 }
 
 // MEMSAFE
-nkbool handleIfdef(
+nkbool nkppDirective_ifdef(
     struct NkppState *state,
     const char *restOfLine)
 {
-    return handleIfdefReal(state, restOfLine, nkfalse);
+    return nkppDirective_ifdefReal(state, restOfLine, nkfalse);
 }
 
 // MEMSAFE
-nkbool handleIfndef(
+nkbool nkppDirective_ifndef(
     struct NkppState *state,
     const char *restOfLine)
 {
-    return handleIfdefReal(state, restOfLine, nktrue);
+    return nkppDirective_ifdefReal(state, restOfLine, nktrue);
 }
 
 // MEMSAFE
-nkbool handleElse(
+nkbool nkppDirective_else(
     struct NkppState *state,
     const char *restOfLine)
 {
@@ -81,7 +81,7 @@ nkbool handleElse(
 }
 
 // MEMSAFE
-nkbool handleEndif(
+nkbool nkppDirective_endif(
     struct NkppState *state,
     const char *restOfLine)
 {
@@ -89,7 +89,7 @@ nkbool handleEndif(
 }
 
 // MEMSAFE
-nkbool handleUndef(
+nkbool nkppDirective_undef(
     struct NkppState *state,
     const char *restOfLine)
 {
@@ -138,7 +138,7 @@ nkbool handleUndef(
 }
 
 // MEMSAFE
-nkbool handleDefine(
+nkbool nkppDirective_define(
     struct NkppState *state,
     const char *restOfLine)
 {
@@ -156,7 +156,7 @@ nkbool handleDefine(
         state->errorState, state->memoryCallbacks);
     if(!directiveParseState) {
         ret = nkfalse;
-        goto handleDefine_cleanup;
+        goto nkppDirective_define_cleanup;
     }
     directiveParseState->str = restOfLine;
 
@@ -164,7 +164,7 @@ nkbool handleDefine(
     macro = createNkppMacro(state);
     if(!macro) {
         ret = nkfalse;
-        goto handleDefine_cleanup;
+        goto nkppDirective_define_cleanup;
     }
 
     // Get identifier.
@@ -172,28 +172,28 @@ nkbool handleDefine(
         nkppStateInputGetNextToken(directiveParseState, nkfalse);
     if(!identifierToken) {
         ret = nkfalse;
-        goto handleDefine_cleanup;
+        goto nkppDirective_define_cleanup;
     }
 
     // That better be an identifier.
     if(identifierToken->type != NK_PPTOKEN_IDENTIFIER) {
         nkppStateAddError(state, "Expected identifier after #define.");
         ret = nkfalse;
-        goto handleDefine_cleanup;
+        goto nkppDirective_define_cleanup;
     }
 
     if(!preprocessorMacroSetIdentifier(
             state, macro, identifierToken->str))
     {
         ret = nkfalse;
-        goto handleDefine_cleanup;
+        goto nkppDirective_define_cleanup;
     }
 
     if(!nkppStateInputSkipWhitespaceAndComments(
             directiveParseState, nkfalse, nkfalse))
     {
         ret = nkfalse;
-        goto handleDefine_cleanup;
+        goto nkppDirective_define_cleanup;
     }
 
     // Check for arguments (next char == '(').
@@ -204,7 +204,7 @@ nkbool handleDefine(
             nkppStateInputGetNextToken(directiveParseState, nkfalse);
         if(!openParenToken) {
             ret = nkfalse;
-            goto handleDefine_cleanup;
+            goto nkppDirective_define_cleanup;
         }
 
         destroyToken(state, openParenToken);
@@ -296,7 +296,7 @@ nkbool handleDefine(
         // Skip up to the actual definition.
         if(!nkppStateInputSkipWhitespaceAndComments(directiveParseState, nkfalse, nkfalse)) {
             ret = nkfalse;
-            goto handleDefine_cleanup;
+            goto nkppDirective_define_cleanup;
         }
     }
 
@@ -306,7 +306,7 @@ nkbool handleDefine(
         directiveParseState->str + directiveParseState->index);
     if(!definition) {
         ret = nkfalse;
-        goto handleDefine_cleanup;
+        goto nkppDirective_define_cleanup;
     }
 
     // Set it.
@@ -314,7 +314,7 @@ nkbool handleDefine(
             state, macro, definition))
     {
         ret = nkfalse;
-        goto handleDefine_cleanup;
+        goto nkppDirective_define_cleanup;
     }
 
     // Disallow multiple definitions.
@@ -332,7 +332,7 @@ nkbool handleDefine(
         macro = NULL;
     }
 
-handleDefine_cleanup:
+nkppDirective_define_cleanup:
 
     // Cleanup.
     if(directiveParseState) {
