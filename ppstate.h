@@ -170,22 +170,23 @@ char *nkppStateInputReadMacroArgument(struct NkppState *state);
 
 /// Record an error. The error will be attributed to the current line
 /// number and file name.
-void preprocessorStateAddError(
+void nkppStateAddError(
     struct NkppState *state,
     const char *errorMessage);
 
 // ----------------------------------------------------------------------
 // ifdef/ifndef/if/else/endif handling
 
-nkbool preprocessorStatePushIfResult(
+nkbool nkppStatePushIfResult(
     struct NkppState *state,
     nkbool ifResult);
 
-nkbool preprocessorStatePopIfResult(
+nkbool nkppStatePopIfResult(
     struct NkppState *state);
 
-/// For handling the topmost "else" statement.
-nkbool preprocessorStateFlipIfResult(
+/// For handling the topmost "else" statement. This just inverts the
+/// result of the "if" result on the top of the stack.
+nkbool nkppStateFlipIfResult(
     struct NkppState *state);
 
 // ----------------------------------------------------------------------

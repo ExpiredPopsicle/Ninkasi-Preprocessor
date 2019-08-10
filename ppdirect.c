@@ -32,9 +32,9 @@ nkbool handleIfdefReal(
                     state, identifierToken->str);
 
                 if(macro) {
-                    preprocessorStatePushIfResult(state, !invert);
+                    nkppStatePushIfResult(state, !invert);
                 } else {
-                    preprocessorStatePushIfResult(state, invert);
+                    nkppStatePushIfResult(state, invert);
                 }
 
                 ret = nktrue;
@@ -42,7 +42,7 @@ nkbool handleIfdefReal(
             } else {
 
                 // That's not an identifier.
-                preprocessorStateAddError(state, "Expected identifier after #ifdef/ifndef.");
+                nkppStateAddError(state, "Expected identifier after #ifdef/ifndef.");
             }
         }
     }
@@ -77,7 +77,7 @@ nkbool handleElse(
     struct NkppState *state,
     const char *restOfLine)
 {
-    return preprocessorStateFlipIfResult(state);
+    return nkppStateFlipIfResult(state);
 }
 
 // MEMSAFE
@@ -85,7 +85,7 @@ nkbool handleEndif(
     struct NkppState *state,
     const char *restOfLine)
 {
-    return preprocessorStatePopIfResult(state);
+    return nkppStatePopIfResult(state);
 }
 
 // MEMSAFE
@@ -120,14 +120,14 @@ nkbool handleUndef(
 
         } else {
 
-            preprocessorStateAddError(state, "Cannot delete macro.");
+            nkppStateAddError(state, "Cannot delete macro.");
             ret = nkfalse;
 
         }
 
     } else {
 
-        preprocessorStateAddError(state, "Invalid identifier.");
+        nkppStateAddError(state, "Invalid identifier.");
         ret = nkfalse;
 
     }
@@ -177,7 +177,7 @@ nkbool handleDefine(
 
     // That better be an identifier.
     if(identifierToken->type != NK_PPTOKEN_IDENTIFIER) {
-        preprocessorStateAddError(state, "Expected identifier after #define.");
+        nkppStateAddError(state, "Expected identifier after #define.");
         ret = nkfalse;
         goto handleDefine_cleanup;
     }
@@ -219,7 +219,7 @@ nkbool handleDefine(
         if(!argToken) {
 
             // We're done, but with an error!
-            preprocessorStateAddError(
+            nkppStateAddError(
                 state, "Ran out of tokens while parsing argument list.");
             ret = nkfalse;
 
@@ -286,7 +286,7 @@ nkbool handleDefine(
                 // We're not supposed to hit the end of the
                 // list here.
                 if(!argToken) {
-                    preprocessorStateAddError(state, "Incomplete argument list in #define.");
+                    nkppStateAddError(state, "Incomplete argument list in #define.");
                     ret = nkfalse;
                     break;
                 }
@@ -319,7 +319,7 @@ nkbool handleDefine(
 
     // Disallow multiple definitions.
     if(nkppStateFindMacro(state, macro->identifier)) {
-        preprocessorStateAddError(state, "Multiple definitions of the same macro.");
+        nkppStateAddError(state, "Multiple definitions of the same macro.");
         ret = nkfalse;
     }
 

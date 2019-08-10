@@ -785,7 +785,7 @@ void nkppStateOutputClear(struct NkppState *state)
 }
 
 // MEMSAFE
-void preprocessorStateAddError(
+void nkppStateAddError(
     struct NkppState *state,
     const char *errorMessage)
 {
@@ -849,7 +849,7 @@ nkbool nkppStateSetFilename(
 // ----------------------------------------------------------------------
 
 // MEMSAFE
-nkbool preprocessorStatePushIfResult(
+nkbool nkppStatePushIfResult(
     struct NkppState *state,
     nkbool ifResult)
 {
@@ -884,7 +884,7 @@ nkbool preprocessorStatePushIfResult(
 }
 
 // MEMSAFE
-nkbool preprocessorStatePopIfResult(
+nkbool nkppStatePopIfResult(
     struct NkppState *state)
 {
     if(state->nestedFailedIfs) {
@@ -892,7 +892,7 @@ nkbool preprocessorStatePopIfResult(
     } else if(state->nestedPassedIfs) {
         state->nestedPassedIfs--;
     } else {
-        preprocessorStateAddError(
+        nkppStateAddError(
             state,
             "\"endif\" directive without \"if\"");
         return nkfalse;
@@ -902,13 +902,13 @@ nkbool preprocessorStatePopIfResult(
 }
 
 // MEMSAFE
-nkbool preprocessorStateFlipIfResult(
+nkbool nkppStateFlipIfResult(
     struct NkppState *state)
 {
     nkbool overflow = nkfalse;
 
     if(!state->nestedPassedIfs && !state->nestedFailedIfs) {
-        preprocessorStateAddError(
+        nkppStateAddError(
             state,
             "\"else\" directive without \"if\"");
         return nkfalse;

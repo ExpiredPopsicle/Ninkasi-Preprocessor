@@ -346,7 +346,7 @@ nkbool handleDirective(
 
     // Spit out an error if we couldn't find a matching directive.
     if(i == directiveMappingLen) {
-        preprocessorStateAddError(state, "Unknown directive.");
+        nkppStateAddError(state, "Unknown directive.");
         ret = nkfalse;
     }
 
@@ -459,7 +459,7 @@ nkbool executeMacro(
                             goto executeMacro_cleanup;
                         }
                     } else {
-                        preprocessorStateAddError(state, "Expected ','.");
+                        nkppStateAddError(state, "Expected ','.");
                         ret = nkfalse;
                         break;
                     }
@@ -468,7 +468,7 @@ nkbool executeMacro(
 
                     // Expect ')'
                     if(state->str[state->index] != ')') {
-                        preprocessorStateAddError(state, "Expected ')'.");
+                        nkppStateAddError(state, "Expected ')'.");
                         ret = nkfalse;
                         break;
                     }
@@ -484,12 +484,12 @@ nkbool executeMacro(
                     goto executeMacro_cleanup;
                 }
             } else {
-                preprocessorStateAddError(state, "Expected ')'.");
+                nkppStateAddError(state, "Expected ')'.");
                 ret = nkfalse;
             }
 
         } else {
-            preprocessorStateAddError(state, "Expected argument list.");
+            nkppStateAddError(state, "Expected argument list.");
             ret = nkfalse;
         }
 
@@ -588,7 +588,7 @@ nkbool handleStringification(
         }
 
     } else {
-        preprocessorStateAddError(
+        nkppStateAddError(
             state,
             "Unknown input for stringification.");
     }
@@ -609,7 +609,7 @@ nkbool preprocess(
 
     // FIXME: Maybe make this less arbitraty.
     if(recursionLevel > 20) {
-        preprocessorStateAddError(state, "Arbitrary recursion limit reached.");
+        nkppStateAddError(state, "Arbitrary recursion limit reached.");
         return nkfalse;
     }
 
@@ -675,7 +675,7 @@ nkbool preprocess(
                                     // because an error would have
                                     // been added in handleDirective()
                                     // for whatever went wrong.
-                                    preprocessorStateAddError(
+                                    nkppStateAddError(
                                         state, "Bad directive.");
                                     ret = nkfalse;
                                 }
