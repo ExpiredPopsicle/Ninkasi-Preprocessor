@@ -289,6 +289,7 @@ struct PreprocessorDirectiveMapping
 //   file
 //   line
 //   if (with more complicated expressions)
+//   error
 //   ... anything else I think of
 struct PreprocessorDirectiveMapping directiveMapping[] = {
     { "undef",  nkppDirective_undef  },
@@ -804,12 +805,14 @@ char *loadFile(
 
 int main(int argc, char *argv[])
 {
+    nkuint32_t counter;
+
     // 10691?
     // for(nkuint32_t counter = 4200; counter < 2000000; counter++) {
     // for(nkuint32_t counter = 0; counter < 2430; counter++) {
     // for(nkuint32_t counter = 0; counter < 1; counter++) {
     // for(nkuint32_t counter = 18830; counter < 2000000; counter++) {
-    for(nkuint32_t counter = 18830; counter < 18831; counter++) {
+    for(counter = 18830; counter < 18831; counter++) {
     // for(nkuint32_t counter = 0; counter < 18831; counter++) {
     // for(nkuint32_t counter = 2432; counter < 18831; counter++) {
 

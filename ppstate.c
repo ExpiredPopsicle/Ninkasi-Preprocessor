@@ -190,7 +190,7 @@ nkbool FIXME_REMOVETHIS_writenumber(struct NkppState *state, nkuint32_t n)
     nkuint32_t lnMask = 10000;
     nkbool ret = nktrue;
 
-    while(!(n / lnMask)) {
+    while(lnMask && !(n / lnMask)) {
         ret &= nkppStateOutputAppendChar_real(state, ' ');
         n %= lnMask;
         lnMask /= 10;
@@ -816,9 +816,14 @@ void nkppStateAddError(
 
     } else {
 
-        fprintf(stderr, "%s:%ld: %s\n",
-        state->filename,
-        (long)state->lineNumber, errorMessage);
+        #if __WATCOMC__
+        printf(
+        #else
+        fprintf(stderr,
+        #endif
+            "%s:%ld: %s\n",
+            state->filename,
+            (long)state->lineNumber, errorMessage);
 
     }
 }

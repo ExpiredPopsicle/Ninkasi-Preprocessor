@@ -20,8 +20,8 @@ foo(12345)
   (x + x - y + (butts))
 #define multiarg(x, y,           \
   (x + x - y + (butts))
-#include "test.txt"
-#include "test.txt"
+//#include "test.txt"
+//#include "test.txt"
 #define stringTest "some \"quoted\" string"
 stringTest
 // comment
