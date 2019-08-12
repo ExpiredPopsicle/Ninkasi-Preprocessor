@@ -1,0 +1,2 @@
+#!/bin/bash
+valgrind --exit-on-first-error=yes --error-exitcode=1 ./a
