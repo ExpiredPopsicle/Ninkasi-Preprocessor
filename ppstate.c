@@ -194,6 +194,7 @@ nkbool nkppStateOutputAppendChar_real(struct NkppState *state, char c)
     }
 
     // Add the new character and a null terminator.
+    state->outputLength++;
     state->output[oldLen] = c;
     state->output[newLen] = 0;
 
@@ -500,7 +501,8 @@ nkbool nkppStateDeleteMacro(
 
 // MEMSAFE
 struct NkppState *nkppCloneState(
-    struct NkppState *state)
+    struct NkppState *state,
+    nkbool copyOutput)
 {
     struct NkppState *ret = nkppCreateState(
         state->errorState, state->memoryCallbacks);
@@ -517,23 +519,27 @@ struct NkppState *nkppCloneState(
     ret->outputLineNumber = state->outputLineNumber;
 
     // Copy output.
-    ret->output = nkppMalloc(state, state->outputCapacity);
-    ret->outputCapacity = state->outputCapacity;
-    ret->outputLength = state->outputLength;
-    if(ret->outputCapacity) {
-        if(!ret->output) {
+    if(copyOutput) {
+
+        ret->output = nkppMalloc(state, state->outputCapacity);
+        ret->outputCapacity = state->outputCapacity;
+        ret->outputLength = state->outputLength;
+
+        if(ret->outputCapacity) {
+            if(!ret->output) {
+                nkppDestroyState(ret);
+                return NULL;
+            }
+            memcpyWrapper(
+                ret->output,
+                state->output,
+                state->outputLength + 1);
+        }
+
+        if(state->output && !ret->output) {
             nkppDestroyState(ret);
             return NULL;
         }
-        memcpyWrapper(
-            ret->output,
-            state->output,
-            state->outputLength + 1);
-    }
-
-    if(state->output && !ret->output) {
-        nkppDestroyState(ret);
-        return NULL;
     }
 
     // Note: We purposely don't write position markers or update

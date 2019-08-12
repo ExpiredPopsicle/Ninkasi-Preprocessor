@@ -90,7 +90,8 @@ struct NkppState *nkppCreateState(
 void nkppDestroyState(struct NkppState *state);
 
 struct NkppState *nkppCloneState(
-    struct NkppState *state);
+    struct NkppState *state,
+    nkbool copyOutput);
 
 /// Set the current file name. Used for error tracking.
 nkbool nkppStateSetFilename(

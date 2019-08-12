@@ -376,7 +376,7 @@ nkbool executeMacro(
     char *argumentText = NULL;
     struct NkppMacro *newMacro = NULL;
 
-    clonedState = nkppCloneState(state);
+    clonedState = nkppCloneState(state, nkfalse);
     if(!clonedState) {
         return nkfalse;
     }
@@ -504,10 +504,7 @@ nkbool executeMacro(
     // Preprocess the macro into place.
     if(ret) {
 
-        // Clear output from the cloned state.
-        nkppStateOutputClear(clonedState);
-
-        // Feed the macro definition through it.
+        // Feed the macro definition through the cloned state.
         if(!preprocess(
                 clonedState,
                 macro->definition ? macro->definition : "",
@@ -561,10 +558,8 @@ nkbool handleStringification(
 
     if(macro) {
 
-        macroState = nkppCloneState(state);
+        macroState = nkppCloneState(state, nkfalse);
         if(macroState) {
-
-            nkppStateOutputClear(macroState);
 
             if(executeMacro(macroState, macro, recursionLevel)) {
 
@@ -766,11 +761,14 @@ char *loadFile(
     FILE *in = fopen(filename, "rb");
     nkuint32_t fileSize = 0;
     char *ret;
-    int c;
 
     if(!in) {
         return NULL;
     }
+
+    fseek(in, 0, SEEK_END);
+    fileSize = ftell(in);
+    fseek(in, 0, SEEK_SET);
 
     ret = nkppMalloc(state, fileSize + 1);
     if(!ret) {
@@ -778,24 +776,11 @@ char *loadFile(
         return NULL;
     }
 
-    ret[0] = 0;
+    ret[fileSize] = 0;
 
-    while((c = fgetc(in)) != EOF) {
-
-        char *newRet;
-        ret[fileSize] = c;
-        fileSize++;
-
-        // Allocate new chunk.
-        newRet = nkppRealloc(state, ret, fileSize + 1);
-        if(!newRet) {
-            nkppFree(state, ret);
-            fclose(in);
-            return NULL;
-        }
-        ret = newRet;
-
-        ret[fileSize] = 0;
+    if(!fread(ret, fileSize, 1, in)) {
+        free(ret);
+        ret = NULL;
     }
 
     fclose(in);
