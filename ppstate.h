@@ -41,6 +41,8 @@ struct NkppState
 
     // Output buffer (position always at end).
     char *output;
+    nkuint32_t outputCapacity;
+    nkuint32_t outputLength;
 
     // Line number in the source file.
     nkuint32_t lineNumber;

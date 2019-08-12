@@ -54,6 +54,8 @@ struct NkppState *nkppCreateState(
         ret->lineNumber = 1;
         ret->outputLineNumber = 1;
         ret->output = NULL;
+        ret->outputCapacity = 0;
+        ret->outputLength = 0;
         ret->macros = NULL;
         ret->writePositionMarkers = nkfalse;
         ret->updateMarkers = nkfalse;
@@ -150,11 +152,6 @@ nkbool nkppStateOutputAppendString(struct NkppState *state, const char *str)
 // MEMSAFE
 nkbool nkppStateOutputAppendChar_real(struct NkppState *state, char c)
 {
-    // FIXME: We should obviously avoid reallocating and copying the
-    //   entire output string every time we add a new character! This
-    //   was simpler in the short term than setting up a larger buffer
-    //   with a capacity to fill in before reallocating.
-
     nkuint32_t oldLen;
     nkuint32_t newLen;
     nkuint32_t allocLen;
@@ -162,20 +159,39 @@ nkbool nkppStateOutputAppendChar_real(struct NkppState *state, char c)
     char *newChunk;
 
     // Calculate new size with overflow check.
-    oldLen = state->output ? strlenWrapper(state->output) : 0;
+    oldLen = state->outputLength;
     NK_CHECK_OVERFLOW_UINT_ADD(oldLen, 1, newLen, overflow);
     NK_CHECK_OVERFLOW_UINT_ADD(newLen, 1, allocLen, overflow);
     if(overflow) {
         return nkfalse;
     }
 
-    // Reallocate chunk.
-    newChunk = nkppRealloc(
-        state, state->output, allocLen);
-    if(!newChunk) {
-        return nkfalse;
+    if(allocLen > state->outputCapacity) {
+
+        // Need to reallocate.
+
+        nkuint32_t newCapacity;
+
+        NK_CHECK_OVERFLOW_UINT_MUL(
+            state->outputCapacity, 2,
+            newCapacity, overflow);
+        if(overflow) {
+            return nkfalse;
+        }
+
+        if(newCapacity < 8) {
+            newCapacity = 8;
+        }
+
+        newChunk = nkppRealloc(state, state->output, newCapacity);
+
+        if(!newChunk) {
+            return nkfalse;
+        }
+
+        state->output = newChunk;
+        state->outputCapacity = newCapacity;
     }
-    state->output = newChunk;
 
     // Add the new character and a null terminator.
     state->output[oldLen] = c;
@@ -306,6 +322,9 @@ nkbool nkppStateInputSkipChar(struct NkppState *state, nkbool output)
 
     if(state->str && state->str[state->index] == '\n') {
         state->lineNumber++;
+
+        // FIXME: Remove this.
+        printf("Line: %ld\n", (long)state->lineNumber);
     }
 
     state->index++;
@@ -496,7 +515,21 @@ struct NkppState *nkppCloneState(
     ret->index = state->index;
     ret->lineNumber = state->lineNumber;
     ret->outputLineNumber = state->outputLineNumber;
-    ret->output = state->output ? nkppStrdup(state, state->output) : NULL;
+
+    // Copy output.
+    ret->output = nkppMalloc(state, state->outputCapacity);
+    ret->outputCapacity = state->outputCapacity;
+    ret->outputLength = state->outputLength;
+    if(ret->outputCapacity) {
+        if(!ret->output) {
+            nkppDestroyState(ret);
+            return NULL;
+        }
+        memcpyWrapper(
+            ret->output,
+            state->output,
+            state->outputLength + 1);
+    }
 
     if(state->output && !ret->output) {
         nkppDestroyState(ret);
@@ -783,6 +816,8 @@ void nkppStateOutputClear(struct NkppState *state)
 {
     nkppFree(state, state->output);
     state->output = NULL;
+    state->outputCapacity = 0;
+    state->outputLength = 0;
     state->outputLineNumber = 1;
 }
 
