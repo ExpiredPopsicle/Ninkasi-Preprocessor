@@ -34,7 +34,6 @@ void nkppFree(struct NkppState *state, void *ptr)
     nkppDefaultFreeWrapper(NULL, ptr);
 }
 
-// MEMSAFE
 struct NkppState *nkppCreateState(
     struct NkppErrorState *errorState,
     struct NkppMemoryCallbacks *memoryCallbacks)
@@ -76,7 +75,6 @@ struct NkppState *nkppCreateState(
     return ret;
 }
 
-// MEMSAFE
 void nkppDestroyState(struct NkppState *state)
 {
     NkppFreeWrapper localFreeWrapper =
@@ -98,9 +96,7 @@ void nkppDestroyState(struct NkppState *state)
 
 // This should only ever be called when we're about to output a
 // newline anyway.
-//
-// MEMSAFE
-nkbool preprocessorStateWritePositionMarker(struct NkppState *state)
+nkbool nkppStateWritePositionMarker(struct NkppState *state)
 {
     char numberStr[128];
     char *escapedFilenameStr =
@@ -276,7 +272,7 @@ nkbool nkppStateOutputAppendChar(struct NkppState *state, char c)
                 if(state->updateMarkers) {
                     state->outputLineNumber = state->lineNumber;
                     state->updateMarkers = nkfalse;
-                    ret = ret && preprocessorStateWritePositionMarker(state);
+                    ret = ret && nkppStateWritePositionMarker(state);
 
                     // Send in a character we purposely won't do anything
                     // with just to pump the line-start debug info stuff.
