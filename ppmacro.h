@@ -51,4 +51,9 @@ struct NkppMacro *nkppMacroClone(
     struct NkppState *state,
     const struct NkppMacro *macro);
 
+nkbool nkppMacroExecute(
+    struct NkppState *state,
+    struct NkppMacro *macro,
+    nkuint32_t recursionLevel);
+
 #endif // NK_PPMACRO_H

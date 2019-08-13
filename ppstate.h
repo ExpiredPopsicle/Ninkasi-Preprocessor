@@ -208,4 +208,12 @@ void *nkppMalloc(struct NkppState *state, nkuint32_t size);
 
 void nkppFree(struct NkppState *state, void *ptr);
 
+// ----------------------------------------------------------------------
+// Main entrypoint
+
+nkbool nkppStateExecute(
+    struct NkppState *state,
+    const char *str,
+    nkuint32_t recursionLevel);
+
 #endif // NK_PPSTATE_H

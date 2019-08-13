@@ -1,5 +1,6 @@
 #include "ppstate.h"
 #include "ppmacro.h"
+#include "ppstring.h"
 
 void nkppMacroDestroy(
     struct NkppState *state,
@@ -173,3 +174,180 @@ struct NkppMacro *nkppMacroClone(
     return ret;
 }
 
+nkbool nkppMacroExecute(
+    struct NkppState *state,
+    struct NkppMacro *macro,
+    nkuint32_t recursionLevel)
+{
+    struct NkppState *clonedState;
+    nkbool ret = nktrue;
+    char *unstrippedArgumentText = NULL;
+    char *argumentText = NULL;
+    struct NkppMacro *newMacro = NULL;
+
+    clonedState = nkppStateClone(state, nkfalse);
+    if(!clonedState) {
+        return nkfalse;
+    }
+
+    // Input is the macro definition. Output is
+    // appending to the "parent" state.
+
+    if(macro->arguments || macro->functionStyleMacro) {
+
+        if(!nkppStateInputSkipWhitespaceAndComments(state, nkfalse, nkfalse)) {
+            ret = nkfalse;
+            goto nkppMacroExecute_cleanup;
+        }
+
+        if(state->str[state->index] == '(') {
+
+            struct NkppMacroArgument *argument = macro->arguments;
+
+            // Skip open paren.
+            if(!nkppStateInputSkipChar(state, nkfalse)) {
+                ret = nkfalse;
+                goto nkppMacroExecute_cleanup;
+            }
+
+            while(argument) {
+
+                // Read the macro argument.
+                unstrippedArgumentText = nkppStateInputReadMacroArgument(state);
+                if(!unstrippedArgumentText) {
+                    ret = nkfalse;
+                    goto nkppMacroExecute_cleanup;
+                }
+
+                argumentText = nkppStripCommentsAndTrim(
+                    state, unstrippedArgumentText);
+                if(!argumentText) {
+                    ret = nkfalse;
+                    goto nkppMacroExecute_cleanup;
+                }
+
+                nkppFree(state, unstrippedArgumentText);
+                unstrippedArgumentText = NULL;
+
+                // Add the argument as a macro to
+                // the new cloned state.
+                {
+                    newMacro = nkppMacroCreate(state);
+                    if(!newMacro) {
+                        ret = nkfalse;
+                        goto nkppMacroExecute_cleanup;
+                    }
+
+                    if(!nkppMacroSetIdentifier(state, newMacro, argument->name)) {
+                        ret = nkfalse;
+                        goto nkppMacroExecute_cleanup;
+                    }
+
+                    if(!nkppMacroSetDefinition(state, newMacro, argumentText)) {
+                        ret = nkfalse;
+                        goto nkppMacroExecute_cleanup;
+                    }
+
+                    nkppStateAddMacro(clonedState, newMacro);
+                    newMacro = NULL;
+                }
+
+                nkppFree(state, argumentText);
+                argumentText = NULL;
+
+                if(!nkppStateInputSkipWhitespaceAndComments(state, nkfalse, nkfalse)) {
+                    ret = nkfalse;
+                    goto nkppMacroExecute_cleanup;
+                }
+
+                if(argument->next) {
+
+                    // Expect ','
+                    if(state->str[state->index] == ',') {
+                        if(!nkppStateInputSkipChar(state, nkfalse)) {
+                            ret = nkfalse;
+                            goto nkppMacroExecute_cleanup;
+                        }
+                    } else {
+                        nkppStateAddError(state, "Expected ','.");
+                        ret = nkfalse;
+                        break;
+                    }
+
+                } else {
+
+                    // Expect ')'
+                    if(state->str[state->index] != ')') {
+                        nkppStateAddError(state, "Expected ')'.");
+                        ret = nkfalse;
+                        break;
+                    }
+                }
+
+                argument = argument->next;
+            }
+
+            // Skip final ')'.
+            if(state->str[state->index] == ')') {
+                if(!nkppStateInputSkipChar(state, nkfalse)) {
+                    ret = nkfalse;
+                    goto nkppMacroExecute_cleanup;
+                }
+            } else {
+                nkppStateAddError(state, "Expected ')'.");
+                ret = nkfalse;
+            }
+
+        } else {
+            nkppStateAddError(state, "Expected argument list.");
+            ret = nkfalse;
+        }
+
+    } else {
+
+        // No arguments. Nothing to set up on cloned
+        // state.
+
+    }
+
+    // Preprocess the macro into place.
+    if(ret) {
+
+        // Feed the macro definition through the cloned state.
+        if(!nkppStateExecute(
+                clonedState,
+                macro->definition ? macro->definition : "",
+                recursionLevel + 1))
+        {
+            ret = nkfalse;
+        }
+
+        // Write output.
+        if(clonedState->output) {
+            if(!nkppStateOutputAppendString(state, clonedState->output)) {
+                ret = nkfalse;
+                goto nkppMacroExecute_cleanup;
+            }
+        }
+
+        nkppStateFlagFileLineMarkersForUpdate(state);
+    }
+
+nkppMacroExecute_cleanup:
+
+    // Clean up.
+    if(clonedState) {
+        nkppDestroyState(clonedState);
+    }
+    if(unstrippedArgumentText) {
+        nkppFree(state, unstrippedArgumentText);
+    }
+    if(argumentText) {
+        nkppFree(state, argumentText);
+    }
+    if(newMacro) {
+        nkppMacroDestroy(state, newMacro);
+    }
+
+    return ret;
+}

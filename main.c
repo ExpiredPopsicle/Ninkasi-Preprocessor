@@ -37,189 +37,6 @@ char *testStr =
     "// comment after multiline\n";
 
 
-nkbool preprocess(
-    struct NkppState *state,
-    const char *str,
-    nkuint32_t recursionLevel);
-
-nkbool executeMacro(
-    struct NkppState *state,
-    struct NkppMacro *macro,
-    nkuint32_t recursionLevel)
-{
-    struct NkppState *clonedState;
-    nkbool ret = nktrue;
-    char *unstrippedArgumentText = NULL;
-    char *argumentText = NULL;
-    struct NkppMacro *newMacro = NULL;
-
-    clonedState = nkppStateClone(state, nkfalse);
-    if(!clonedState) {
-        return nkfalse;
-    }
-
-    // Input is the macro definition. Output is
-    // appending to the "parent" state.
-
-    if(macro->arguments || macro->functionStyleMacro) {
-
-        if(!nkppStateInputSkipWhitespaceAndComments(state, nkfalse, nkfalse)) {
-            ret = nkfalse;
-            goto executeMacro_cleanup;
-        }
-
-        if(state->str[state->index] == '(') {
-
-            struct NkppMacroArgument *argument = macro->arguments;
-
-            // Skip open paren.
-            if(!nkppStateInputSkipChar(state, nkfalse)) {
-                ret = nkfalse;
-                goto executeMacro_cleanup;
-            }
-
-            while(argument) {
-
-                // Read the macro argument.
-                unstrippedArgumentText = nkppStateInputReadMacroArgument(state);
-                if(!unstrippedArgumentText) {
-                    ret = nkfalse;
-                    goto executeMacro_cleanup;
-                }
-
-                argumentText = nkppStripCommentsAndTrim(
-                    state, unstrippedArgumentText);
-                if(!argumentText) {
-                    ret = nkfalse;
-                    goto executeMacro_cleanup;
-                }
-
-                nkppFree(state, unstrippedArgumentText);
-                unstrippedArgumentText = NULL;
-
-                // Add the argument as a macro to
-                // the new cloned state.
-                {
-                    newMacro = nkppMacroCreate(state);
-                    if(!newMacro) {
-                        ret = nkfalse;
-                        goto executeMacro_cleanup;
-                    }
-
-                    if(!nkppMacroSetIdentifier(state, newMacro, argument->name)) {
-                        ret = nkfalse;
-                        goto executeMacro_cleanup;
-                    }
-
-                    if(!nkppMacroSetDefinition(state, newMacro, argumentText)) {
-                        ret = nkfalse;
-                        goto executeMacro_cleanup;
-                    }
-
-                    nkppStateAddMacro(clonedState, newMacro);
-                    newMacro = NULL;
-                }
-
-                nkppFree(state, argumentText);
-                argumentText = NULL;
-
-                if(!nkppStateInputSkipWhitespaceAndComments(state, nkfalse, nkfalse)) {
-                    ret = nkfalse;
-                    goto executeMacro_cleanup;
-                }
-
-                if(argument->next) {
-
-                    // Expect ','
-                    if(state->str[state->index] == ',') {
-                        if(!nkppStateInputSkipChar(state, nkfalse)) {
-                            ret = nkfalse;
-                            goto executeMacro_cleanup;
-                        }
-                    } else {
-                        nkppStateAddError(state, "Expected ','.");
-                        ret = nkfalse;
-                        break;
-                    }
-
-                } else {
-
-                    // Expect ')'
-                    if(state->str[state->index] != ')') {
-                        nkppStateAddError(state, "Expected ')'.");
-                        ret = nkfalse;
-                        break;
-                    }
-                }
-
-                argument = argument->next;
-            }
-
-            // Skip final ')'.
-            if(state->str[state->index] == ')') {
-                if(!nkppStateInputSkipChar(state, nkfalse)) {
-                    ret = nkfalse;
-                    goto executeMacro_cleanup;
-                }
-            } else {
-                nkppStateAddError(state, "Expected ')'.");
-                ret = nkfalse;
-            }
-
-        } else {
-            nkppStateAddError(state, "Expected argument list.");
-            ret = nkfalse;
-        }
-
-    } else {
-
-        // No arguments. Nothing to set up on cloned
-        // state.
-
-    }
-
-    // Preprocess the macro into place.
-    if(ret) {
-
-        // Feed the macro definition through the cloned state.
-        if(!preprocess(
-                clonedState,
-                macro->definition ? macro->definition : "",
-                recursionLevel + 1))
-        {
-            ret = nkfalse;
-        }
-
-        // Write output.
-        if(clonedState->output) {
-            if(!nkppStateOutputAppendString(state, clonedState->output)) {
-                ret = nkfalse;
-                goto executeMacro_cleanup;
-            }
-        }
-
-        nkppStateFlagFileLineMarkersForUpdate(state);
-    }
-
-executeMacro_cleanup:
-
-    // Clean up.
-    if(clonedState) {
-        nkppDestroyState(clonedState);
-    }
-    if(unstrippedArgumentText) {
-        nkppFree(state, unstrippedArgumentText);
-    }
-    if(argumentText) {
-        nkppFree(state, argumentText);
-    }
-    if(newMacro) {
-        nkppMacroDestroy(state, newMacro);
-    }
-
-    return ret;
-}
-
 nkbool handleStringification(
     struct NkppState *state,
     const char *macroName,
@@ -237,7 +54,7 @@ nkbool handleStringification(
         macroState = nkppStateClone(state, nkfalse);
         if(macroState) {
 
-            if(executeMacro(macroState, macro, recursionLevel)) {
+            if(nkppMacroExecute(macroState, macro, recursionLevel)) {
 
                 // Escape the string and add it to the output.
                 escapedStr = nkppEscapeString(
@@ -268,7 +85,7 @@ nkbool handleStringification(
     return ret;
 }
 
-nkbool preprocess(
+nkbool nkppStateExecute(
     struct NkppState *state,
     const char *str,
     nkuint32_t recursionLevel)
@@ -392,7 +209,7 @@ nkbool preprocess(
                 if(macro) {
 
                     // Execute that macro.
-                    if(!executeMacro(state, macro, recursionLevel)) {
+                    if(!nkppMacroExecute(state, macro, recursionLevel)) {
                         ret = nkfalse;
                     }
 
@@ -523,7 +340,7 @@ int main(int argc, char *argv[])
             printf("----------------------------------------------------------------------\n");
 
             state->writePositionMarkers = nktrue;
-            preprocess(state, testStr2, 0);
+            nkppStateExecute(state, testStr2, 0);
 
             printf("----------------------------------------------------------------------\n");
             printf("  Preprocessor output\n");
