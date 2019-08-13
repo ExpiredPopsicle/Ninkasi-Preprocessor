@@ -90,11 +90,11 @@ int main(int argc, char *argv[])
         // if(argc > 1) {
         //     allocLimit = atol(argv[1]);
         // }
-        // setAllocationFailureTestLimits(
+        // nkppMemDebugSetAllocationFailureTestLimits(
         //     memLimit, allocLimit);
 
         #if NK_PP_MEMDEBUG
-        setAllocationFailureTestLimits(
+        nkppMemDebugSetAllocationFailureTestLimits(
             ~(nkuint32_t)0, counter);
         #endif
 

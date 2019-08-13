@@ -25,19 +25,19 @@ struct NkppAllocationHeader *nkppAllocationHeaderGetData(struct NkppAllocationHe
 
 #if NK_PP_MEMDEBUG
 
-static nkuint32_t maxAllowedMemory = ~(nkuint32_t)0;
-static nkuint32_t totalAllocations = 0;
-static nkuint32_t maxUsage = 0;
-static nkuint32_t allocationsUntilFailure = ~(nkuint32_t)0;
+static nkuint32_t nkppMemDebugMaxAllowedMemory = NK_UINT_MAX;
+static nkuint32_t nkppMemDebugTotalAllocations = 0;
+static nkuint32_t nkppMemDebugMaxUsage = 0;
+static nkuint32_t allocationsUntilFailure = NK_INVALID_VALUE;
 
-void setAllocationFailureTestLimits(
+void nkppMemDebugSetAllocationFailureTestLimits(
     nkuint32_t limitMemory,
     nkuint32_t limitAllocations)
 {
     printf("Alloc limits: %lu bytes, %lu allocs\n",
         (long)limitMemory, (long)limitAllocations);
 
-    maxAllowedMemory = limitMemory;
+    nkppMemDebugMaxAllowedMemory = limitMemory;
     allocationsUntilFailure = limitAllocations;
 }
 
@@ -108,9 +108,9 @@ void *nkppMalloc(struct NkppState *state, nkuint32_t size)
     ret = nkppAllocationHeaderGetData(newHeader);
 
 #if NK_PP_MEMDEBUG
-    totalAllocations += size;
-    if(totalAllocations > maxUsage) {
-        maxUsage = totalAllocations;
+    nkppMemDebugTotalAllocations += size;
+    if(nkppMemDebugTotalAllocations > nkppMemDebugMaxUsage) {
+        nkppMemDebugMaxUsage = nkppMemDebugTotalAllocations;
     }
 #endif // NK_PP_MEMDEBUG
 
@@ -128,7 +128,7 @@ void nkppFree(struct NkppState *state, void *ptr)
     header = nkppAllocationHeaderGetFromData(ptr);
 
 #if NK_PP_MEMDEBUG
-    totalAllocations -= header->size;
+    nkppMemDebugTotalAllocations -= header->size;
 #endif // NK_PP_MEMDEBUG
 
     if(state->memoryCallbacks) {
