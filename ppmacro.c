@@ -1,6 +1,4 @@
-#include "ppstate.h"
-#include "ppmacro.h"
-#include "ppstring.h"
+#include "ppcommon.h"
 
 void nkppMacroDestroy(
     struct NkppState *state,

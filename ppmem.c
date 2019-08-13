@@ -1,9 +1,4 @@
 #include "ppcommon.h"
-#include "ppstate.h"
-#include "ppmacro.h"
-#include "pptoken.h"
-#include "ppstring.h"
-#include "ppmem.h"
 
 // ----------------------------------------------------------------------
 // Allocation header stuff

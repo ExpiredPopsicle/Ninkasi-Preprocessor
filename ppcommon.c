@@ -1,8 +1,4 @@
 #include "ppcommon.h"
-#include "ppstate.h"
-#include "ppstring.h"
-
-#include <assert.h>
 
 // ----------------------------------------------------------------------
 // Stuff copied from nktoken.c

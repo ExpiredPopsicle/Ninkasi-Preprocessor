@@ -1,8 +1,4 @@
-#include "ppstate.h"
-#include "pptoken.h"
-#include "ppdirect.h"
-#include "ppmacro.h"
-#include "ppstring.h"
+#include "ppcommon.h"
 
 struct PreprocessorDirectiveMapping
 {

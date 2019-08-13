@@ -1,7 +1,6 @@
 #ifndef NK_PPTYPES_H
 #define NK_PPTYPES_H
 
-
 #ifdef __ILP32__
 
    // ILP32 data model. The compiler actually tells us.

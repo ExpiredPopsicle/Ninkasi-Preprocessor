@@ -1,11 +1,4 @@
 #include "ppcommon.h"
-#include "ppstate.h"
-#include "ppmacro.h"
-#include "pptoken.h"
-#include "ppstring.h"
-#include "ppmem.h"
-
-#include <assert.h>
 
 struct NkppState *nkppCreateState(
     struct NkppErrorState *errorState,

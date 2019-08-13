@@ -1,10 +1,17 @@
 #ifndef NK_PPCOMMON_H
 #define NK_PPCOMMON_H
 
+#include "pptypes.h"
+#include "ppdirect.h"
+#include "ppmacro.h"
+#include "ppmem.h"
+#include "ppstate.h"
+#include "ppstring.h"
+#include "pptoken.h"
+
 #include <string.h>
 #include <malloc.h>
-
-#include "pptypes.h"
+#include <assert.h>
 
 struct NkppState;
 

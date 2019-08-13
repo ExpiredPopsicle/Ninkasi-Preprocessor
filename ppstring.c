@@ -1,7 +1,4 @@
-#include "ppstate.h"
-#include "ppstring.h"
-
-#include <assert.h>
+#include "ppcommon.h"
 
 char *nkppDeleteBackslashNewlines(
     struct NkppState *state,
