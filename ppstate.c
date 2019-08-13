@@ -3,44 +3,9 @@
 #include "ppmacro.h"
 #include "pptoken.h"
 #include "ppstring.h"
+#include "ppmem.h"
 
 #include <assert.h>
-
-void *nkppDefaultMallocWrapper(void *userData, nkuint32_t size)
-{
-    return mallocWrapper(size);
-}
-
-void nkppDefaultFreeWrapper(void *userData, void *ptr)
-{
-    freeWrapper(ptr);
-}
-
-void *nkppMalloc(struct NkppState *state, nkuint32_t size)
-{
-    void *ret = NULL;
-    if(state->memoryCallbacks) {
-        ret = state->memoryCallbacks->mallocWrapper(
-            state->memoryCallbacks->userData, size);
-    } else {
-        ret = nkppDefaultMallocWrapper(NULL, size);
-    }
-
-    if(!ret) {
-        state->allocationFailure = nktrue;
-    }
-
-    return ret;
-}
-
-void nkppFree(struct NkppState *state, void *ptr)
-{
-    if(state->memoryCallbacks) {
-        state->memoryCallbacks->freeWrapper(
-            state->memoryCallbacks->userData, ptr);
-    }
-    nkppDefaultFreeWrapper(NULL, ptr);
-}
 
 struct NkppState *nkppCreateState(
     struct NkppErrorState *errorState,
@@ -98,8 +63,11 @@ void nkppDestroyState(struct NkppState *state)
         currentMacro = next;
     }
 
-    localFreeWrapper(userData, state->output);
-    localFreeWrapper(userData, state->filename);
+    nkppFree(state, state->output);
+    nkppFree(state, state->filename);
+
+    // Final NkppState allocation was not allocated through
+    // nkppMalloc. Use the memory callback directly.
     localFreeWrapper(userData, state);
 }
 
