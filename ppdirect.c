@@ -4,7 +4,88 @@
 #include "ppmacro.h"
 #include "ppstring.h"
 
-// MEMSAFE
+struct PreprocessorDirectiveMapping
+{
+    const char *identifier;
+    nkbool (*handler)(struct NkppState *, const char*);
+};
+
+// TODO: Add these...
+//   include
+//   file
+//   line
+//   if (with more complicated expressions)
+//   error
+//   ... anything else I think of
+struct PreprocessorDirectiveMapping directiveMapping[] = {
+    { "undef",  nkppDirective_undef  },
+    { "define", nkppDirective_define },
+    { "ifdef",  nkppDirective_ifdef  },
+    { "ifndef", nkppDirective_ifndef },
+    { "else",   nkppDirective_else   },
+    { "endif",  nkppDirective_endif  },
+};
+
+nkuint32_t directiveMappingLen =
+    sizeof(directiveMapping) /
+    sizeof(struct PreprocessorDirectiveMapping);
+
+nkbool nkppDirectiveIsValid(
+    const char *directive)
+{
+    nkuint32_t i;
+    for(i = 0; i < directiveMappingLen; i++) {
+        if(!strcmpWrapper(directive, directiveMapping[i].identifier)) {
+            return nktrue;
+        }
+    }
+    return nkfalse;
+}
+
+nkbool nkppDirectiveHandleDirective(
+    struct NkppState *state,
+    const char *directive,
+    const char *restOfLine)
+{
+    nkbool ret = nkfalse;
+    char *deletedBackslashes;
+    nkuint32_t i;
+
+    // Reformat the block so we don't have to worry about escaped
+    // newlines and stuff.
+    deletedBackslashes =
+        nkppDeleteBackslashNewlines(
+            state,
+            restOfLine);
+    if(!deletedBackslashes) {
+        return nkfalse;
+    }
+
+    // Figure out which handler this corresponds to and execute it.
+    for(i = 0; i < directiveMappingLen; i++) {
+        if(!strcmpWrapper(directive, directiveMapping[i].identifier)) {
+            ret = directiveMapping[i].handler(state, deletedBackslashes);
+            break;
+        }
+    }
+
+    // Spit out an error if we couldn't find a matching directive.
+    if(i == directiveMappingLen) {
+        nkppStateAddError(state, "Unknown directive.");
+        ret = nkfalse;
+    }
+
+    // Update file/line markers, in case they've changed.
+    nkppStateFlagFileLineMarkersForUpdate(state);
+
+    nkppFree(state, deletedBackslashes);
+
+    return ret;
+}
+
+// ----------------------------------------------------------------------
+// Directives
+
 nkbool nkppDirective_ifdefReal(
     struct NkppState *state,
     const char *restOfLine,
@@ -56,7 +137,6 @@ nkbool nkppDirective_ifdefReal(
     return ret;
 }
 
-// MEMSAFE
 nkbool nkppDirective_ifdef(
     struct NkppState *state,
     const char *restOfLine)
@@ -64,7 +144,6 @@ nkbool nkppDirective_ifdef(
     return nkppDirective_ifdefReal(state, restOfLine, nkfalse);
 }
 
-// MEMSAFE
 nkbool nkppDirective_ifndef(
     struct NkppState *state,
     const char *restOfLine)
@@ -72,7 +151,6 @@ nkbool nkppDirective_ifndef(
     return nkppDirective_ifdefReal(state, restOfLine, nktrue);
 }
 
-// MEMSAFE
 nkbool nkppDirective_else(
     struct NkppState *state,
     const char *restOfLine)
@@ -80,7 +158,6 @@ nkbool nkppDirective_else(
     return nkppStateFlipIfResult(state);
 }
 
-// MEMSAFE
 nkbool nkppDirective_endif(
     struct NkppState *state,
     const char *restOfLine)
@@ -88,7 +165,6 @@ nkbool nkppDirective_endif(
     return nkppStatePopIfResult(state);
 }
 
-// MEMSAFE
 nkbool nkppDirective_undef(
     struct NkppState *state,
     const char *restOfLine)

@@ -165,12 +165,17 @@ void nkppStateOutputClear(struct NkppState *state);
 struct NkppToken *nkppStateInputGetNextToken(
     struct NkppState *state,
     nkbool outputWhitespace);
+
 char *nkppStateInputReadIdentifier(struct NkppState *state);
 char *nkppStateInputReadQuotedString(struct NkppState *state);
 char *nkppStateInputReadInteger(struct NkppState *state);
 
 /// Read an argument on the *invocation* of a macro.
 char *nkppStateInputReadMacroArgument(struct NkppState *state);
+
+char *nkppStateInputReadRestOfLine(
+    struct NkppState *state,
+    nkuint32_t *actualLineCount);
 
 // ----------------------------------------------------------------------
 // Errors

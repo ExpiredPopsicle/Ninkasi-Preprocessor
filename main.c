@@ -36,335 +36,12 @@ char *testStr =
     "    thingy\n"
     "// comment after multiline\n";
 
-// TODO: Move this into ppstate.c
-// MEMSAFE
-struct NkppToken *nkppStateInputGetNextToken(
-    struct NkppState *state,
-    nkbool outputWhitespace)
-{
-    nkbool success = nktrue;
-    struct NkppToken *ret = nkppMalloc(
-        state, sizeof(struct NkppToken));
-    if(!ret) {
-        return NULL;
-    }
-
-    ret->str = NULL;
-    ret->type = NK_PPTOKEN_UNKNOWN;
-
-    if(!nkppStateInputSkipWhitespaceAndComments(state, outputWhitespace, nkfalse)) {
-        nkppFree(state, ret);
-        return NULL;
-    }
-
-    ret->lineNumber = state->lineNumber;
-
-    // Bail out if we're at the end.
-    if(!state->str[state->index]) {
-        nkppFree(state, ret);
-        return NULL;
-    }
-
-    if(nkiCompilerIsValidIdentifierCharacter(state->str[state->index], nktrue)) {
-
-        // Read identifiers (and directives).
-
-        ret->str = nkppStateInputReadIdentifier(state);
-        ret->type = NK_PPTOKEN_IDENTIFIER;
-
-    } else if(nkiCompilerIsNumber(state->str[state->index])) {
-
-        // Read number.
-
-        ret->str = nkppStateInputReadInteger(state);
-        ret->type = NK_PPTOKEN_NUMBER;
-
-    } else if(state->str[state->index] == '"') {
-
-        // Read quoted string.
-
-        ret->str = nkppStateInputReadQuotedString(state);
-        ret->type = NK_PPTOKEN_QUOTEDSTRING;
-
-    } else if(state->str[state->index] == '#' &&
-        state->str[state->index+1] == '#')
-    {
-        // Double-hash (concatenation) symbol.
-
-        ret->str = nkppMalloc(state, 3);
-        if(ret->str) {
-            ret->str[0] = state->str[state->index];
-            ret->str[1] = state->str[state->index+1];
-            ret->str[2] = 0;
-        }
-        ret->type = NK_PPTOKEN_DOUBLEHASH;
-
-        success = success && nkppStateInputSkipChar(state, nkfalse);
-        success = success && nkppStateInputSkipChar(state, nkfalse);
-
-    } else if(state->str[state->index] == '#') {
-
-        // Hash symbol.
-
-        ret->str = nkppMalloc(state, 2);
-        if(ret->str) {
-            ret->str[0] = state->str[state->index];
-            ret->str[1] = 0;
-        }
-        ret->type = NK_PPTOKEN_HASH;
-
-        success = success && nkppStateInputSkipChar(state, nkfalse);
-
-    } else if(state->str[state->index] == ',') {
-
-        // Comma.
-
-        ret->str = nkppMalloc(state, 2);
-        if(ret->str) {
-            ret->str[0] = state->str[state->index];
-            ret->str[1] = 0;
-        }
-        ret->type = NK_PPTOKEN_COMMA;
-
-        success = success && nkppStateInputSkipChar(state, nkfalse);
-
-    } else if(state->str[state->index] == '(') {
-
-        // Open parenthesis.
-
-        ret->str = nkppMalloc(state, 2);
-        if(ret->str) {
-            ret->str[0] = state->str[state->index];
-            ret->str[1] = 0;
-        }
-        ret->type = NK_PPTOKEN_OPENPAREN;
-
-        success = success && nkppStateInputSkipChar(state, nkfalse);
-
-    } else if(state->str[state->index] == ')') {
-
-        // Open parenthesis.
-
-        ret->str = nkppMalloc(state, 2);
-        if(ret->str) {
-            ret->str[0] = state->str[state->index];
-            ret->str[1] = 0;
-        }
-        ret->type = NK_PPTOKEN_CLOSEPAREN;
-
-        success = success && nkppStateInputSkipChar(state, nkfalse);
-
-    } else {
-
-        // Unknown.
-
-        ret->str = nkppMalloc(state, 2);
-        if(ret->str) {
-            ret->str[0] = state->str[state->index];
-            ret->str[1] = 0;
-        }
-
-        success = success && nkppStateInputSkipChar(state, nkfalse);
-    }
-
-    if(!ret->str || !success) {
-        nkppFree(state, ret->str);
-        nkppFree(state, ret);
-        ret = NULL;
-    }
-
-    return ret;
-}
-
-// MEMSAFE
-char *nkppReadRestOfLine(
-    struct NkppState *state,
-    nkuint32_t *actualLineCount)
-{
-    nkbool lastCharWasBackslash = nkfalse;
-    nkuint32_t lineStart = state->index;
-    nkuint32_t lineEnd = lineStart;
-    nkuint32_t lineLen = 0;
-    nkuint32_t lineBufLen = 0;
-    char *ret = NULL;
-    nkbool overflow = nkfalse;
-
-    while(state->str[state->index]) {
-
-        if(state->str[state->index] == '/' && state->str[state->index + 1] == '*') {
-
-            // C-style comment.
-
-            // Skip initial comment maker.
-            if(!nkppStateInputSkipChar(state, nktrue) || !nkppStateInputSkipChar(state, nktrue)) {
-                return nkfalse;
-            }
-
-            while(state->str[state->index] && state->str[state->index + 1]) {
-                if(state->str[state->index] == '*' && state->str[state->index + 1] == '/') {
-                    if(!nkppStateInputSkipChar(state, nktrue) || !nkppStateInputSkipChar(state, nktrue)) {
-                        return nkfalse;
-                    }
-                    break;
-                }
-                if(!nkppStateInputSkipChar(state, nktrue)) {
-                    return nkfalse;
-                }
-            }
-
-            lastCharWasBackslash = nkfalse;
-
-        } else if(state->str[state->index] == '\\') {
-
-            lastCharWasBackslash = !lastCharWasBackslash;
-
-        } else if(state->str[state->index] == '\n') {
-
-            if(actualLineCount) {
-                (*actualLineCount)++;
-            }
-
-            if(lastCharWasBackslash) {
-
-                // This is an escaped newline, so we're going to keep
-                // going.
-                lastCharWasBackslash = nkfalse;
-
-            } else {
-
-                // Skip that newline and bail out. We're done. Only
-                // output if it's a newline to keep lines in sync
-                // between input and output.
-                if(!nkppStateInputSkipChar(state, state->str[state->index] == '\n')) {
-                    return NULL;
-                }
-                break;
-
-            }
-
-        } else {
-
-            lastCharWasBackslash = nkfalse;
-        }
-
-        // Skip this character. Only output if it's a newline to keep
-        // lines in sync between input and output.
-        if(!nkppStateInputSkipChar(state, state->str[state->index] == '\n')) {
-            return NULL;
-        }
-    }
-
-    // Save the whole line.
-    lineEnd = state->index;
-
-    if(lineEnd < lineStart) {
-        return NULL;
-    }
-    lineLen = lineEnd - lineStart;
-
-    // Add room for a NULL terminator.
-    NK_CHECK_OVERFLOW_UINT_ADD(lineLen, 1, lineBufLen, overflow);
-    if(overflow) {
-        return NULL;
-    }
-
-    // Create and fill the return buffer.
-    ret = nkppMalloc(state, lineBufLen);
-    if(ret) {
-        memcpyWrapper(ret, state->str + lineStart, lineLen);
-        ret[lineLen] = 0;
-    }
-
-    return ret;
-}
-
-struct PreprocessorDirectiveMapping
-{
-    const char *identifier;
-    nkbool (*handler)(struct NkppState *, const char*);
-};
-
-// TODO: Add these...
-//   include
-//   file
-//   line
-//   if (with more complicated expressions)
-//   error
-//   ... anything else I think of
-struct PreprocessorDirectiveMapping directiveMapping[] = {
-    { "undef",  nkppDirective_undef  },
-    { "define", nkppDirective_define },
-    { "ifdef",  nkppDirective_ifdef  },
-    { "ifndef", nkppDirective_ifndef },
-    { "else",   nkppDirective_else   },
-    { "endif",  nkppDirective_endif  },
-};
-
-nkuint32_t directiveMappingLen =
-    sizeof(directiveMapping) /
-    sizeof(struct PreprocessorDirectiveMapping);
-
-// MEMSAFE
-nkbool directiveIsValid(
-    const char *directive)
-{
-    nkuint32_t i;
-    for(i = 0; i < directiveMappingLen; i++) {
-        if(!strcmpWrapper(directive, directiveMapping[i].identifier)) {
-            return nktrue;
-        }
-    }
-    return nkfalse;
-}
-
-// MEMSAFE
-nkbool handleDirective(
-    struct NkppState *state,
-    const char *directive,
-    const char *restOfLine)
-{
-    nkbool ret = nkfalse;
-    char *deletedBackslashes;
-    nkuint32_t i;
-
-    // Reformat the block so we don't have to worry about escaped
-    // newlines and stuff.
-    deletedBackslashes =
-        nkppDeleteBackslashNewlines(
-            state,
-            restOfLine);
-    if(!deletedBackslashes) {
-        return nkfalse;
-    }
-
-    // Figure out which handler this corresponds to and execute it.
-    for(i = 0; i < directiveMappingLen; i++) {
-        if(!strcmpWrapper(directive, directiveMapping[i].identifier)) {
-            ret = directiveMapping[i].handler(state, deletedBackslashes);
-            break;
-        }
-    }
-
-    // Spit out an error if we couldn't find a matching directive.
-    if(i == directiveMappingLen) {
-        nkppStateAddError(state, "Unknown directive.");
-        ret = nkfalse;
-    }
-
-    // Update file/line markers, in case they've changed.
-    nkppStateFlagFileLineMarkersForUpdate(state);
-
-    nkppFree(state, deletedBackslashes);
-
-    return ret;
-}
 
 nkbool preprocess(
     struct NkppState *state,
     const char *str,
     nkuint32_t recursionLevel);
 
-// MEMSAFE (except call to preprocess())
 nkbool executeMacro(
     struct NkppState *state,
     struct NkppMacro *macro,
@@ -543,7 +220,6 @@ executeMacro_cleanup:
     return ret;
 }
 
-// MEMSAFE (ish)
 nkbool handleStringification(
     struct NkppState *state,
     const char *macroName,
@@ -592,7 +268,6 @@ nkbool handleStringification(
     return ret;
 }
 
-// MEMSAFE
 nkbool preprocess(
     struct NkppState *state,
     const char *str,
@@ -643,11 +318,11 @@ nkbool preprocess(
                         // Check to see if this is something we
                         // understand by going through the *actual*
                         // list of directives.
-                        if(directiveIsValid(directiveNameToken->str)) {
+                        if(nkppDirectiveIsValid(directiveNameToken->str)) {
 
                             nkuint32_t lineCount = 0;
 
-                            line = nkppReadRestOfLine(
+                            line = nkppStateInputReadRestOfLine(
                                 state, &lineCount);
 
                             if(!line) {
@@ -656,7 +331,7 @@ nkbool preprocess(
 
                             } else {
 
-                                if(handleDirective(
+                                if(nkppDirectiveHandleDirective(
                                         state,
                                         directiveNameToken->str,
                                         line))
@@ -669,7 +344,7 @@ nkbool preprocess(
                                     // I don't know if we really need
                                     // to report an error here,
                                     // because an error would have
-                                    // been added in handleDirective()
+                                    // been added in nkppDirectiveHandleDirective()
                                     // for whatever went wrong.
                                     nkppStateAddError(
                                         state, "Bad directive.");
