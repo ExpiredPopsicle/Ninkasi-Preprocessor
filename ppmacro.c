@@ -349,3 +349,53 @@ nkppMacroExecute_cleanup:
 
     return ret;
 }
+
+nkbool nkppMacroStringify(
+    struct NkppState *state,
+    const char *macroName,
+    nkuint32_t recursionLevel)
+{
+    nkbool ret = nkfalse;
+    char *escapedStr = NULL;
+    struct NkppState *macroState = NULL;
+    struct NkppMacro *macro =
+        nkppStateFindMacro(
+            state, macroName);
+
+    if(macro) {
+
+        macroState = nkppStateClone(state, nkfalse);
+        if(macroState) {
+
+            if(nkppMacroExecute(macroState, macro, recursionLevel)) {
+
+                // Escape the string and add it to the output.
+                escapedStr = nkppEscapeString(
+                    state, macroState->output);
+                if(escapedStr) {
+                    nkppStateOutputAppendString(state, "\"");
+                    nkppStateOutputAppendString(state, escapedStr);
+                    nkppStateOutputAppendString(state, "\"");
+                    nkppFree(state, escapedStr);
+                }
+
+                // Skip past the stuff we read in the
+                // cloned state.
+                state->index = macroState->index;
+
+                nkppDestroyState(macroState);
+
+                ret = nktrue;
+            }
+        }
+
+    } else {
+        nkppStateAddError(
+            state,
+            "Unknown input for stringification.");
+    }
+
+    return ret;
+}
+
+

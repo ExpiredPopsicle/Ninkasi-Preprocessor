@@ -56,4 +56,9 @@ nkbool nkppMacroExecute(
     struct NkppMacro *macro,
     nkuint32_t recursionLevel);
 
+nkbool nkppMacroStringify(
+    struct NkppState *state,
+    const char *macroName,
+    nkuint32_t recursionLevel);
+
 #endif // NK_PPMACRO_H
