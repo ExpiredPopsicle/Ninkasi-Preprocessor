@@ -2,8 +2,7 @@
 #include "ppcommon.h"
 #include "pptoken.h"
 
-// MEMSAFE
-void destroyToken(
+void nkppTokenDestroy(
     struct NkppState *state,
     struct NkppToken *token)
 {

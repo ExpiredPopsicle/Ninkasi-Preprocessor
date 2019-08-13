@@ -1,7 +1,6 @@
 #include "ppstate.h"
 #include "ppmacro.h"
 
-// MEMSAFE
 void nkppMacroDestroy(
     struct NkppState *state,
     struct NkppMacro *macro)
@@ -19,7 +18,6 @@ void nkppMacroDestroy(
     nkppFree(state, macro);
 }
 
-// MEMSAFE
 struct NkppMacro *nkppMacroCreate(
     struct NkppState *state)
 {
@@ -37,7 +35,6 @@ struct NkppMacro *nkppMacroCreate(
     return ret;
 }
 
-// MEMSAFE
 nkbool nkppMacroAddArgument(
     struct NkppState *state,
     struct NkppMacro *macro,
@@ -79,7 +76,6 @@ nkbool nkppMacroAddArgument(
     return nktrue;
 }
 
-// MEMSAFE
 nkbool nkppMacroSetIdentifier(
     struct NkppState *state,
     struct NkppMacro *macro,
@@ -100,7 +96,6 @@ nkbool nkppMacroSetIdentifier(
     return nktrue;
 }
 
-// MEMSAFE
 nkbool nkppMacroSetDefinition(
     struct NkppState *state,
     struct NkppMacro *macro,
@@ -121,7 +116,6 @@ nkbool nkppMacroSetDefinition(
     return nktrue;
 }
 
-// MEMSAFE
 struct NkppMacro *nkppMacroClone(
     struct NkppState *state,
     const struct NkppMacro *macro)

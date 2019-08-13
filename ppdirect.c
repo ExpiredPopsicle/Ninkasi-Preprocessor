@@ -48,7 +48,7 @@ nkbool nkppDirective_ifdefReal(
     }
 
     if(identifierToken) {
-        destroyToken(state, identifierToken);
+        nkppTokenDestroy(state, identifierToken);
     }
     if(directiveParseState) {
         nkppDestroyState(directiveParseState);
@@ -132,7 +132,7 @@ nkbool nkppDirective_undef(
 
     }
 
-    destroyToken(state, identifierToken);
+    nkppTokenDestroy(state, identifierToken);
     nkppDestroyState(directiveParseState);
     return ret;
 }
@@ -207,7 +207,7 @@ nkbool nkppDirective_define(
             goto nkppDirective_define_cleanup;
         }
 
-        destroyToken(state, openParenToken);
+        nkppTokenDestroy(state, openParenToken);
         openParenToken = NULL;
 
         // Parse the argument list.
@@ -226,7 +226,7 @@ nkbool nkppDirective_define(
         } else if(argToken->type == NK_PPTOKEN_CLOSEPAREN) {
 
             // Zero-argument list. Nothing to do here.
-            destroyToken(state, argToken);
+            nkppTokenDestroy(state, argToken);
             argToken = NULL;
 
         } else {
@@ -240,7 +240,7 @@ nkbool nkppDirective_define(
                     if(argToken->type == NK_PPTOKEN_CLOSEPAREN) {
 
                         // We're done. Bail out.
-                        destroyToken(state, argToken);
+                        nkppTokenDestroy(state, argToken);
                         argToken = NULL;
                         break;
 
@@ -272,7 +272,7 @@ nkbool nkppDirective_define(
 
                         // Not a valid identifier.
                         ret = nkfalse;
-                        destroyToken(state, argToken);
+                        nkppTokenDestroy(state, argToken);
                         argToken = NULL;
                         break;
 
@@ -280,7 +280,7 @@ nkbool nkppDirective_define(
                 }
 
                 // Next token.
-                destroyToken(state, argToken);
+                nkppTokenDestroy(state, argToken);
                 argToken = nkppStateInputGetNextToken(directiveParseState, nkfalse);
 
                 // We're not supposed to hit the end of the
@@ -339,13 +339,13 @@ nkppDirective_define_cleanup:
         nkppDestroyState(directiveParseState);
     }
     if(identifierToken) {
-        destroyToken(state, identifierToken);
+        nkppTokenDestroy(state, identifierToken);
     }
     if(definition) {
         nkppFree(state, definition);
     }
     if(openParenToken) {
-        destroyToken(state, openParenToken);
+        nkppTokenDestroy(state, openParenToken);
     }
     if(macro) {
         nkppMacroDestroy(state, macro);

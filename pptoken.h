@@ -26,7 +26,7 @@ struct NkppToken
     nkuint32_t lineNumber;
 };
 
-void destroyToken(
+void nkppTokenDestroy(
     struct NkppState *state,
     struct NkppToken *token);
 

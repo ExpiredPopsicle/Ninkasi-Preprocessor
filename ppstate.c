@@ -18,11 +18,19 @@ void nkppDefaultFreeWrapper(void *userData, void *ptr)
 
 void *nkppMalloc(struct NkppState *state, nkuint32_t size)
 {
+    void *ret = NULL;
     if(state->memoryCallbacks) {
-        return state->memoryCallbacks->mallocWrapper(
+        ret = state->memoryCallbacks->mallocWrapper(
             state->memoryCallbacks->userData, size);
+    } else {
+        ret = nkppDefaultMallocWrapper(NULL, size);
     }
-    return nkppDefaultMallocWrapper(NULL, size);
+
+    if(!ret) {
+        state->allocationFailure = nktrue;
+    }
+
+    return ret;
 }
 
 void nkppFree(struct NkppState *state, void *ptr)
@@ -62,6 +70,7 @@ struct NkppState *nkppCreateState(
         ret->nestedPassedIfs = 0;
         ret->nestedFailedIfs = 0;
         ret->memoryCallbacks = memoryCallbacks;
+        ret->allocationFailure = nkfalse;
 
         // Memory callbacks now set up. Can use normal functions that
         // require allocations.
@@ -123,7 +132,6 @@ nkbool nkppStateWritePositionMarker(struct NkppState *state)
     return ret;
 }
 
-// MEMSAFE
 nkbool nkppStateOutputAppendString(struct NkppState *state, const char *str)
 {
     if(!str) {
@@ -145,7 +153,6 @@ nkbool nkppStateOutputAppendString(struct NkppState *state, const char *str)
     return nktrue;
 }
 
-// MEMSAFE
 nkbool nkppStateOutputAppendChar_real(struct NkppState *state, char c)
 {
     nkuint32_t oldLen;
@@ -197,8 +204,7 @@ nkbool nkppStateOutputAppendChar_real(struct NkppState *state, char c)
     return nktrue;
 }
 
-// MEMSAFE
-nkbool FIXME_REMOVETHIS_writenumber(struct NkppState *state, nkuint32_t n)
+nkbool nkppStateDebugOutputNumber(struct NkppState *state, nkuint32_t n)
 {
     nkuint32_t lnMask = 10000;
     nkbool ret = nktrue;
@@ -218,7 +224,58 @@ nkbool FIXME_REMOVETHIS_writenumber(struct NkppState *state, nkuint32_t n)
     return ret;
 }
 
-// MEMSAFE
+nkbool nkppStateDebugOutputLineStart(struct NkppState *state)
+{
+    nkbool ret = nktrue;
+
+    // Add truncated filename with padding.
+    {
+        const char *filename = state->filename ? state->filename : "???";
+        nkuint32_t fnameLen = strlenWrapper(filename);
+        nkuint32_t i;
+        for(i = 0; i < 12; i++) {
+            if(i < fnameLen) {
+                ret = ret && nkppStateOutputAppendChar_real(state, filename[i]);
+            } else {
+                ret = ret && nkppStateOutputAppendChar_real(state, ' ');
+            }
+        }
+    }
+
+    // Separator between filename and line number.
+    ret = ret && nkppStateOutputAppendChar_real(state, ':');
+
+    // Add line numbers for both input and output.
+    ret = ret && nkppStateDebugOutputNumber(state, state->lineNumber);
+    ret = ret && nkppStateDebugOutputNumber(state, state->outputLineNumber);
+
+    // Add number of nested "if" results.
+    ret = ret && nkppStateDebugOutputNumber(state, state->nestedFailedIfs);
+    ret = ret && nkppStateDebugOutputNumber(state, state->nestedPassedIfs);
+
+    // Add a marker indicating that input/output line numbers may be
+    // out of sync and it's an appropriate place to put a marker to
+    // correct for it.
+    ret = ret && nkppStateOutputAppendChar_real(state, ' ');
+    ret = ret && nkppStateOutputAppendChar_real(state, state->updateMarkers ? 'U' : ' ');
+
+    // Space.
+    ret = ret && nkppStateOutputAppendChar_real(state, ' ');
+
+    // Add a marker to indicate if the input and output are *actually*
+    // out of sync.
+    if(state->outputLineNumber != state->lineNumber) {
+        ret = ret && nkppStateOutputAppendChar_real(state, '-');
+    } else {
+        ret = ret && nkppStateOutputAppendChar_real(state, '|');
+    }
+
+    // Final space.
+    ret = ret && nkppStateOutputAppendChar_real(state, ' ');
+
+    return ret;
+}
+
 nkbool nkppStateOutputAppendChar(struct NkppState *state, char c)
 {
     nkbool ret = nktrue;
@@ -228,44 +285,10 @@ nkbool nkppStateOutputAppendChar(struct NkppState *state, char c)
         // If this is the first character on a line...
         if(!state->output || state->output[strlenWrapper(state->output) - 1] == '\n') {
 
-
-            // FIXME: Replace this placeholder crap when we're done testing.
-
-            // char lineNoBuf[128];
-            // sprintf(lineNoBuf, "%ld", (long)state->lineNumber);
-
-            // nkuint32_t lineNo = state->lineNumber;
-            // nkuint32_t lnMask = 10000;
-
-            {
-                const char *filename = state->filename ? state->filename : "???";
-                nkuint32_t fnameLen = strlenWrapper(filename);
-                nkuint32_t i;
-                for(i = 0; i < 12; i++) {
-                    if(i < fnameLen) {
-                        ret = ret && nkppStateOutputAppendChar_real(state, filename[i]);
-                    } else {
-                        ret = ret && nkppStateOutputAppendChar_real(state, ' ');
-                    }
-                }
-            }
-
-            ret = ret && nkppStateOutputAppendChar_real(state, ':');
-
-            ret = ret && FIXME_REMOVETHIS_writenumber(state, state->lineNumber);
-            ret = ret && FIXME_REMOVETHIS_writenumber(state, state->outputLineNumber);
-
-            ret = ret && FIXME_REMOVETHIS_writenumber(state, state->nestedFailedIfs);
-            ret = ret && FIXME_REMOVETHIS_writenumber(state, state->nestedPassedIfs);
-
-            ret = ret && nkppStateOutputAppendChar_real(state, ' ');
-            ret = ret && nkppStateOutputAppendChar_real(state, state->updateMarkers ? 'U' : ' ');
-
-            ret = ret && nkppStateOutputAppendChar_real(state, ' ');
+            // FIXME: Make this optional.
+            ret = ret && nkppStateDebugOutputLineStart(state);
 
             if(state->outputLineNumber != state->lineNumber) {
-                ret = ret && nkppStateOutputAppendChar_real(state, '-');
-                ret = ret && nkppStateOutputAppendChar_real(state, ' ');
 
                 // Add in a position marker and set the output line
                 // number.
@@ -278,10 +301,6 @@ nkbool nkppStateOutputAppendChar(struct NkppState *state, char c)
                     // with just to pump the line-start debug info stuff.
                     ret = ret && nkppStateOutputAppendChar(state, 0);
                 }
-
-            } else {
-                ret = ret && nkppStateOutputAppendChar_real(state, '|');
-                ret = ret && nkppStateOutputAppendChar_real(state, ' ');
             }
 
             // If we hit this case, we may have had a redundant use of
@@ -306,7 +325,6 @@ nkbool nkppStateOutputAppendChar(struct NkppState *state, char c)
     return ret;
 }
 
-// MEMSAFE
 nkbool nkppStateInputSkipChar(struct NkppState *state, nkbool output)
 {
     assert(state->str[state->index]);
@@ -329,7 +347,6 @@ nkbool nkppStateInputSkipChar(struct NkppState *state, nkbool output)
     return nktrue;
 }
 
-// MEMSAFE
 nkbool nkppStateInputSkipWhitespaceAndComments(
     struct NkppState *state,
     nkbool output,
@@ -399,7 +416,6 @@ nkbool nkppStateInputSkipWhitespaceAndComments(
     return nktrue;
 }
 
-// MEMSAFE
 void nkppStateAddMacro(
     struct NkppState *state,
     struct NkppMacro *macro)
@@ -408,7 +424,6 @@ void nkppStateAddMacro(
     state->macros = macro;
 }
 
-// MEMSAFE
 struct NkppMacro *nkppStateFindMacro(
     struct NkppState *state,
     const char *identifier)
@@ -466,7 +481,6 @@ struct NkppMacro *nkppStateFindMacro(
     return currentMacro;
 }
 
-// MEMSAFE
 nkbool nkppStateDeleteMacro(
     struct NkppState *state,
     const char *identifier)
@@ -495,8 +509,7 @@ nkbool nkppStateDeleteMacro(
     return nkfalse;
 }
 
-// MEMSAFE
-struct NkppState *nkppCloneState(
+struct NkppState *nkppStateClone(
     struct NkppState *state,
     nkbool copyOutput)
 {
@@ -513,6 +526,7 @@ struct NkppState *nkppCloneState(
     ret->index = state->index;
     ret->lineNumber = state->lineNumber;
     ret->outputLineNumber = state->outputLineNumber;
+    ret->allocationFailure = state->allocationFailure;
 
     // Copy output.
     if(copyOutput) {
@@ -572,7 +586,6 @@ struct NkppState *nkppCloneState(
 // ----------------------------------------------------------------------
 // Read functions
 
-// MEMSAFE
 char *nkppStateInputReadIdentifier(struct NkppState *state)
 {
     const char *str = state->str;
@@ -613,7 +626,6 @@ char *nkppStateInputReadIdentifier(struct NkppState *state)
     return ret;
 }
 
-// MEMSAFE
 char *nkppStateInputReadQuotedString(struct NkppState *state)
 {
     const char *str = state->str;
@@ -683,7 +695,6 @@ char *nkppStateInputReadQuotedString(struct NkppState *state)
     return ret;
 }
 
-// MEMSAFE
 char *nkppStateInputReadInteger(struct NkppState *state)
 {
     const char *str = state->str;
@@ -722,7 +733,6 @@ char *nkppStateInputReadInteger(struct NkppState *state)
     return ret;
 }
 
-// MEMSAFE
 char *nkppStateInputReadMacroArgument(struct NkppState *state)
 {
     // Create a pristine state to read the arguments with, because we
@@ -790,12 +800,12 @@ char *nkppStateInputReadMacroArgument(struct NkppState *state)
 
             // Add it.
             if(!nkppStateOutputAppendString(readerState, token->str)) {
-                destroyToken(state, token);
+                nkppTokenDestroy(state, token);
                 nkppDestroyState(readerState);
                 return NULL;
             }
 
-            destroyToken(state, token);
+            nkppTokenDestroy(state, token);
         }
 
     } while(token);
@@ -813,7 +823,6 @@ char *nkppStateInputReadMacroArgument(struct NkppState *state)
 
 // ----------------------------------------------------------------------
 
-// MEMSAFE
 void nkppStateOutputClear(struct NkppState *state)
 {
     nkppFree(state, state->output);
@@ -823,7 +832,6 @@ void nkppStateOutputClear(struct NkppState *state)
     state->outputLineNumber = 1;
 }
 
-// MEMSAFE
 void nkppStateAddError(
     struct NkppState *state,
     const char *errorMessage)
@@ -865,14 +873,12 @@ void nkppStateAddError(
     }
 }
 
-// MEMSAFE
 void nkppStateFlagFileLineMarkersForUpdate(
     struct NkppState *state)
 {
     state->updateMarkers = nktrue;
 }
 
-// MEMSAFE
 nkbool nkppStateSetFilename(
     struct NkppState *state,
     const char *filename)
@@ -890,9 +896,6 @@ nkbool nkppStateSetFilename(
     return nktrue;
 }
 
-// ----------------------------------------------------------------------
-
-// MEMSAFE
 nkbool nkppStatePushIfResult(
     struct NkppState *state,
     nkbool ifResult)
@@ -927,7 +930,6 @@ nkbool nkppStatePushIfResult(
     return !overflow;
 }
 
-// MEMSAFE
 nkbool nkppStatePopIfResult(
     struct NkppState *state)
 {
@@ -945,7 +947,6 @@ nkbool nkppStatePopIfResult(
     return nktrue;
 }
 
-// MEMSAFE
 nkbool nkppStateFlipIfResult(
     struct NkppState *state)
 {

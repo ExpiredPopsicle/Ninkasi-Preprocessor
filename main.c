@@ -376,7 +376,7 @@ nkbool executeMacro(
     char *argumentText = NULL;
     struct NkppMacro *newMacro = NULL;
 
-    clonedState = nkppCloneState(state, nkfalse);
+    clonedState = nkppStateClone(state, nkfalse);
     if(!clonedState) {
         return nkfalse;
     }
@@ -558,7 +558,7 @@ nkbool handleStringification(
 
     if(macro) {
 
-        macroState = nkppCloneState(state, nkfalse);
+        macroState = nkppStateClone(state, nkfalse);
         if(macroState) {
 
             if(executeMacro(macroState, macro, recursionLevel)) {
@@ -689,7 +689,7 @@ nkbool preprocess(
                             }
                         }
 
-                        destroyToken(state, directiveNameToken);
+                        nkppTokenDestroy(state, directiveNameToken);
                         directiveNameToken = NULL;
 
                     }
@@ -741,7 +741,7 @@ nkbool preprocess(
 
             }
 
-            destroyToken(state, token);
+            nkppTokenDestroy(state, token);
             token = NULL;
 
         } else {

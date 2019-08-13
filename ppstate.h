@@ -78,6 +78,10 @@ struct NkppState
     nkuint32_t nestedFailedIfs;
 
     struct NkppMemoryCallbacks *memoryCallbacks;
+
+    // Set to nktrue if there was an allocation failure at any point
+    // from a nkppMalloc() call on this state.
+    nkbool allocationFailure;
 };
 
 // ----------------------------------------------------------------------
@@ -89,7 +93,7 @@ struct NkppState *nkppCreateState(
 
 void nkppDestroyState(struct NkppState *state);
 
-struct NkppState *nkppCloneState(
+struct NkppState *nkppStateClone(
     struct NkppState *state,
     nkbool copyOutput);
 
