@@ -25,29 +25,29 @@ struct NkppMacro
     struct NkppMacro *next;
 };
 
-void destroyNkppMacro(
+void nkppMacroDestroy(
     struct NkppState *state,
     struct NkppMacro *macro);
 
-struct NkppMacro *createNkppMacro(
+struct NkppMacro *nkppMacroCreate(
     struct NkppState *state);
 
-nkbool preprocessorMacroAddArgument(
+nkbool nkppMacroAddArgument(
     struct NkppState *state,
     struct NkppMacro *macro,
     const char *name);
 
-nkbool preprocessorMacroSetIdentifier(
+nkbool nkppMacroSetIdentifier(
     struct NkppState *state,
     struct NkppMacro *macro,
     const char *identifier);
 
-nkbool preprocessorMacroSetDefinition(
+nkbool nkppMacroSetDefinition(
     struct NkppState *state,
     struct NkppMacro *macro,
     const char *definition);
 
-struct NkppMacro *preprocessorMacroClone(
+struct NkppMacro *nkppMacroClone(
     struct NkppState *state,
     const struct NkppMacro *macro);
 

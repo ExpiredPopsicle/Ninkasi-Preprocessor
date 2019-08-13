@@ -423,18 +423,18 @@ nkbool executeMacro(
                 // Add the argument as a macro to
                 // the new cloned state.
                 {
-                    newMacro = createNkppMacro(state);
+                    newMacro = nkppMacroCreate(state);
                     if(!newMacro) {
                         ret = nkfalse;
                         goto executeMacro_cleanup;
                     }
 
-                    if(!preprocessorMacroSetIdentifier(state, newMacro, argument->name)) {
+                    if(!nkppMacroSetIdentifier(state, newMacro, argument->name)) {
                         ret = nkfalse;
                         goto executeMacro_cleanup;
                     }
 
-                    if(!preprocessorMacroSetDefinition(state, newMacro, argumentText)) {
+                    if(!nkppMacroSetDefinition(state, newMacro, argumentText)) {
                         ret = nkfalse;
                         goto executeMacro_cleanup;
                     }
@@ -537,7 +537,7 @@ executeMacro_cleanup:
         nkppFree(state, argumentText);
     }
     if(newMacro) {
-        destroyNkppMacro(state, newMacro);
+        nkppMacroDestroy(state, newMacro);
     }
 
     return ret;

@@ -85,7 +85,7 @@ void nkppDestroyState(struct NkppState *state)
     struct NkppMacro *currentMacro = state->macros;
     while(currentMacro) {
         struct NkppMacro *next = currentMacro->next;
-        destroyNkppMacro(state, currentMacro);
+        nkppMacroDestroy(state, currentMacro);
         currentMacro = next;
     }
 
@@ -435,16 +435,16 @@ struct NkppMacro *nkppStateFindMacro(
         if(!currentMacro) {
 
             currentMacro =
-                createNkppMacro(state);
+                nkppMacroCreate(state);
 
             if(currentMacro) {
-                if(preprocessorMacroSetIdentifier(
+                if(nkppMacroSetIdentifier(
                         state, currentMacro, identifier))
                 {
                     nkppStateAddMacro(
                         state, currentMacro);
                 } else {
-                    destroyNkppMacro(
+                    nkppMacroDestroy(
                         state, currentMacro);
                     currentMacro = NULL;
                 }
@@ -454,11 +454,11 @@ struct NkppMacro *nkppStateFindMacro(
         // Update to whatever it is now.
         if(currentMacro) {
             if(!strcmpWrapper(identifier, "__FILE__")) {
-                preprocessorMacroSetDefinition(state, currentMacro, state->filename);
+                nkppMacroSetDefinition(state, currentMacro, state->filename);
             } else if(!strcmpWrapper(identifier, "__LINE__")) {
                 char tmp[128];
                 sprintf(tmp, "%lu", (unsigned long)state->lineNumber);
-                preprocessorMacroSetDefinition(state, currentMacro, tmp);
+                nkppMacroSetDefinition(state, currentMacro, tmp);
             }
         }
     }
@@ -481,7 +481,7 @@ nkbool nkppStateDeleteMacro(
             *lastPtr = currentMacro->next;
             currentMacro->next = NULL;
 
-            destroyNkppMacro(
+            nkppMacroDestroy(
                 state, currentMacro);
 
             return nktrue;
@@ -554,7 +554,7 @@ struct NkppState *nkppCloneState(
     while(currentMacro) {
 
         struct NkppMacro *clonedMacro =
-            preprocessorMacroClone(state, currentMacro);
+            nkppMacroClone(state, currentMacro);
         if(!clonedMacro) {
             nkppDestroyState(ret);
             return NULL;

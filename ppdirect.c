@@ -161,7 +161,7 @@ nkbool nkppDirective_define(
     directiveParseState->str = restOfLine;
 
     // Setup new macro.
-    macro = createNkppMacro(state);
+    macro = nkppMacroCreate(state);
     if(!macro) {
         ret = nkfalse;
         goto nkppDirective_define_cleanup;
@@ -182,7 +182,7 @@ nkbool nkppDirective_define(
         goto nkppDirective_define_cleanup;
     }
 
-    if(!preprocessorMacroSetIdentifier(
+    if(!nkppMacroSetIdentifier(
             state, macro, identifierToken->str))
     {
         ret = nkfalse;
@@ -261,7 +261,7 @@ nkbool nkppDirective_define(
                     if(argToken->type == NK_PPTOKEN_IDENTIFIER) {
 
                         // Valid identifier.
-                        if(!preprocessorMacroAddArgument(
+                        if(!nkppMacroAddArgument(
                                 state, macro, argToken->str))
                         {
                             ret = nkfalse;
@@ -310,7 +310,7 @@ nkbool nkppDirective_define(
     }
 
     // Set it.
-    if(!preprocessorMacroSetDefinition(
+    if(!nkppMacroSetDefinition(
             state, macro, definition))
     {
         ret = nkfalse;
@@ -328,7 +328,7 @@ nkbool nkppDirective_define(
         nkppStateAddMacro(state, macro);
         macro = NULL;
     } else {
-        destroyNkppMacro(state, macro);
+        nkppMacroDestroy(state, macro);
         macro = NULL;
     }
 
@@ -348,7 +348,7 @@ nkppDirective_define_cleanup:
         destroyToken(state, openParenToken);
     }
     if(macro) {
-        destroyNkppMacro(state, macro);
+        nkppMacroDestroy(state, macro);
     }
 
     return ret;
