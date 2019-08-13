@@ -308,8 +308,10 @@ int main(int argc, char *argv[])
         // setAllocationFailureTestLimits(
         //     memLimit, allocLimit);
 
+        #if NK_PP_MEMDEBUG
         setAllocationFailureTestLimits(
             ~(nkuint32_t)0, counter);
+        #endif
 
         state = nkppCreateState(&errorState, NULL);
         if(!state) {

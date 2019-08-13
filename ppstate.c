@@ -11,14 +11,20 @@ struct NkppState *nkppCreateState(
     struct NkppErrorState *errorState,
     struct NkppMemoryCallbacks *memoryCallbacks)
 {
-    NkppMallocWrapper localMallocWrapper =
-        memoryCallbacks ? memoryCallbacks->mallocWrapper : nkppDefaultMallocWrapper;
-    NkppFreeWrapper localFreeWrapper =
-        memoryCallbacks ? memoryCallbacks->freeWrapper : nkppDefaultFreeWrapper;
-    void *userData = memoryCallbacks ? memoryCallbacks->userData : NULL;
+    NkppMallocWrapper localMallocWrapper;
+    NkppFreeWrapper localFreeWrapper;
+    void *userData;
+    struct NkppState *ret;
 
-    struct NkppState *ret =
-        localMallocWrapper(userData, sizeof(struct NkppState));
+    nkppSanityCheck();
+
+    localMallocWrapper =
+        memoryCallbacks ? memoryCallbacks->mallocWrapper : nkppDefaultMallocWrapper;
+    localFreeWrapper =
+        memoryCallbacks ? memoryCallbacks->freeWrapper : nkppDefaultFreeWrapper;
+    userData = memoryCallbacks ? memoryCallbacks->userData : NULL;
+
+    ret = localMallocWrapper(userData, sizeof(struct NkppState));
 
     if(ret) {
         ret->str = NULL;
@@ -108,7 +114,7 @@ nkbool nkppStateOutputAppendString(struct NkppState *state, const char *str)
 
     } else {
 
-        nkuint32_t len = strlenWrapper(str);
+        nkuint32_t len = nkppStrlen(str);
         nkuint32_t i;
 
         for(i = 0; i < len; i++) {
@@ -199,7 +205,7 @@ nkbool nkppStateDebugOutputLineStart(struct NkppState *state)
     // Add truncated filename with padding.
     {
         const char *filename = state->filename ? state->filename : "???";
-        nkuint32_t fnameLen = strlenWrapper(filename);
+        nkuint32_t fnameLen = nkppStrlen(filename);
         nkuint32_t i;
         for(i = 0; i < 12; i++) {
             if(i < fnameLen) {
@@ -251,7 +257,7 @@ nkbool nkppStateOutputAppendChar(struct NkppState *state, char c)
     if(state->writePositionMarkers) {
 
         // If this is the first character on a line...
-        if(!state->output || state->output[strlenWrapper(state->output) - 1] == '\n') {
+        if(!state->output || state->output[nkppStrlen(state->output) - 1] == '\n') {
 
             // FIXME: Make this optional.
             ret = ret && nkppStateDebugOutputLineStart(state);
@@ -616,7 +622,7 @@ char *nkppStateInputReadRestOfLine(
     // Create and fill the return buffer.
     ret = nkppMalloc(state, lineBufLen);
     if(ret) {
-        memcpyWrapper(ret, state->str + lineStart, lineLen);
+        nkppMemcpy(ret, state->str + lineStart, lineLen);
         ret[lineLen] = 0;
     }
 
@@ -643,15 +649,15 @@ struct NkppMacro *nkppStateFindMacro(
 
     // Find the macro.
     while(currentMacro) {
-        if(!strcmpWrapper(currentMacro->identifier, identifier)) {
+        if(!nkppStrcmp(currentMacro->identifier, identifier)) {
             break;
         }
         currentMacro = currentMacro->next;
     }
 
     // Dynamically add in or modify __FILE__ and __LINE__ macros.
-    if(!strcmpWrapper(identifier, "__FILE__") ||
-        !strcmpWrapper(identifier, "__LINE__"))
+    if(!nkppStrcmp(identifier, "__FILE__") ||
+        !nkppStrcmp(identifier, "__LINE__"))
     {
         // Lazy-create the macro if it doesn't exist.
         if(!currentMacro) {
@@ -675,9 +681,9 @@ struct NkppMacro *nkppStateFindMacro(
 
         // Update to whatever it is now.
         if(currentMacro) {
-            if(!strcmpWrapper(identifier, "__FILE__")) {
+            if(!nkppStrcmp(identifier, "__FILE__")) {
                 nkppMacroSetDefinition(state, currentMacro, state->filename);
-            } else if(!strcmpWrapper(identifier, "__LINE__")) {
+            } else if(!nkppStrcmp(identifier, "__LINE__")) {
                 char tmp[128];
                 sprintf(tmp, "%lu", (unsigned long)state->lineNumber);
                 nkppMacroSetDefinition(state, currentMacro, tmp);
@@ -697,7 +703,7 @@ nkbool nkppStateDeleteMacro(
 
     while(currentMacro) {
 
-        if(!strcmpWrapper(currentMacro->identifier, identifier)) {
+        if(!nkppStrcmp(currentMacro->identifier, identifier)) {
 
             *lastPtr = currentMacro->next;
             currentMacro->next = NULL;
@@ -747,7 +753,7 @@ struct NkppState *nkppStateClone(
                 nkppDestroyState(ret);
                 return NULL;
             }
-            memcpyWrapper(
+            nkppMemcpy(
                 ret->output,
                 state->output,
                 state->outputLength + 1);
@@ -827,7 +833,7 @@ char *nkppStateInputReadIdentifier(struct NkppState *state)
         return NULL;
     }
 
-    memcpyWrapper(ret, str + start, len);
+    nkppMemcpy(ret, str + start, len);
     ret[len] = 0;
 
     return ret;
@@ -896,7 +902,7 @@ char *nkppStateInputReadQuotedString(struct NkppState *state)
         return NULL;
     }
 
-    memcpyWrapper(ret, str + start, len);
+    nkppMemcpy(ret, str + start, len);
     ret[len] = 0;
 
     return ret;
@@ -934,7 +940,7 @@ char *nkppStateInputReadInteger(struct NkppState *state)
     }
 
     // Copy and null-terminate.
-    memcpyWrapper(ret, str + start, len);
+    nkppMemcpy(ret, str + start, len);
     ret[len] = 0;
 
     return ret;

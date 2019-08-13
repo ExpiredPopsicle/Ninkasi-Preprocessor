@@ -35,7 +35,7 @@ nkbool nkppDirectiveIsValid(
 {
     nkuint32_t i;
     for(i = 0; i < directiveMappingLen; i++) {
-        if(!strcmpWrapper(directive, directiveMapping[i].identifier)) {
+        if(!nkppStrcmp(directive, directiveMapping[i].identifier)) {
             return nktrue;
         }
     }
@@ -63,7 +63,7 @@ nkbool nkppDirectiveHandleDirective(
 
     // Figure out which handler this corresponds to and execute it.
     for(i = 0; i < directiveMappingLen; i++) {
-        if(!strcmpWrapper(directive, directiveMapping[i].identifier)) {
+        if(!nkppStrcmp(directive, directiveMapping[i].identifier)) {
             ret = directiveMapping[i].handler(state, deletedBackslashes);
             break;
         }

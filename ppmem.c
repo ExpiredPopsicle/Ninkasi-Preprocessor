@@ -28,6 +28,8 @@ struct NkppAllocationHeader *nkppAllocationHeaderGetData(struct NkppAllocationHe
 // ----------------------------------------------------------------------
 // Allocation failure handling debugging
 
+#if NK_PP_MEMDEBUG
+
 static nkuint32_t maxAllowedMemory = ~(nkuint32_t)0;
 static nkuint32_t totalAllocations = 0;
 static nkuint32_t maxUsage = 0;
@@ -43,6 +45,8 @@ void setAllocationFailureTestLimits(
     maxAllowedMemory = limitMemory;
     allocationsUntilFailure = limitAllocations;
 }
+
+#endif
 
 // ----------------------------------------------------------------------
 // malloc/free/etc as used by the VM
@@ -69,7 +73,7 @@ void *nkppRealloc(
         oldHeader = nkppAllocationHeaderGetFromData(ptr);
         oldSize = oldHeader->size;
 
-        memcpyWrapper(newChunk, ptr, size > oldSize ? oldSize : size);
+        nkppMemcpy(newChunk, ptr, size > oldSize ? oldSize : size);
 
         nkppFree(state, ptr);
 
@@ -108,11 +112,12 @@ void *nkppMalloc(struct NkppState *state, nkuint32_t size)
 
     ret = nkppAllocationHeaderGetData(newHeader);
 
-    // FIXME: Make debug-only.
+#if NK_PP_MEMDEBUG
     totalAllocations += size;
     if(totalAllocations > maxUsage) {
         maxUsage = totalAllocations;
     }
+#endif // NK_PP_MEMDEBUG
 
     return ret;
 }
@@ -127,7 +132,9 @@ void nkppFree(struct NkppState *state, void *ptr)
 
     header = nkppAllocationHeaderGetFromData(ptr);
 
+#if NK_PP_MEMDEBUG
     totalAllocations -= header->size;
+#endif // NK_PP_MEMDEBUG
 
     if(state->memoryCallbacks) {
         state->memoryCallbacks->freeWrapper(

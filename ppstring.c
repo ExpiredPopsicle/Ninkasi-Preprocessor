@@ -1,13 +1,15 @@
 #include "ppstate.h"
 #include "ppstring.h"
 
+#include <assert.h>
+
 char *nkppDeleteBackslashNewlines(
     struct NkppState *state,
     const char *str)
 {
     if(str) {
 
-        nkuint32_t inputLen = strlenWrapper(str);
+        nkuint32_t inputLen = nkppStrlen(str);
         nkuint32_t outputLen;
         char *outputStr;
         nkbool overflow = nkfalse;
@@ -58,7 +60,7 @@ char *nkppStripCommentsAndTrim(
         return NULL;
     }
 
-    NK_CHECK_OVERFLOW_UINT_ADD(strlenWrapper(in), 1, bufLen, overflow);
+    NK_CHECK_OVERFLOW_UINT_ADD(nkppStrlen(in), 1, bufLen, overflow);
     if(overflow) {
         return NULL;
     }
@@ -165,7 +167,7 @@ char *nkppEscapeString(
 
     // Just make a buffer that's twice as big in case literally every
     // single character needs to be escaped.
-    bufferLen = strlenWrapper(src);
+    bufferLen = nkppStrlen(src);
     NK_CHECK_OVERFLOW_UINT_MUL(bufferLen, 2, bufferLen, overflow);
     NK_CHECK_OVERFLOW_UINT_ADD(bufferLen, 1, bufferLen, overflow);
     if(overflow) {
@@ -182,3 +184,84 @@ char *nkppEscapeString(
 
     return output;
 }
+
+char *nkppStrdup(struct NkppState *state, const char *s)
+{
+    nkuint32_t len = nkppStrlen(s);
+    nkuint32_t size;
+    nkbool overflow = nkfalse;
+    char *ret;
+
+    NK_CHECK_OVERFLOW_UINT_ADD(len, 1, size, overflow);
+    if(overflow) {
+        return NULL;
+    }
+
+    ret = (char*)nkppMalloc(state, size);
+    if(!ret) {
+        return NULL;
+    }
+
+    nkppMemcpy(ret, s, len);
+    ret[len] = 0;
+
+    return ret;
+}
+
+void nkppMemcpy(void *dst, const void *src, nkuint32_t len)
+{
+    nkuint32_t i;
+    for(i = 0; i < len; i++) {
+        ((char*)dst)[i] = ((const char*)src)[i];
+    }
+}
+
+nkuint32_t nkppStrlen(const char *str)
+{
+    nkuint32_t ret = 0;
+
+    if(!str) {
+        return 0;
+    }
+
+    while(str[0]) {
+
+        if(ret == NK_UINT_MAX) {
+            return NK_UINT_MAX;
+        }
+
+        ret++;
+        str++;
+    }
+
+    return ret;
+}
+
+int nkppStrcmp(const char *a, const char *b)
+{
+    int ret = 0;
+    nkuint32_t i = 0;
+
+    while(i != NK_UINT_MAX) {
+
+        if(a[i] < b[i]) {
+            ret = -1;
+            break;
+        }
+
+        if(b[i] < a[i]) {
+            ret = 1;
+            break;
+        }
+
+        if(!a[i]) {
+            break;
+        }
+
+        i++;
+    }
+
+    return ret;
+}
+
+

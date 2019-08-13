@@ -1,5 +1,8 @@
 #include "ppcommon.h"
 #include "ppstate.h"
+#include "ppstring.h"
+
+#include <assert.h>
 
 // ----------------------------------------------------------------------
 // Stuff copied from nktoken.c
@@ -51,18 +54,9 @@ nkbool nkiCompilerIsNumber(char c)
 }
 
 // MEMSAFE
-void nkiMemcpy(void *dst, const void *src, nkuint32_t len)
-{
-    nkuint32_t i;
-    for(i = 0; i < len; i++) {
-        ((char*)dst)[i] = ((const char*)src)[i];
-    }
-}
-
-// MEMSAFE
 void nkiDbgAppendEscaped(nkuint32_t bufSize, char *dst, const char *src)
 {
-    nkuint32_t i = strlenWrapper(dst);
+    nkuint32_t i = nkppStrlen(dst);
 
     // Avoid overflows at the cost of truncating strings near the end.
     if(i > NK_UINT_MAX - 3) {
@@ -100,27 +94,16 @@ void nkiDbgAppendEscaped(nkuint32_t bufSize, char *dst, const char *src)
     dst[i] = 0;
 }
 
-
-
-char *nkppStrdup(struct NkppState *state, const char *s)
+void nkppSanityCheck(void)
 {
-    nkuint32_t len = strlenWrapper(s);
-    nkuint32_t size;
-    nkbool overflow = nkfalse;
-    char *ret;
-
-    NK_CHECK_OVERFLOW_UINT_ADD(len, 1, size, overflow);
-    if(overflow) {
-        return NULL;
-    }
-
-    ret = (char*)nkppMalloc(state, size);
-    if(!ret) {
-        return NULL;
-    }
-
-    memcpyWrapper(ret, s, len);
-    ret[len] = 0;
-
-    return ret;
+    // If any of these fail, you need to find a way to differentiated
+    // this platform or data model from the others and put it in
+    // pptypes.h.
+    assert(sizeof(nkuint32_t) == 4);
+    assert(sizeof(nkint32_t) == 4);
+    assert(sizeof(nkuint8_t) == 1);
+    assert(sizeof(nkbool) == 4);
 }
+
+
+
