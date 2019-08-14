@@ -1,8 +1,5 @@
 #include "ppcommon.h"
 
-// ----------------------------------------------------------------------
-// Stuff copied from nktoken.c
-
 void nkppSanityCheck(void)
 {
     // If any of these fail, you need to find a way to differentiated
