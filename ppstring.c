@@ -320,3 +320,80 @@ nkbool nkppIsDigit(char c)
     return (c >= '0' && c <= '9');
 }
 
+nkbool nkppIsDigitHex(char c)
+{
+    return (c >= '0' && c <= '9') ||
+        (c >= 'a' && c <= 'f') ||
+        (c >= 'A' && c <= 'F');
+}
+
+nkuint32_t nkppParseDigit(char c)
+{
+    if(c >= '0' && c <= '9') {
+        return c - '0';
+    }
+
+    if(c >= 'a' && c <= 'z') {
+        return 10 + (c - 'a');
+    }
+
+    if(c >= 'A' && c <= 'Z') {
+        return 10 + (c - 'A');
+    }
+
+    return NK_INVALID_VALUE;
+}
+
+nkbool nkppStrtol(const char *str, nkuint32_t *out)
+{
+    nkuint32_t base = 10;
+
+    *out = 0;
+
+    if(!str || !str[0]) {
+        return nkfalse;
+    }
+
+    // Skip whitespace.
+    while(nkppIsWhitespace(str[0])) {
+        str++;
+    }
+
+    // Determine base.
+    if(str[0] == '0') {
+
+        // Default to octal with no other info.
+        base = 8;
+        str++;
+
+        if(str[0] == 'x') {
+
+            // Hex.
+            base = 16;
+            str++;
+
+        } else if(str[0] == 'b') {
+
+            // Binary.
+            base = 2;
+            str++;
+
+        }
+    }
+
+    while(str[0]) {
+
+        nkuint32_t digit = nkppParseDigit(str[0]);
+
+        if(digit >= base || digit == NK_INVALID_VALUE) {
+            return nkfalse;
+        }
+
+        *out = *out * base;
+        *out += digit;
+
+        str++;
+    }
+
+    return nktrue;
+}

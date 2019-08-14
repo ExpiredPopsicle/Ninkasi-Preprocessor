@@ -129,7 +129,7 @@ int main(int argc, char *argv[])
             printf("----------------------------------------------------------------------\n");
 
             state->writePositionMarkers = nktrue;
-            nkppStateExecute(state, testStr2, 0);
+            nkppStateExecute(state, testStr2);
 
             printf("----------------------------------------------------------------------\n");
             printf("  Preprocessor output\n");

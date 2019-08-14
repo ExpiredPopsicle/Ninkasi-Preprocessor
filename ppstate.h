@@ -82,6 +82,8 @@ struct NkppState
     nkuint32_t nestedFailedIfs;
 
     struct NkppMemoryCallbacks *memoryCallbacks;
+
+    nkuint32_t recursionLevel;
 };
 
 // ----------------------------------------------------------------------
@@ -213,7 +215,6 @@ void nkppFree(struct NkppState *state, void *ptr);
 
 nkbool nkppStateExecute(
     struct NkppState *state,
-    const char *str,
-    nkuint32_t recursionLevel);
+    const char *str);
 
 #endif // NK_PPSTATE_H

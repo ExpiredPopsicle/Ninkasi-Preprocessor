@@ -23,6 +23,7 @@ struct NkppDirectiveMapping nkppDirectiveMapping[] = {
     { "ifndef", nkppDirective_ifndef },
     { "else",   nkppDirective_else   },
     { "endif",  nkppDirective_endif  },
+    { "line",   nkppDirective_line   },
 };
 
 static nkuint32_t nkppDirectiveMappingLen =
@@ -98,6 +99,7 @@ nkbool nkppDirective_ifdefReal(
 
     if(directiveParseState) {
 
+        directiveParseState->recursionLevel = state->recursionLevel + 1;
         directiveParseState->str = restOfLine;
 
         // Get identifier.
@@ -181,6 +183,7 @@ nkbool nkppDirective_undef(
     }
 
     directiveParseState->str = restOfLine;
+    directiveParseState->recursionLevel = state->recursionLevel + 1;
 
     // Get identifier.
     identifierToken = nkppStateInputGetNextToken(directiveParseState, nkfalse);
@@ -235,6 +238,7 @@ nkbool nkppDirective_define(
         goto nkppDirective_define_cleanup;
     }
     directiveParseState->str = restOfLine;
+    directiveParseState->recursionLevel = state->recursionLevel + 1;
 
     // Setup new macro.
     macro = nkppMacroCreate(state);
@@ -427,5 +431,42 @@ nkppDirective_define_cleanup:
         nkppMacroDestroy(state, macro);
     }
 
+    return ret;
+}
+
+nkbool nkppDirective_line(
+    struct NkppState *state,
+    const char *restOfLine)
+{
+    struct NkppState *childState;
+    nkuint32_t num = 0;
+    char *trimmedLine = NULL;
+    nkbool ret = nktrue;
+
+    childState = nkppStateClone(state, nkfalse);
+    if(!childState) {
+        return nkfalse;
+    }
+
+    if(!nkppStateExecute(childState, restOfLine)) { // FIXME: Correct recursion level.
+        nkppStateDestroy(childState);
+        return nkfalse;
+    }
+
+    trimmedLine = nkppStripCommentsAndTrim(state, childState->output);
+    if(!trimmedLine) {
+        nkppStateDestroy(childState);
+        return nkfalse;
+    }
+
+    ret = nkppStrtol(trimmedLine, &num);
+    if(ret) {
+        state->lineNumber = num;
+    } else {
+        nkppStateAddError(state, "Expected number after #line directive.");
+    }
+
+    nkppFree(state, trimmedLine);
+    nkppStateDestroy(childState);
     return ret;
 }

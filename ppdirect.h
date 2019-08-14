@@ -43,6 +43,8 @@ nkbool nkppDirective_endif(
     struct NkppState *state,
     const char *restOfLine);
 
-
+nkbool nkppDirective_line(
+    struct NkppState *state,
+    const char *restOfLine);
 
 #endif // PPDIRECT_H

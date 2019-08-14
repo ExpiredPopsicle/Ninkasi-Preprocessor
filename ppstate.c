@@ -34,6 +34,7 @@ struct NkppState *nkppStateCreate(
         ret->nestedPassedIfs = 0;
         ret->nestedFailedIfs = 0;
         ret->memoryCallbacks = memoryCallbacks;
+        ret->recursionLevel = 0;
 
         // Memory callbacks now set up. Can use normal functions that
         // require allocations.
@@ -731,6 +732,7 @@ struct NkppState *nkppStateClone(
     ret->index = state->index;
     ret->lineNumber = state->lineNumber;
     ret->outputLineNumber = state->outputLineNumber;
+    ret->recursionLevel = state->recursionLevel + 1;
 
     // Copy output.
     if(copyOutput) {
@@ -908,8 +910,30 @@ char *nkppStateInputReadInteger(struct NkppState *state)
     nkuint32_t bufLen;
     char *ret;
     nkbool overflow = nkfalse;
+    nkbool hex = nkfalse;
 
-    while(nkppIsDigit(str[state->index])) {
+    // Special case to skip past the base specifiers.
+    if(str[state->index] == '0') {
+
+        if(!nkppStateInputSkipChar(state, nkfalse)) {
+            return NULL;
+        }
+
+        if(str[state->index] == 'x' || str[state->index] == 'b') {
+
+            hex = str[state->index] == 'x';
+
+            if(!nkppStateInputSkipChar(state, nkfalse)) {
+                return NULL;
+            }
+        }
+    }
+
+    // Skip past other digits.
+    while(
+        nkppIsDigit(str[state->index]) ||
+        (hex && nkppIsDigitHex(str[state->index])))
+    {
         if(!nkppStateInputSkipChar(state, nkfalse)) {
             return NULL;
         }
@@ -956,6 +980,7 @@ char *nkppStateInputReadMacroArgument(struct NkppState *state)
     // Copy input and position.
     readerState->index = state->index;
     readerState->str = state->str;
+    readerState->recursionLevel = state->recursionLevel + 1;
 
     // Start off with an allocated-but-empty string, because we have
     // to return something not-NULL to indicate a success.
@@ -1180,8 +1205,7 @@ nkbool nkppStateFlipIfResult(
 
 nkbool nkppStateExecute(
     struct NkppState *state,
-    const char *str,
-    nkuint32_t recursionLevel)
+    const char *str)
 {
     nkbool ret = nktrue;
     struct NkppToken *token = NULL;
@@ -1189,7 +1213,7 @@ nkbool nkppStateExecute(
     char *line = NULL;
 
     // FIXME: Maybe make this less arbitraty.
-    if(recursionLevel > 20) {
+    if(state->recursionLevel > 20) {
         nkppStateAddError(state, "Arbitrary recursion limit reached.");
         return nkfalse;
     }
@@ -1269,7 +1293,7 @@ nkbool nkppStateExecute(
 
                         } else {
 
-                            if(!nkppMacroStringify(state, directiveNameToken->str, recursionLevel)) {
+                            if(!nkppMacroStringify(state, directiveNameToken->str)) {
                                 ret = nkfalse;
                             }
                         }
@@ -1291,7 +1315,6 @@ nkbool nkppStateExecute(
 
                 }
 
-
             } else if(token->type == NK_PPTOKEN_IDENTIFIER) {
 
                 // See if we can find a macro with this name.
@@ -1302,7 +1325,7 @@ nkbool nkppStateExecute(
                 if(macro) {
 
                     // Execute that macro.
-                    if(!nkppMacroExecute(state, macro, recursionLevel)) {
+                    if(!nkppMacroExecute(state, macro)) {
                         ret = nkfalse;
                     }
 
@@ -1337,3 +1360,4 @@ nkbool nkppStateExecute(
 
     return ret;
 }
+

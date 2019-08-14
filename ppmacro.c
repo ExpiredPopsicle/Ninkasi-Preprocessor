@@ -174,8 +174,7 @@ struct NkppMacro *nkppMacroClone(
 
 nkbool nkppMacroExecute(
     struct NkppState *state,
-    struct NkppMacro *macro,
-    nkuint32_t recursionLevel)
+    struct NkppMacro *macro)
 {
     struct NkppState *clonedState;
     nkbool ret = nktrue;
@@ -314,8 +313,7 @@ nkbool nkppMacroExecute(
         // Feed the macro definition through the cloned state.
         if(!nkppStateExecute(
                 clonedState,
-                macro->definition ? macro->definition : "",
-                recursionLevel + 1))
+                macro->definition ? macro->definition : ""))
         {
             ret = nkfalse;
         }
@@ -352,8 +350,7 @@ nkppMacroExecute_cleanup:
 
 nkbool nkppMacroStringify(
     struct NkppState *state,
-    const char *macroName,
-    nkuint32_t recursionLevel)
+    const char *macroName)
 {
     nkbool ret = nkfalse;
     char *escapedStr = NULL;
@@ -365,9 +362,10 @@ nkbool nkppMacroStringify(
     if(macro) {
 
         macroState = nkppStateClone(state, nkfalse);
+
         if(macroState) {
 
-            if(nkppMacroExecute(macroState, macro, recursionLevel)) {
+            if(nkppMacroExecute(macroState, macro)) {
 
                 // Escape the string and add it to the output.
                 escapedStr = nkppEscapeString(
@@ -383,10 +381,10 @@ nkbool nkppMacroStringify(
                 // cloned state.
                 state->index = macroState->index;
 
-                nkppStateDestroy(macroState);
-
                 ret = nktrue;
             }
+
+            nkppStateDestroy(macroState);
         }
 
     } else {

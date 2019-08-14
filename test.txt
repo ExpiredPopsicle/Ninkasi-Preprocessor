@@ -154,3 +154,8 @@ foo
 FOO
 
 
+#define FILE_LINE_TEST 111
+#line FILE_LINE_TEST
+#error butts
+
+

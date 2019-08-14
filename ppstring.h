@@ -29,12 +29,17 @@ int nkppStrcmp(const char *a, const char *b);
 
 nkuint32_t nkppStrlen(const char *str);
 
+/// Slightly different from the "real" strtol. Base is determined
+/// automatically (0x10 == 16, etc).
+nkbool nkppStrtol(const char *str, nkuint32_t *out);
+
 // ----------------------------------------------------------------------
 // Character classification
 
 nkbool nkppIsWhitespace(char c);
 nkbool nkppIsValidIdentifierCharacter(char c, nkbool isFirstCharacter);
 nkbool nkppIsDigit(char c);
+nkbool nkppIsDigitHex(char c);
 
 #endif // NK_PPSTRING_H
 
