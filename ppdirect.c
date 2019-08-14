@@ -1,6 +1,6 @@
 #include "ppcommon.h"
 
-struct PreprocessorDirectiveMapping
+struct NkppDirectiveMapping
 {
     const char *identifier;
     nkbool (*handler)(struct NkppState *, const char*);
@@ -13,7 +13,7 @@ struct PreprocessorDirectiveMapping
 //   if (with more complicated expressions)
 //   error
 //   ... anything else I think of
-struct PreprocessorDirectiveMapping directiveMapping[] = {
+struct NkppDirectiveMapping nkppDirectiveMapping[] = {
     { "undef",  nkppDirective_undef  },
     { "define", nkppDirective_define },
     { "ifdef",  nkppDirective_ifdef  },
@@ -22,16 +22,16 @@ struct PreprocessorDirectiveMapping directiveMapping[] = {
     { "endif",  nkppDirective_endif  },
 };
 
-nkuint32_t directiveMappingLen =
-    sizeof(directiveMapping) /
-    sizeof(struct PreprocessorDirectiveMapping);
+nkuint32_t nkppDirectiveMappingLen =
+    sizeof(nkppDirectiveMapping) /
+    sizeof(struct NkppDirectiveMapping);
 
 nkbool nkppDirectiveIsValid(
     const char *directive)
 {
     nkuint32_t i;
-    for(i = 0; i < directiveMappingLen; i++) {
-        if(!nkppStrcmp(directive, directiveMapping[i].identifier)) {
+    for(i = 0; i < nkppDirectiveMappingLen; i++) {
+        if(!nkppStrcmp(directive, nkppDirectiveMapping[i].identifier)) {
             return nktrue;
         }
     }
@@ -58,15 +58,15 @@ nkbool nkppDirectiveHandleDirective(
     }
 
     // Figure out which handler this corresponds to and execute it.
-    for(i = 0; i < directiveMappingLen; i++) {
-        if(!nkppStrcmp(directive, directiveMapping[i].identifier)) {
-            ret = directiveMapping[i].handler(state, deletedBackslashes);
+    for(i = 0; i < nkppDirectiveMappingLen; i++) {
+        if(!nkppStrcmp(directive, nkppDirectiveMapping[i].identifier)) {
+            ret = nkppDirectiveMapping[i].handler(state, deletedBackslashes);
             break;
         }
     }
 
     // Spit out an error if we couldn't find a matching directive.
-    if(i == directiveMappingLen) {
+    if(i == nkppDirectiveMappingLen) {
         nkppStateAddError(state, "Unknown directive.");
         ret = nkfalse;
     }
@@ -209,7 +209,6 @@ nkbool nkppDirective_undef(
     return ret;
 }
 
-// MEMSAFE
 nkbool nkppDirective_define(
     struct NkppState *state,
     const char *restOfLine)
