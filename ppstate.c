@@ -1,6 +1,6 @@
 #include "ppcommon.h"
 
-struct NkppState *nkppCreateState(
+struct NkppState *nkppStateCreate(
     struct NkppErrorState *errorState,
     struct NkppMemoryCallbacks *memoryCallbacks)
 {
@@ -34,7 +34,6 @@ struct NkppState *nkppCreateState(
         ret->nestedPassedIfs = 0;
         ret->nestedFailedIfs = 0;
         ret->memoryCallbacks = memoryCallbacks;
-        ret->allocationFailure = nkfalse;
 
         // Memory callbacks now set up. Can use normal functions that
         // require allocations.
@@ -48,7 +47,7 @@ struct NkppState *nkppCreateState(
     return ret;
 }
 
-void nkppDestroyState(struct NkppState *state)
+void nkppStateDestroy(struct NkppState *state)
 {
     NkppFreeWrapper localFreeWrapper =
         state->memoryCallbacks ? state->memoryCallbacks->freeWrapper : nkppDefaultFreeWrapper;
@@ -719,7 +718,7 @@ struct NkppState *nkppStateClone(
     struct NkppState *state,
     nkbool copyOutput)
 {
-    struct NkppState *ret = nkppCreateState(
+    struct NkppState *ret = nkppStateCreate(
         state->errorState, state->memoryCallbacks);
     struct NkppMacro *currentMacro;
     struct NkppMacro **macroWritePtr;
@@ -732,7 +731,6 @@ struct NkppState *nkppStateClone(
     ret->index = state->index;
     ret->lineNumber = state->lineNumber;
     ret->outputLineNumber = state->outputLineNumber;
-    ret->allocationFailure = state->allocationFailure;
 
     // Copy output.
     if(copyOutput) {
@@ -743,7 +741,7 @@ struct NkppState *nkppStateClone(
 
         if(ret->outputCapacity) {
             if(!ret->output) {
-                nkppDestroyState(ret);
+                nkppStateDestroy(ret);
                 return NULL;
             }
             nkppMemcpy(
@@ -753,7 +751,7 @@ struct NkppState *nkppStateClone(
         }
 
         if(state->output && !ret->output) {
-            nkppDestroyState(ret);
+            nkppStateDestroy(ret);
             return NULL;
         }
     }
@@ -762,7 +760,7 @@ struct NkppState *nkppStateClone(
     // markers here.
     ret->errorState = state->errorState;
     if(!nkppStateSetFilename(ret, state->filename)) {
-        nkppDestroyState(ret);
+        nkppStateDestroy(ret);
         return NULL;
     }
 
@@ -776,7 +774,7 @@ struct NkppState *nkppStateClone(
         struct NkppMacro *clonedMacro =
             nkppMacroClone(state, currentMacro);
         if(!clonedMacro) {
-            nkppDestroyState(ret);
+            nkppStateDestroy(ret);
             return NULL;
         }
 
@@ -949,7 +947,7 @@ char *nkppStateInputReadMacroArgument(struct NkppState *state)
     char *ret = NULL;
     struct NkppToken *token = NULL;
 
-    readerState = nkppCreateState(
+    readerState = nkppStateCreate(
         state->errorState, state->memoryCallbacks);
     if(!readerState) {
         return NULL;
@@ -963,7 +961,7 @@ char *nkppStateInputReadMacroArgument(struct NkppState *state)
     // to return something not-NULL to indicate a success.
     readerState->output = nkppMalloc(state, 1);
     if(!readerState->output) {
-        nkppDestroyState(readerState);
+        nkppStateDestroy(readerState);
         return NULL;
     }
     readerState->output[0] = 0;
@@ -971,14 +969,14 @@ char *nkppStateInputReadMacroArgument(struct NkppState *state)
     // Skip whitespace up to the first token, but don't append
     // whitespace on this side of it.
     if(!nkppStateInputSkipWhitespaceAndComments(readerState, nkfalse, nkfalse)) {
-        nkppDestroyState(readerState);
+        nkppStateDestroy(readerState);
         return NULL;
     }
 
     do {
         // Skip whitespace.
         if(!nkppStateInputSkipWhitespaceAndComments(readerState, nktrue, nkfalse)) {
-            nkppDestroyState(readerState);
+            nkppStateDestroy(readerState);
             return NULL;
         }
 
@@ -1007,7 +1005,7 @@ char *nkppStateInputReadMacroArgument(struct NkppState *state)
             // Add it.
             if(!nkppStateOutputAppendString(readerState, token->str)) {
                 nkppTokenDestroy(state, token);
-                nkppDestroyState(readerState);
+                nkppStateDestroy(readerState);
                 return NULL;
             }
 
@@ -1023,7 +1021,7 @@ char *nkppStateInputReadMacroArgument(struct NkppState *state)
     // Pull the output off the pp state and return it.
     ret = readerState->output;
     readerState->output = NULL;
-    nkppDestroyState(readerState);
+    nkppStateDestroy(readerState);
     return ret;
 }
 

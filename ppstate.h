@@ -20,6 +20,10 @@ struct NkppErrorState
 {
     struct NkppError *firstError;
     struct NkppError *lastError;
+
+    // Set to nktrue if there was an allocation failure at any point
+    // from a nkppMalloc() call on this state.
+    nkbool allocationFailure;
 };
 
 typedef void *(*NkppMallocWrapper)(void *userData, nkuint32_t size);
@@ -78,20 +82,16 @@ struct NkppState
     nkuint32_t nestedFailedIfs;
 
     struct NkppMemoryCallbacks *memoryCallbacks;
-
-    // Set to nktrue if there was an allocation failure at any point
-    // from a nkppMalloc() call on this state.
-    nkbool allocationFailure;
 };
 
 // ----------------------------------------------------------------------
 // General state object
 
-struct NkppState *nkppCreateState(
+struct NkppState *nkppStateCreate(
     struct NkppErrorState *errorState,
     struct NkppMemoryCallbacks *memoryCallbacks);
 
-void nkppDestroyState(struct NkppState *state);
+void nkppStateDestroy(struct NkppState *state);
 
 struct NkppState *nkppStateClone(
     struct NkppState *state,

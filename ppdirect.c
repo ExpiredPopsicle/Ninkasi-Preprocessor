@@ -92,7 +92,7 @@ nkbool nkppDirective_ifdefReal(
 {
     nkbool ret = nkfalse;
     struct NkppState *directiveParseState =
-        nkppCreateState(state->errorState, state->memoryCallbacks);
+        nkppStateCreate(state->errorState, state->memoryCallbacks);
     struct NkppToken *identifierToken = NULL;
     struct NkppMacro *macro = NULL;
 
@@ -130,9 +130,11 @@ nkbool nkppDirective_ifdefReal(
     if(identifierToken) {
         nkppTokenDestroy(state, identifierToken);
     }
+
     if(directiveParseState) {
-        nkppDestroyState(directiveParseState);
+        nkppStateDestroy(directiveParseState);
     }
+
     return ret;
 }
 
@@ -173,7 +175,7 @@ nkbool nkppDirective_undef(
     struct NkppToken *identifierToken = NULL;
 
     directiveParseState =
-        nkppCreateState(state->errorState, state->memoryCallbacks);
+        nkppStateCreate(state->errorState, state->memoryCallbacks);
     if(!directiveParseState) {
         return nkfalse;
     }
@@ -183,7 +185,7 @@ nkbool nkppDirective_undef(
     // Get identifier.
     identifierToken = nkppStateInputGetNextToken(directiveParseState, nkfalse);
     if(!identifierToken) {
-        nkppDestroyState(directiveParseState);
+        nkppStateDestroy(directiveParseState);
         return nkfalse;
     }
 
@@ -208,7 +210,7 @@ nkbool nkppDirective_undef(
     }
 
     nkppTokenDestroy(state, identifierToken);
-    nkppDestroyState(directiveParseState);
+    nkppStateDestroy(directiveParseState);
     return ret;
 }
 
@@ -226,7 +228,7 @@ nkbool nkppDirective_define(
     struct NkppToken *argToken = NULL;
 
     // Setup pp state.
-    directiveParseState = nkppCreateState(
+    directiveParseState = nkppStateCreate(
         state->errorState, state->memoryCallbacks);
     if(!directiveParseState) {
         ret = nkfalse;
@@ -410,7 +412,7 @@ nkppDirective_define_cleanup:
 
     // Cleanup.
     if(directiveParseState) {
-        nkppDestroyState(directiveParseState);
+        nkppStateDestroy(directiveParseState);
     }
     if(identifierToken) {
         nkppTokenDestroy(state, identifierToken);

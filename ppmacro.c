@@ -335,7 +335,7 @@ nkppMacroExecute_cleanup:
 
     // Clean up.
     if(clonedState) {
-        nkppDestroyState(clonedState);
+        nkppStateDestroy(clonedState);
     }
     if(unstrippedArgumentText) {
         nkppFree(state, unstrippedArgumentText);
@@ -383,7 +383,7 @@ nkbool nkppMacroStringify(
                 // cloned state.
                 state->index = macroState->index;
 
-                nkppDestroyState(macroState);
+                nkppStateDestroy(macroState);
 
                 ret = nktrue;
             }

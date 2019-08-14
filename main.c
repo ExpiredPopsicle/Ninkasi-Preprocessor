@@ -82,6 +82,11 @@ int main(int argc, char *argv[])
         struct NkppState *state;
         char *testStr2;
 
+        // FIXME: Make a real init function for this.
+        errorState.firstError = NULL;
+        errorState.lastError = NULL;
+        errorState.allocationFailure = nkfalse;
+
         // nkuint32_t allocLimit = ~(nkuint32_t)0;
         // nkuint32_t memLimit = ~(nkuint32_t)0;
         // if(argc > 2) {
@@ -98,7 +103,7 @@ int main(int argc, char *argv[])
             ~(nkuint32_t)0, counter);
         #endif
 
-        state = nkppCreateState(&errorState, NULL);
+        state = nkppStateCreate(&errorState, NULL);
         if(!state) {
             printf("Allocation failure on state creation.\n");
             // return 0;
@@ -108,13 +113,10 @@ int main(int argc, char *argv[])
         testStr2 = loadFile(state, "test.txt");
         if(!testStr2) {
             printf("Allocation failure on file load.\n");
-            nkppDestroyState(state);
+            nkppStateDestroy(state);
             // return 0;
             continue;
         }
-
-        errorState.firstError = NULL;
-        errorState.lastError = NULL;
 
         printf("----------------------------------------------------------------------\n");
         printf("  Input string\n");
@@ -156,7 +158,7 @@ int main(int argc, char *argv[])
 
         nkppFree(state, testStr2);
 
-        nkppDestroyState(state);
+        nkppStateDestroy(state);
 
     }
 

@@ -87,7 +87,9 @@ void *nkppMalloc(struct NkppState *state, nkuint32_t size)
         size, sizeof(struct NkppAllocationHeader),
         actualSize, overflow);
     if(overflow) {
-        state->allocationFailure = nktrue;
+        if(state->errorState) {
+            state->errorState->allocationFailure = nktrue;
+        }
         return NULL;
     }
 
@@ -99,7 +101,9 @@ void *nkppMalloc(struct NkppState *state, nkuint32_t size)
     }
 
     if(!newHeader) {
-        state->allocationFailure = nktrue;
+        if(state->errorState) {
+            state->errorState->allocationFailure = nktrue;
+        }
         return NULL;
     }
 
