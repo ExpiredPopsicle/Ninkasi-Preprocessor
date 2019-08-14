@@ -1,1 +1,8 @@
-for i in `ls *.c *.h` ; do sed -i "s/preprocessorStateDeleteMacro/nkppStateDeleteMacro/g" $i; done
+#!/bin/bash
+
+if [ "$#" -ne "2" ]; then
+	echo "Usage: $0 <match> <replace>"
+	exit 1
+fi
+
+for i in `ls *.c *.h` ; do sed -i "s/$1/$2/g" $i; done

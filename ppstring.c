@@ -68,7 +68,7 @@ char *nkppStripCommentsAndTrim(
     }
 
     // Skip whitespace on the start.
-    while(in[readIndex] && nkiCompilerIsWhitespace(in[readIndex])) {
+    while(in[readIndex] && nkppIsWhitespace(in[readIndex])) {
         readIndex++;
     }
 
@@ -135,7 +135,7 @@ char *nkppStripCommentsAndTrim(
 
     // Back up the write index until we find some non-whitespace.
     while(writeIndex) {
-        if(!nkiCompilerIsWhitespace(ret[writeIndex-1])) {
+        if(!nkppIsWhitespace(ret[writeIndex-1])) {
             break;
         }
         writeIndex--;
@@ -152,6 +152,7 @@ char *nkppEscapeString(
     char *output;
     nkuint32_t bufferLen;
     nkbool overflow = nkfalse;
+    nkuint32_t i = 0;
 
     // Return an empty string if input is MULL.
     if(!src) {
@@ -171,13 +172,43 @@ char *nkppEscapeString(
         return NULL;
     }
 
+    // Do the allocation.
     output = nkppMalloc(state, bufferLen);
     if(!output) {
         return NULL;
     }
 
-    output[0] = 0;
-    nkiDbgAppendEscaped(bufferLen, output, src);
+    // Fill it in.
+    while(i + 2 < bufferLen && *src) {
+        switch(*src) {
+            case '\n':
+                output[i++] = '\\';
+                output[i++] = 'n';
+                break;
+            case '\t':
+                output[i++] = '\\';
+                output[i++] = 't';
+                break;
+            case '\"':
+                output[i++] = '\\';
+                output[i++] = '\"';
+                break;
+            default:
+                output[i++] = *src;
+                break;
+        }
+        src++;
+
+        // Avoid overflows at the cost of truncating strings near the
+        // end.
+        if(i > NK_UINT_MAX - 3) {
+            break;
+        }
+
+    }
+
+    // Finish the string off.
+    output[i] = 0;
 
     return output;
 }
@@ -261,4 +292,31 @@ int nkppStrcmp(const char *a, const char *b)
     return ret;
 }
 
+nkbool nkppIsWhitespace(char c)
+{
+    if(c == ' ' || c == '\n' || c == '\t' || c == '\r') {
+        return nktrue;
+    }
+    return nkfalse;
+}
+
+nkbool nkppIsValidIdentifierCharacter(char c, nkbool isFirstCharacter)
+{
+    if(!isFirstCharacter) {
+        if(c >= '0' && c <= '9') {
+            return nktrue;
+        }
+    }
+
+    if(c == '_') return nktrue;
+    if(c >= 'a' && c <= 'z') return nktrue;
+    if(c >= 'A' && c <= 'Z') return nktrue;
+
+    return nkfalse;
+}
+
+nkbool nkppIsDigit(char c)
+{
+    return (c >= '0' && c <= '9');
+}
 

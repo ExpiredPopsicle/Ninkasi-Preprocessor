@@ -17,7 +17,7 @@ void *nkppRealloc(
 // Debugging stuff
 
 #ifndef NK_PP_MEMDEBUG
-#define NK_PP_MEMDEBUG 1
+#define NK_PP_MEMDEBUG 0
 #endif
 
 #if NK_PP_MEMDEBUG

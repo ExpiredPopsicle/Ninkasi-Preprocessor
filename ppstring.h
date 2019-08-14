@@ -3,6 +3,9 @@
 
 #include "ppcommon.h"
 
+// ----------------------------------------------------------------------
+// String transformation
+
 /// Return a new copy of a string with all the special characters
 /// escaped with backslashes.
 char *nkppEscapeString(struct NkppState *state, const char *src);
@@ -15,6 +18,9 @@ char *nkppDeleteBackslashNewlines(struct NkppState *state, const char *str);
 /// whitespace at the start and end trimmed off.
 char *nkppStripCommentsAndTrim(struct NkppState *state, const char *in);
 
+// ----------------------------------------------------------------------
+// General string stuff
+
 char *nkppStrdup(struct NkppState *state, const char *s);
 
 void nkppMemcpy(void *dst, const void *src, nkuint32_t len);
@@ -22,6 +28,13 @@ void nkppMemcpy(void *dst, const void *src, nkuint32_t len);
 int nkppStrcmp(const char *a, const char *b);
 
 nkuint32_t nkppStrlen(const char *str);
+
+// ----------------------------------------------------------------------
+// Character classification
+
+nkbool nkppIsWhitespace(char c);
+nkbool nkppIsValidIdentifierCharacter(char c, nkbool isFirstCharacter);
+nkbool nkppIsDigit(char c);
 
 #endif // NK_PPSTRING_H
 

@@ -356,7 +356,7 @@ nkbool nkppStateInputSkipWhitespaceAndComments(
                 }
             }
 
-        } else if(!nkiCompilerIsWhitespace(state->str[state->index])) {
+        } else if(!nkppIsWhitespace(state->str[state->index])) {
 
             // Non-whitespace, non-comment character found.
             break;
@@ -410,14 +410,14 @@ struct NkppToken *nkppStateInputGetNextToken(
         return NULL;
     }
 
-    if(nkiCompilerIsValidIdentifierCharacter(state->str[state->index], nktrue)) {
+    if(nkppIsValidIdentifierCharacter(state->str[state->index], nktrue)) {
 
         // Read identifiers (and directives).
 
         ret->str = nkppStateInputReadIdentifier(state);
         ret->type = NK_PPTOKEN_IDENTIFIER;
 
-    } else if(nkiCompilerIsNumber(state->str[state->index])) {
+    } else if(nkppIsDigit(state->str[state->index])) {
 
         // Read number.
 
@@ -802,7 +802,7 @@ char *nkppStateInputReadIdentifier(struct NkppState *state)
     nkuint32_t len;
     char *ret;
 
-    while(nkiCompilerIsValidIdentifierCharacter(str[*i], *i == start)) {
+    while(nkppIsValidIdentifierCharacter(str[*i], *i == start)) {
         (*i)++;
     }
 
@@ -911,7 +911,7 @@ char *nkppStateInputReadInteger(struct NkppState *state)
     char *ret;
     nkbool overflow = nkfalse;
 
-    while(nkiCompilerIsNumber(str[state->index])) {
+    while(nkppIsDigit(str[state->index])) {
         if(!nkppStateInputSkipChar(state, nkfalse)) {
             return NULL;
         }
@@ -1216,7 +1216,7 @@ nkbool nkppStateExecute(
                 // Make sure there's the start of a valid identifier
                 // as the very next character. We don't support
                 // whitespace between the hash and a directive name.
-                if(nkiCompilerIsValidIdentifierCharacter(state->str[state->index], nktrue)) {
+                if(nkppIsValidIdentifierCharacter(state->str[state->index], nktrue)) {
 
                     // Get the directive name.
                     directiveNameToken = nkppStateInputGetNextToken(state, nktrue);
