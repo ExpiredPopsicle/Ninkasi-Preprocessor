@@ -250,7 +250,7 @@ nkbool nkppStateOutputAppendChar(struct NkppState *state, char c)
     if(state->writePositionMarkers) {
 
         // If this is the first character on a line...
-        if(!state->output || state->output[nkppStrlen(state->output) - 1] == '\n') {
+        if(!state->output || state->output[state->outputLength - 1] == '\n') {
 
             // FIXME: Make this optional.
             ret = ret && nkppStateDebugOutputLineStart(state);

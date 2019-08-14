@@ -11,7 +11,10 @@ struct NkppDirectiveMapping
 //   file
 //   line
 //   if (with more complicated expressions)
+//   elif
 //   error
+//   warning (passthrough?)
+//   pragma? (passthrough?)
 //   ... anything else I think of
 struct NkppDirectiveMapping nkppDirectiveMapping[] = {
     { "undef",  nkppDirective_undef  },
@@ -22,7 +25,7 @@ struct NkppDirectiveMapping nkppDirectiveMapping[] = {
     { "endif",  nkppDirective_endif  },
 };
 
-nkuint32_t nkppDirectiveMappingLen =
+static nkuint32_t nkppDirectiveMappingLen =
     sizeof(nkppDirectiveMapping) /
     sizeof(struct NkppDirectiveMapping);
 
