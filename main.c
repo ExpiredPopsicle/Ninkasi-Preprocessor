@@ -168,9 +168,34 @@ int main(int argc, char *argv[])
 
         nkppFree(state, testStr2);
 
+
+
+        printf("PATH TESTS!\n");
+        printf(" dirname\n");
+        printf("  %s\n", nkppPathDirname(state, "/foo"));
+        printf("  %s\n", nkppPathDirname(state, "foo"));
+        printf("  %s\n", nkppPathDirname(state, "foo/"));
+        printf("  %s\n", nkppPathDirname(state, "/foo/"));
+        printf("  %s\n", nkppPathDirname(state, "directoryname/foo/bar"));
+        printf("  %s\n", nkppPathDirname(state, "directoryname/foo/bar/"));
+        printf("  %s\n", nkppPathDirname(state, "/f/b"));
+        printf(" basename\n");
+        printf("  %s\n", nkppPathBasename(state, "/foo"));
+        printf("  %s\n", nkppPathBasename(state, "foo"));
+        printf("  %s\n", nkppPathBasename(state, "foo/"));
+        printf("  %s\n", nkppPathBasename(state, "/foo/"));
+        printf("  %s\n", nkppPathBasename(state, "directoryname/foo/bar"));
+        printf("  %s\n", nkppPathBasename(state, "directoryname/foo/bar/"));
+        printf("  %s\n", nkppPathBasename(state, "/f/b"));
+
+
         nkppStateDestroy(state);
 
     }
+
+
+
+
 
     return 0;
 }

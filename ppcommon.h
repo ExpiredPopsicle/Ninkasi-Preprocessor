@@ -8,6 +8,7 @@
 #include "ppstate.h"
 #include "ppstring.h"
 #include "pptoken.h"
+#include "pppath.h"
 
 #include <string.h>
 #include <malloc.h>
