@@ -9,10 +9,8 @@ struct NkppDirectiveMapping
 // TODO: Add these...
 //   include
 //   file
-//   line
 //   if (with more complicated expressions)
 //   elif
-//   error
 //   warning (passthrough?)
 //   pragma? (passthrough?)
 //   ... anything else I think of
@@ -24,6 +22,7 @@ struct NkppDirectiveMapping nkppDirectiveMapping[] = {
     { "else",   nkppDirective_else   },
     { "endif",  nkppDirective_endif  },
     { "line",   nkppDirective_line   },
+    { "error",  nkppDirective_error  },
 };
 
 static nkuint32_t nkppDirectiveMappingLen =
@@ -194,14 +193,20 @@ nkbool nkppDirective_undef(
 
     if(identifierToken->type == NK_PPTOKEN_IDENTIFIER) {
 
-        if(nkppStateDeleteMacro(state, identifierToken->str)) {
+        // Now that we've checked the syntax, we can skip doing the
+        // actual work if we're inside a failed #if block.
+        if(state->nestedFailedIfs) {
 
-            // Success!
+            if(nkppStateDeleteMacro(state, identifierToken->str)) {
 
-        } else {
+                // Success!
 
-            nkppStateAddError(state, "Cannot delete macro.");
-            ret = nkfalse;
+            } else {
+
+                nkppStateAddError(state, "Cannot delete macro.");
+                ret = nkfalse;
+
+            }
 
         }
 
@@ -405,8 +410,17 @@ nkbool nkppDirective_define(
 
     // Add definition to list, or clean up if we had an error.
     if(ret) {
-        nkppStateAddMacro(state, macro);
-        macro = NULL;
+
+        // Now that we've checked the syntax, we can skip doing the
+        // actual work if we're inside a failed #if block.
+        if(!state->nestedFailedIfs) {
+
+            // Add the macro.
+            nkppStateAddMacro(state, macro);
+            macro = NULL;
+
+        }
+
     } else {
         nkppMacroDestroy(state, macro);
         macro = NULL;
@@ -461,7 +475,13 @@ nkbool nkppDirective_line(
 
     ret = nkppStrtol(trimmedLine, &num);
     if(ret) {
-        state->lineNumber = num;
+
+        // Only actually do something if we're outside of a failed
+        // "if" block.
+        if(!state->nestedFailedIfs) {
+            state->lineNumber = num;
+        }
+
     } else {
         nkppStateAddError(state, "Expected number after #line directive.");
     }
@@ -470,3 +490,24 @@ nkbool nkppDirective_line(
     nkppStateDestroy(childState);
     return ret;
 }
+
+nkbool nkppDirective_error(
+    struct NkppState *state,
+    const char *restOfLine)
+{
+    char *trimmedLine = nkppStripCommentsAndTrim(state, restOfLine);
+    if(!trimmedLine) {
+        return nkfalse;
+    }
+
+    if(!state->nestedFailedIfs) {
+        nkppStateAddError(state, trimmedLine);
+    }
+
+    nkppFree(state, trimmedLine);
+
+    // This one's a little weird. We want to resume normal behavior
+    // despite having had an error.
+    return nktrue;
+}
+

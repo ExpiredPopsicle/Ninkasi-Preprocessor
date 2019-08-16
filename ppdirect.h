@@ -47,4 +47,8 @@ nkbool nkppDirective_line(
     struct NkppState *state,
     const char *restOfLine);
 
+nkbool nkppDirective_error(
+    struct NkppState *state,
+    const char *restOfLine);
+
 #endif // PPDIRECT_H

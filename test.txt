@@ -159,3 +159,29 @@ FOO
 #error butts
 
 
+
+#line 163
+
+#define IFTEST5 1
+
+#ifdef IFTEST5
+asdf IFTEST5
+#endif
+
+#ifndef IFTEST5
+asdf IFTEST5
+#endif
+
+
+#ifdef IFTEST5
+asdf IFTEST5
+#else IFTEST5
+asdf IFTEST5
+#endif
+butts
+
+ERROR TEST
+#error example of a custom error
+#ifdef THING_THAT_IS_NOT_DEFINED
+#error example of an omitted error
+#endif
