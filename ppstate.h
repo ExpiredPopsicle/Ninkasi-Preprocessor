@@ -26,13 +26,47 @@ struct NkppErrorState
     nkbool allocationFailure;
 };
 
-typedef void *(*NkppMallocWrapper)(void *userData, nkuint32_t size);
-typedef void (*NkppFreeWrapper)(void *userData, void *ptr);
+typedef void *(*NkppMallocWrapper)(
+    struct NkppState *state,
+    void *userData,
+    nkuint32_t size);
+typedef void (*NkppFreeWrapper)(
+    struct NkppState *state,
+    void *userData,
+    void *ptr);
+typedef char *(*NkppLoadFileCallback)(
+    struct NkppState *state,
+    void *userData,
+    const char *filename);
 
 struct NkppMemoryCallbacks
 {
-    NkppFreeWrapper freeWrapper;
+    /// This may return NULL to indicate an allocation failure.
+    /// Otherwise it should act like malloc().
+    ///
+    /// If this is not specified, nkppDefaultMallocWrapper() will be
+    /// used.
     NkppMallocWrapper mallocWrapper;
+
+    /// This function must behave like free() for anything allocated
+    /// using mallocWrapper.
+    ///
+    /// If this is not specified, nkppDefaultFreeWrapper() will be
+    /// used.
+    NkppFreeWrapper freeWrapper;
+
+    /// This callback is called when we need to load a file from an
+    /// #include. Returns NULL to indicate failure. Otherwise, returns
+    /// a null-terminated string with the contents of the included
+    /// file.
+    ///
+    /// Access control must be implemented inside this function to
+    /// prevent unauthorized reading.
+    ///
+    /// Memory returned by this must be allocated with nkppMalloc(),
+    /// so that it may be freed by the preprocessor.
+    NkppLoadFileCallback loadFileCallback;
+
     void *userData;
 };
 
@@ -202,13 +236,6 @@ nkbool nkppStatePopIfResult(
 /// result of the "if" result on the top of the stack.
 nkbool nkppStateFlipIfResult(
     struct NkppState *state);
-
-// ----------------------------------------------------------------------
-// Allocations within the parser
-
-void *nkppMalloc(struct NkppState *state, nkuint32_t size);
-
-void nkppFree(struct NkppState *state, void *ptr);
 
 // ----------------------------------------------------------------------
 // Main entrypoint

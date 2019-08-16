@@ -586,17 +586,15 @@ nkbool nkppDirective_error(
     return nktrue;
 }
 
-// FIXME: Remove this. Replace it with user-defined callback!
-char *loadFile(
-    struct NkppState *state,
-    const char *filename);
-
 nkbool nkppDirective_include_handleInclusion(
     struct NkppState *state,
     const char *unquotedName)
 {
     nkbool ret = nktrue;
     char *fileData = NULL;
+    NkppLoadFileCallback loadFileCallback =
+        state->memoryCallbacks && state->memoryCallbacks->loadFileCallback ?
+        state->memoryCallbacks->loadFileCallback : nkppDefaultLoadFileCallback;
 
     // Save original place.
     char *originalFilename = nkppStrdup(state, state->filename);
@@ -612,9 +610,12 @@ nkbool nkppDirective_include_handleInclusion(
         return nkfalse;
     }
 
-    // FIXME: Do a real callback here.
-    // Load the file.
-    fileData = loadFile(state, unquotedName);
+    // (Attempt to) load the file.
+    fileData =
+        loadFileCallback(
+            state,
+            state->memoryCallbacks ? state->memoryCallbacks->userData : NULL,
+            unquotedName);
     if(!fileData) {
         ret = nkfalse;
         goto nkppDirective_include_handleInclusion_cleanup;
@@ -637,8 +638,9 @@ nkbool nkppDirective_include_handleInclusion(
 
 nkppDirective_include_handleInclusion_cleanup:
 
-    // FIXME: Do a real callback here.
-    nkppFree(state, fileData);
+    if(fileData) {
+        nkppFree(state, fileData);
+    }
 
     // Restore old file name manually to avoid an extra allocation (we
     // don't want allocations during cleanup).
@@ -720,6 +722,8 @@ nkbool nkppDirective_include(
     // happens here.
     unquotedName = nkppStrdup(state, trimmedInput + 1);
     unquotedName[filenameEnd - 1] = 0;
+
+    // FIXME!!! Handle path relativity.
 
     if(!state->nestedFailedIfs) {
         if(!nkppDirective_include_handleInclusion(state, unquotedName)) {

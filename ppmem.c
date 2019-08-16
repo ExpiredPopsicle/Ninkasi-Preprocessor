@@ -93,11 +93,11 @@ void *nkppMalloc(struct NkppState *state, nkuint32_t size)
         return NULL;
     }
 
-    if(state->memoryCallbacks) {
+    if(state->memoryCallbacks && state->memoryCallbacks->mallocWrapper) {
         newHeader = state->memoryCallbacks->mallocWrapper(
-            state->memoryCallbacks->userData, actualSize);
+            state, state->memoryCallbacks->userData, actualSize);
     } else {
-        newHeader = nkppDefaultMallocWrapper(NULL, actualSize);
+        newHeader = nkppDefaultMallocWrapper(state, NULL, actualSize);
     }
 
     if(!newHeader) {
@@ -135,18 +135,21 @@ void nkppFree(struct NkppState *state, void *ptr)
     nkppMemDebugTotalAllocations -= header->size;
 #endif // NK_PP_MEMDEBUG
 
-    if(state->memoryCallbacks) {
+    if(state->memoryCallbacks && state->memoryCallbacks->freeWrapper) {
         state->memoryCallbacks->freeWrapper(
-            state->memoryCallbacks->userData, header);
+            state, state->memoryCallbacks->userData, header);
     } else {
-        nkppDefaultFreeWrapper(NULL, header);
+        nkppDefaultFreeWrapper(state, NULL, header);
     }
 }
 
 // ----------------------------------------------------------------------
 // Default handlers (lowest level before actual system calls)
 
-void *nkppDefaultMallocWrapper(void *userData, nkuint32_t size)
+void *nkppDefaultMallocWrapper(
+    struct NkppState *state,
+    void *userData,
+    nkuint32_t size)
 {
     if(size > ~(size_t)0) {
         return NULL;
@@ -154,8 +157,47 @@ void *nkppDefaultMallocWrapper(void *userData, nkuint32_t size)
     return malloc(size);
 }
 
-void nkppDefaultFreeWrapper(void *userData, void *ptr)
+void nkppDefaultFreeWrapper(
+    struct NkppState *state,
+    void *userData,
+    void *ptr)
 {
     free(ptr);
 }
+
+char *nkppDefaultLoadFileCallback(
+    struct NkppState *state,
+    void *userData,
+    const char *filename)
+{
+    FILE *in = fopen(filename, "rb");
+    nkuint32_t fileSize = 0;
+    char *ret;
+
+    if(!in) {
+        return NULL;
+    }
+
+    fseek(in, 0, SEEK_END);
+    fileSize = ftell(in);
+    fseek(in, 0, SEEK_SET);
+
+    ret = nkppMalloc(state, fileSize + 1);
+    if(!ret) {
+        fclose(in);
+        return NULL;
+    }
+
+    ret[fileSize] = 0;
+
+    if(!fread(ret, fileSize, 1, in)) {
+        nkppFree(state, ret);
+        ret = NULL;
+    }
+
+    fclose(in);
+
+    return ret;
+}
+
 

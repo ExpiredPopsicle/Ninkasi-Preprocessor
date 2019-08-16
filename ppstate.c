@@ -12,12 +12,14 @@ struct NkppState *nkppStateCreate(
     nkppSanityCheck();
 
     localMallocWrapper =
-        memoryCallbacks ? memoryCallbacks->mallocWrapper : nkppDefaultMallocWrapper;
+        (memoryCallbacks && memoryCallbacks->mallocWrapper) ?
+        memoryCallbacks->mallocWrapper : nkppDefaultMallocWrapper;
     localFreeWrapper =
-        memoryCallbacks ? memoryCallbacks->freeWrapper : nkppDefaultFreeWrapper;
+        (memoryCallbacks && memoryCallbacks->freeWrapper) ?
+        memoryCallbacks->freeWrapper : nkppDefaultFreeWrapper;
     userData = memoryCallbacks ? memoryCallbacks->userData : NULL;
 
-    ret = localMallocWrapper(userData, sizeof(struct NkppState));
+    ret = localMallocWrapper(NULL, userData, sizeof(struct NkppState));
 
     if(ret) {
         ret->str = NULL;
@@ -40,7 +42,7 @@ struct NkppState *nkppStateCreate(
         // require allocations.
         ret->filename = nkppStrdup(ret, "<unknown>");
         if(!ret->filename) {
-            localFreeWrapper(userData, ret);
+            localFreeWrapper(NULL, userData, ret);
             return NULL;
         }
     }
@@ -51,7 +53,8 @@ struct NkppState *nkppStateCreate(
 void nkppStateDestroy(struct NkppState *state)
 {
     NkppFreeWrapper localFreeWrapper =
-        state->memoryCallbacks ? state->memoryCallbacks->freeWrapper : nkppDefaultFreeWrapper;
+        (state->memoryCallbacks && state->memoryCallbacks->freeWrapper) ?
+        state->memoryCallbacks->freeWrapper : nkppDefaultFreeWrapper;
     void *userData =
         state->memoryCallbacks ? state->memoryCallbacks->userData : NULL;
 
@@ -67,7 +70,7 @@ void nkppStateDestroy(struct NkppState *state)
 
     // Final NkppState allocation was not allocated through
     // nkppMalloc. Use the memory callback directly.
-    localFreeWrapper(userData, state);
+    localFreeWrapper(NULL, userData, state);
 }
 
 // This should only ever be called when we're about to output a

@@ -4,14 +4,34 @@
 // ----------------------------------------------------------------------
 // Memory functions
 
-void *nkppDefaultMallocWrapper(void *userData, nkuint32_t size);
+void *nkppMalloc(
+    struct NkppState *state,
+    nkuint32_t size);
 
-void nkppDefaultFreeWrapper(void *userData, void *ptr);
+void nkppFree(
+    struct NkppState *state,
+    void *ptr);
 
 void *nkppRealloc(
     struct NkppState *state,
     void *ptr,
     nkuint32_t size);
+
+// ----------------------------------------------------------------------
+// Default fallbacks when the user does not specify callbacks
+
+void *nkppDefaultMallocWrapper(
+    struct NkppState *state,
+    void *userData, nkuint32_t size);
+
+void nkppDefaultFreeWrapper(
+    struct NkppState *state,
+    void *userData, void *ptr);
+
+char *nkppDefaultLoadFileCallback(
+    struct NkppState *state,
+    void *userData,
+    const char *filename);
 
 // ----------------------------------------------------------------------
 // Debugging stuff

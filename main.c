@@ -33,11 +33,15 @@ char *testStr =
 
 char *loadFile(
     struct NkppState *state,
+    void *userData,
     const char *filename)
 {
     FILE *in = fopen(filename, "rb");
     nkuint32_t fileSize = 0;
     char *ret;
+
+    // FIXME: Remove this.
+    printf("LOADING FILE: %s\n", filename);
 
     if(!in) {
         return NULL;
@@ -78,6 +82,7 @@ int main(int argc, char *argv[])
     // for(nkuint32_t counter = 0; counter < 18831; counter++) {
     // for(nkuint32_t counter = 2432; counter < 18831; counter++) {
 
+        struct NkppMemoryCallbacks memCallbacks;
         struct NkppErrorState errorState;
         struct NkppState *state;
         char *testStr2;
@@ -86,6 +91,11 @@ int main(int argc, char *argv[])
         errorState.firstError = NULL;
         errorState.lastError = NULL;
         errorState.allocationFailure = nkfalse;
+
+        memCallbacks.mallocWrapper = NULL;
+        memCallbacks.freeWrapper = NULL;
+        memCallbacks.loadFileCallback = loadFile;
+
 
         // nkuint32_t allocLimit = ~(nkuint32_t)0;
         // nkuint32_t memLimit = ~(nkuint32_t)0;
@@ -103,14 +113,14 @@ int main(int argc, char *argv[])
             ~(nkuint32_t)0, counter);
         #endif
 
-        state = nkppStateCreate(&errorState, NULL);
+        state = nkppStateCreate(&errorState, &memCallbacks);
         if(!state) {
             printf("Allocation failure on state creation.\n");
             // return 0;
             continue;
         }
 
-        testStr2 = loadFile(state, "test.txt");
+        testStr2 = loadFile(state, NULL, "test.txt");
         if(!testStr2) {
             printf("Allocation failure on file load.\n");
             nkppStateDestroy(state);
