@@ -617,6 +617,7 @@ nkbool nkppDirective_include_handleInclusion(
             state->memoryCallbacks ? state->memoryCallbacks->userData : NULL,
             unquotedName);
     if(!fileData) {
+        nkppStateAddError(state, "Could not load file to include.");
         ret = nkfalse;
         goto nkppDirective_include_handleInclusion_cleanup;
     }
