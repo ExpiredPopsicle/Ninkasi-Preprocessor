@@ -862,6 +862,7 @@ char *nkppStateInputReadQuotedString(struct NkppState *state)
             if(!nkppStateInputSkipChar(state, nkfalse)) {
                 return NULL;
             }
+
             break;
 
         } else {

@@ -397,3 +397,51 @@ nkbool nkppStrtol(const char *str, nkuint32_t *out)
 
     return nktrue;
 }
+
+char *nkppDecodeQuotedString(struct NkppState *state, const char *src)
+{
+    nkuint32_t i;
+    nkuint32_t originalLen;
+    nkbool backslashed = nkfalse;
+    char *ret = NULL;
+
+    // First, validate that we have a well-formed string.
+
+    if(!src) {
+        return NULL;
+    }
+
+    originalLen = nkppStrlen(src);
+
+    // Must be at least long enough to store the quotes.
+    if(originalLen < 2) {
+        return NULL;
+    }
+
+    // Must start with a quote.
+    if(src[0] != '"') {
+        return NULL;
+    }
+
+    // Must end with a quote.
+    if(src[originalLen - 1] != '"') {
+        return NULL;
+    }
+
+    // That quote must not be backslashed.
+    for(i = 0; i < originalLen - 1; i++) {
+        if(src[i] == '\\') {
+            backslashed = !backslashed;
+        } else {
+            backslashed = nkfalse;
+        }
+    }
+    if(backslashed) {
+        return NULL;
+    }
+
+    // Make the new string and snip off the start and end.
+    ret = nkppStrdup(state, src + 1);
+    ret[originalLen - 2] = 0;
+    return ret;
+}

@@ -180,8 +180,22 @@ asdf IFTEST5
 #endif
 butts
 
-ERROR TEST
+----------------------------------------------------------------------
+  Custom error tests
+----------------------------------------------------------------------
 #error example of a custom error
 #ifdef THING_THAT_IS_NOT_DEFINED
 #error example of an omitted error
 #endif
+
+----------------------------------------------------------------------
+  Line tests
+----------------------------------------------------------------------
+#line 189 "testfile.h"
+#line 190 "this is a bad quoted string
+
+ASDF
+"quoted string without end
+
+----------------------------------------------------------------------
+

@@ -8,9 +8,8 @@ struct NkppDirectiveMapping
 
 // TODO: Add these...
 //   include
-//   file
 //   if (with more complicated expressions)
-//   elif
+//   elif (implement "if" first)
 //   warning (passthrough?)
 //   pragma? (passthrough?)
 //   ... anything else I think of
@@ -448,32 +447,70 @@ nkppDirective_define_cleanup:
     return ret;
 }
 
+// FIXME: This needs to support the filenames (quoted!) too.
 nkbool nkppDirective_line(
     struct NkppState *state,
     const char *restOfLine)
 {
-    struct NkppState *childState;
+    struct NkppState *childState = NULL;
+    struct NkppState *parserState = NULL;
     nkuint32_t num = 0;
     char *trimmedLine = NULL;
     nkbool ret = nktrue;
+    struct NkppToken *lineNumberToken = NULL;
+    struct NkppToken *filenameToken = NULL;
+
+    char *newFilename = NULL;
+    nkuint32_t newLineNumber = state->lineNumber;
+
 
     childState = nkppStateClone(state, nkfalse);
     if(!childState) {
-        return nkfalse;
+        ret = nkfalse;
+        goto nkppDirective_line_cleanup;
     }
 
-    if(!nkppStateExecute(childState, restOfLine)) { // FIXME: Correct recursion level.
-        nkppStateDestroy(childState);
-        return nkfalse;
+    // Preprocess this line first.
+    if(!nkppStateExecute(childState, restOfLine)) {
+        ret = nkfalse;
+        goto nkppDirective_line_cleanup;
     }
 
+    // Trim the line down.
     trimmedLine = nkppStripCommentsAndTrim(state, childState->output);
     if(!trimmedLine) {
-        nkppStateDestroy(childState);
-        return nkfalse;
+        ret = nkfalse;
+        goto nkppDirective_line_cleanup;
     }
 
-    ret = nkppStrtol(trimmedLine, &num);
+    // Create a parser state just for the tokenization functionality.
+    parserState = nkppStateCreate(state->errorState, state->memoryCallbacks);
+    if(!parserState) {
+        ret = nkfalse;
+        goto nkppDirective_line_cleanup;
+    }
+    parserState->str = trimmedLine;
+
+    // Read line number.
+    lineNumberToken = nkppStateInputGetNextToken(parserState, nkfalse);
+    if(!lineNumberToken || lineNumberToken->type != NK_PPTOKEN_NUMBER) {
+        nkppStateAddError(state, "Expected number after #line directive.");
+        ret = nkfalse;
+        goto nkppDirective_line_cleanup;
+    }
+
+    // Read filename.
+    filenameToken = nkppStateInputGetNextToken(parserState, nkfalse);
+    if(filenameToken) {
+        if(filenameToken->type != NK_PPTOKEN_QUOTEDSTRING) {
+            nkppStateAddError(state, "Expected quoted string for filename in #line directive.");
+            ret = nkfalse;
+            goto nkppDirective_line_cleanup;
+        }
+    }
+
+    // Handle line number.
+    ret = ret && nkppStrtol(lineNumberToken->str, &num);
     if(ret) {
 
         // Only actually do something if we're outside of a failed
@@ -483,11 +520,47 @@ nkbool nkppDirective_line(
         }
 
     } else {
-        nkppStateAddError(state, "Expected number after #line directive.");
+        nkppStateAddError(state, "Error parsing line number.");
     }
 
-    nkppFree(state, trimmedLine);
-    nkppStateDestroy(childState);
+    // Handle filename.
+    if(filenameToken) {
+        newFilename =
+            nkppDecodeQuotedString(state, filenameToken->str);
+
+        if(!newFilename) {
+            nkppStateAddError(state, "Error parsing line filename.");
+            ret = nkfalse;
+            goto nkppDirective_line_cleanup;
+        }
+
+    }
+
+    // Set everything.
+    state->lineNumber = newLineNumber;
+    if(newFilename) {
+        nkppStateSetFilename(state, newFilename);
+    }
+
+nkppDirective_line_cleanup:
+    if(trimmedLine) {
+        nkppFree(state, trimmedLine);
+    }
+    if(childState) {
+        nkppStateDestroy(childState);
+    }
+    if(parserState) {
+        nkppStateDestroy(parserState);
+    }
+    if(lineNumberToken) {
+        nkppTokenDestroy(state, lineNumberToken);
+    }
+    if(filenameToken) {
+        nkppTokenDestroy(state, filenameToken);
+    }
+    if(newFilename) {
+        nkppFree(state, newFilename);
+    }
     return ret;
 }
 
