@@ -56,7 +56,7 @@ char *loadFile(
     ret[fileSize] = 0;
 
     if(!fread(ret, fileSize, 1, in)) {
-        free(ret);
+        nkppFree(state, ret);
         ret = NULL;
     }
 

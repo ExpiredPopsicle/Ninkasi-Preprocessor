@@ -10,7 +10,10 @@
 /// escaped with backslashes.
 char *nkppEscapeString(struct NkppState *state, const char *src);
 
-char *nkppDecodeQuotedString(struct NkppState *state, const char *src);
+char *nkppRemoveQuotes(
+    struct NkppState *state,
+    const char *src,
+    nkbool careAboutBackslashes);
 
 /// Return a new copy of a string with all the escaped newlines
 /// removed.

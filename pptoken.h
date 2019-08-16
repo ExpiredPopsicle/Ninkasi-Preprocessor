@@ -13,6 +13,8 @@ enum NkppTokenType
     NK_PPTOKEN_NUMBER,
     NK_PPTOKEN_OPENPAREN,
     NK_PPTOKEN_CLOSEPAREN,
+    NK_PPTOKEN_LESSTHAN,
+    NK_PPTOKEN_GREATERTHAN,
 
     // It's the preprocessor, so we have to let anything we don't
     // understand slide through.

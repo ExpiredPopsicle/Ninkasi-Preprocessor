@@ -398,7 +398,10 @@ nkbool nkppStrtol(const char *str, nkuint32_t *out)
     return nktrue;
 }
 
-char *nkppDecodeQuotedString(struct NkppState *state, const char *src)
+char *nkppRemoveQuotes(
+    struct NkppState *state,
+    const char *src,
+    nkbool careAboutBackslashes)
 {
     nkuint32_t i;
     nkuint32_t originalLen;
@@ -428,16 +431,20 @@ char *nkppDecodeQuotedString(struct NkppState *state, const char *src)
         return NULL;
     }
 
-    // That quote must not be backslashed.
-    for(i = 0; i < originalLen - 1; i++) {
-        if(src[i] == '\\') {
-            backslashed = !backslashed;
-        } else {
-            backslashed = nkfalse;
+    if(careAboutBackslashes) {
+
+        // That quote must not be backslashed.
+        for(i = 0; i < originalLen - 1; i++) {
+            if(src[i] == '\\') {
+                backslashed = !backslashed;
+            } else {
+                backslashed = nkfalse;
+            }
         }
-    }
-    if(backslashed) {
-        return NULL;
+        if(backslashed) {
+            return NULL;
+        }
+
     }
 
     // Make the new string and snip off the start and end.

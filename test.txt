@@ -192,10 +192,18 @@ butts
   Line tests
 ----------------------------------------------------------------------
 #line 189 "testfile.h"
-#line 190 "this is a bad quoted string
+//#line 190 "this is a bad quoted string
 
 ASDF
-"quoted string without end
+// "quoted string without end
 
 ----------------------------------------------------------------------
+  Include tests
+----------------------------------------------------------------------
+#include "test2.txt"
+#include <test2.txt>
+#include "test2.txt
+#include <test2.txt
+#include "test3.txt" "and another thing"
+
 

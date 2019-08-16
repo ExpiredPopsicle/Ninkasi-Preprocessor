@@ -499,6 +499,32 @@ struct NkppToken *nkppStateInputGetNextToken(
 
         success = success && nkppStateInputSkipChar(state, nkfalse);
 
+    } else if(state->str[state->index] == '>') {
+
+        // Greater-than.
+
+        ret->str = nkppMalloc(state, 2);
+        if(ret->str) {
+            ret->str[0] = state->str[state->index];
+            ret->str[1] = 0;
+        }
+        ret->type = NK_PPTOKEN_GREATERTHAN;
+
+        success = success && nkppStateInputSkipChar(state, nkfalse);
+
+    } else if(state->str[state->index] == '<') {
+
+        // Less-than.
+
+        ret->str = nkppMalloc(state, 2);
+        if(ret->str) {
+            ret->str[0] = state->str[state->index];
+            ret->str[1] = 0;
+        }
+        ret->type = NK_PPTOKEN_LESSTHAN;
+
+        success = success && nkppStateInputSkipChar(state, nkfalse);
+
     } else {
 
         // Unknown.
@@ -863,6 +889,11 @@ char *nkppStateInputReadQuotedString(struct NkppState *state)
                 return NULL;
             }
 
+            break;
+
+        } else if(!backslashed && str[*i] == '\n') {
+
+            // Reached an un-escaped newline. Bail out.
             break;
 
         } else {

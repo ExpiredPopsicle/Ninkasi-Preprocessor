@@ -14,14 +14,15 @@ struct NkppDirectiveMapping
 //   pragma? (passthrough?)
 //   ... anything else I think of
 struct NkppDirectiveMapping nkppDirectiveMapping[] = {
-    { "undef",  nkppDirective_undef  },
-    { "define", nkppDirective_define },
-    { "ifdef",  nkppDirective_ifdef  },
-    { "ifndef", nkppDirective_ifndef },
-    { "else",   nkppDirective_else   },
-    { "endif",  nkppDirective_endif  },
-    { "line",   nkppDirective_line   },
-    { "error",  nkppDirective_error  },
+    { "undef",   nkppDirective_undef   },
+    { "define",  nkppDirective_define  },
+    { "ifdef",   nkppDirective_ifdef   },
+    { "ifndef",  nkppDirective_ifndef  },
+    { "else",    nkppDirective_else    },
+    { "endif",   nkppDirective_endif   },
+    { "line",    nkppDirective_line    },
+    { "error",   nkppDirective_error   },
+    { "include", nkppDirective_include },
 };
 
 static nkuint32_t nkppDirectiveMappingLen =
@@ -194,7 +195,7 @@ nkbool nkppDirective_undef(
 
         // Now that we've checked the syntax, we can skip doing the
         // actual work if we're inside a failed #if block.
-        if(state->nestedFailedIfs) {
+        if(!state->nestedFailedIfs) {
 
             if(nkppStateDeleteMacro(state, identifierToken->str)) {
 
@@ -447,7 +448,6 @@ nkppDirective_define_cleanup:
     return ret;
 }
 
-// FIXME: This needs to support the filenames (quoted!) too.
 nkbool nkppDirective_line(
     struct NkppState *state,
     const char *restOfLine)
@@ -462,7 +462,6 @@ nkbool nkppDirective_line(
 
     char *newFilename = NULL;
     nkuint32_t newLineNumber = state->lineNumber;
-
 
     childState = nkppStateClone(state, nkfalse);
     if(!childState) {
@@ -525,8 +524,11 @@ nkbool nkppDirective_line(
 
     // Handle filename.
     if(filenameToken) {
+
+        // Note: We don't un-escape this string, because the C
+        // compiler doesn't.
         newFilename =
-            nkppDecodeQuotedString(state, filenameToken->str);
+            nkppRemoveQuotes(state, filenameToken->str, nkfalse);
 
         if(!newFilename) {
             nkppStateAddError(state, "Error parsing line filename.");
@@ -583,4 +585,159 @@ nkbool nkppDirective_error(
     // despite having had an error.
     return nktrue;
 }
+
+// FIXME: Remove this. Replace it with user-defined callback!
+char *loadFile(
+    struct NkppState *state,
+    const char *filename);
+
+nkbool nkppDirective_include_handleInclusion(
+    struct NkppState *state,
+    const char *unquotedName)
+{
+    nkbool ret = nktrue;
+    char *fileData = NULL;
+
+    // Save original place.
+    char *originalFilename = nkppStrdup(state, state->filename);
+    nkuint32_t originalLine = state->lineNumber;
+    nkuint32_t originalFailedIfs = state->nestedFailedIfs; // Always 0 here?
+    nkuint32_t originalPassedIfs = state->nestedPassedIfs;
+    nkuint32_t originalRecursionLevel = state->recursionLevel;
+    nkuint32_t originalIndex = state->index;
+    const char *originalSource = state->str;
+    if(!originalFilename) {
+        // Bail out before we have anything we need to clean up,
+        // because clean up here is going to be a little weird.
+        return nkfalse;
+    }
+
+    // FIXME: Do a real callback here.
+    // Load the file.
+    fileData = loadFile(state, unquotedName);
+    if(!fileData) {
+        ret = nkfalse;
+        goto nkppDirective_include_handleInclusion_cleanup;
+    }
+
+    // Set up new state.
+    state->index = 0;
+    state->str = fileData;
+    state->nestedFailedIfs = 0;
+    state->nestedPassedIfs = 0;
+    state->recursionLevel++;
+    state->lineNumber = 0;
+    if(!nkppStateSetFilename(state, unquotedName)) {
+        ret = nkfalse;
+        goto nkppDirective_include_handleInclusion_cleanup;
+    }
+
+    // Execute it.
+    nkppStateExecute(state, fileData);
+
+nkppDirective_include_handleInclusion_cleanup:
+
+    // FIXME: Do a real callback here.
+    nkppFree(state, fileData);
+
+    // Restore old file name manually to avoid an extra allocation (we
+    // don't want allocations during cleanup).
+    nkppFree(state, state->filename);
+    state->filename = originalFilename;
+
+    // Restore all the other random things we saved on the state.
+    state->lineNumber = originalLine;
+    state->nestedFailedIfs = originalFailedIfs;
+    state->nestedPassedIfs = originalPassedIfs;
+    state->recursionLevel = originalRecursionLevel;
+    state->index = originalIndex;
+    state->str = originalSource;
+
+    return ret;
+}
+
+nkbool nkppDirective_include(
+    struct NkppState *state,
+    const char *restOfLine)
+{
+    nkbool ret = nktrue;
+    char *trimmedInput = NULL;
+    nkuint32_t inputLen;
+    char *unquotedName = NULL;
+    nkuint32_t filenameEnd = 0;
+    char endChar = 0;
+
+    // Trim input.
+    trimmedInput = nkppStripCommentsAndTrim(state, restOfLine);
+    if(!trimmedInput) {
+        ret = nkfalse;
+        goto nkppDirective_include_cleanup;
+    }
+
+    // Parameter must be long enough to contain the "" or <>.
+    inputLen = nkppStrlen(trimmedInput);
+    if(inputLen < 2) {
+        nkppStateAddError(state, "Invalid filename for #include.");
+        ret = nkfalse;
+        goto nkppDirective_include_cleanup;
+    }
+
+    if(trimmedInput[0] == '"') {
+        endChar = '"';
+    } else if(trimmedInput[0] == '<') {
+        endChar = '>';
+    } else {
+        nkppStateAddError(state, "Expected \"\" or <> around filename in #include.");
+        ret = nkfalse;
+        goto nkppDirective_include_cleanup;
+    }
+
+    // Try to find the next quote.
+    filenameEnd = 1;
+    while(trimmedInput[filenameEnd]) {
+        if(trimmedInput[filenameEnd] == endChar) {
+            break;
+        }
+        if(trimmedInput[filenameEnd] == '\n') {
+            break;
+        }
+        filenameEnd++;
+    }
+    if(trimmedInput[filenameEnd] != endChar) {
+        nkppStateAddError(state, "No end quote or bracket found for #include directive.");
+        ret = nkfalse;
+        goto nkppDirective_include_cleanup;
+    }
+
+    // Make sure there's nothing after the end.
+    if(filenameEnd != inputLen - 1) {
+        nkppStateAddError(state, "Extra tokens after filename in #include directive.");
+        ret = nkfalse;
+        goto nkppDirective_include_cleanup;
+    }
+
+    // Make an un-quoted version of the name. Note: No un-escaping
+    // happens here.
+    unquotedName = nkppStrdup(state, trimmedInput + 1);
+    unquotedName[filenameEnd - 1] = 0;
+
+    if(!state->nestedFailedIfs) {
+        if(!nkppDirective_include_handleInclusion(state, unquotedName)) {
+            ret = nkfalse;
+            goto nkppDirective_include_cleanup;
+        }
+    }
+
+nkppDirective_include_cleanup:
+
+    if(trimmedInput) {
+        nkppFree(state, trimmedInput);
+    }
+    if(unquotedName) {
+        nkppFree(state, unquotedName);
+    }
+
+    return ret;
+}
+
 
