@@ -34,6 +34,21 @@ char *nkppPathAppend(
     const char *path1,
     const char *path2);
 
+/// Determines if a path is an absolute path.
+///
+/// Note: The output of this function will only be correct for
+/// well-formed paths. Do not trust paths from any user-input data
+/// unless they've been run through nkppPathTidyPath().
+///
+/// An example of this failing would be a path in the form of
+/// "./c:/whatever". This would be considered a relative path by this
+/// function, but the output from nkppPathTidyPath() would be
+/// "c:/whatever".
+nkbool nkppPathIsAbsolute(
+    const char *path);
+
+nkbool nkppPathCharIsSeparator(char c);
+
 #if NK_PP_ENABLETESTS
 nkbool nkppTest_pathTest(void);
 #endif // NK_PP_ENABLETESTS

@@ -1,5 +1,11 @@
 #include "ppcommon.h"
 
+nkbool nkppPathCharIsSeparator(char c)
+{
+    return c == '/' || c == '\\';
+}
+
+
 // Returns NK_UINT_MAX if there is no slash.
 nkuint32_t nkppPathFindLastSlash(
     const char *path)
@@ -9,14 +15,14 @@ nkuint32_t nkppPathFindLastSlash(
     // Skip trailing '/'s.
     if(i > 1) {
         i--;
-        while(i && path[i] == '/') {
+        while(i && nkppPathCharIsSeparator(path[i])) {
             i--;
         }
     }
 
     // Seek backwards from the beginning.
     while(i != NK_UINT_MAX) {
-        if(path[i] == '/') {
+        if(nkppPathCharIsSeparator(path[i])) {
             break;
         }
         i--;
@@ -89,7 +95,7 @@ char *nkppPathBasename(
 
     // Remove trailing slashes.
     retLen = nkppStrlen(ret);
-    while(retLen > 1 && ret[retLen - 1] == '/') {
+    while(retLen > 1 && nkppPathCharIsSeparator(ret[retLen - 1])) {
         ret[retLen - 1] = 0;
         retLen--;
     }
@@ -189,7 +195,7 @@ char *nkppPathTidyPath(
     }
 
     // Chop off trailing slashes.
-    while(srcPathLen > 1 && pathCopy[srcPathLen - 1] == '/') {
+    while(srcPathLen > 1 && nkppPathCharIsSeparator(pathCopy[srcPathLen - 1])) {
         pathCopy[srcPathLen - 1] = 0;
         srcPathLen--;
     }
@@ -197,9 +203,9 @@ char *nkppPathTidyPath(
     tokenStart = 0;
     for(i = 0; i < srcPathLen + 1; i++) {
 
-        if(pathCopy[i] == '/' || i == srcPathLen) {
+        if(nkppPathCharIsSeparator(pathCopy[i]) || i == srcPathLen) {
 
-            if(pathCopy[i] == '/') {
+            if(nkppPathCharIsSeparator(pathCopy[i])) {
                 pathCopy[i] = 0;
             }
 
@@ -372,7 +378,30 @@ char *nkppPathAppend(
     return ret;
 }
 
+nkbool nkppPathIsAbsolute(
+    const char *path)
+{
+    // Zero-length paths.
+    if(!path[0]) {
+        return nkfalse;
+    }
 
+    // Unix-style absolute paths.
+    if(nkppPathCharIsSeparator(path[0])) {
+        return nktrue;
+    }
+
+    // Windows-style (drive letter) absolute paths.
+    if((path[0] >= 'a' && path[0] <= 'z') ||
+        (path[0] >= 'A' && path[0] <= 'Z'))
+    {
+        if(path[1] == ':') {
+            return nktrue;
+        }
+    }
+
+    return nkfalse;
+}
 
 #if NK_PP_ENABLETESTS
 
@@ -398,6 +427,17 @@ nkbool nkppPathTest_checkString(struct NkppState *state, char *testOutput, const
             printf("%s\n", NK_PPTEST_NULL);                         \
         }                                                           \
         nkppFree(state, testVal);                                   \
+    } while(0)
+
+#define NK_PP_PATHTEST_CHECK2(x)                \
+    do {                                        \
+        printf("%-80s : ", #x);                 \
+        if(!(x)) {                              \
+            printf("%s\n", NK_PPTEST_FAIL);     \
+            ret = nkfalse;                      \
+        } else {                                \
+            printf("%s\n", NK_PPTEST_PASS);     \
+        }                                       \
     } while(0)
 
 nkbool nkppTest_pathTest(void)
@@ -453,11 +493,19 @@ nkbool nkppTest_pathTest(void)
 
     NK_PPTEST_SECTION("nkppPathAppend()");
 
-    NK_PP_PATHTEST_CHECK(nkppPathAppend(state,    "../",                          "/.."),                   "../..");
-    NK_PP_PATHTEST_CHECK(nkppPathAppend(state,    "a/b//c/d",                     "/../"),                  "a/b/c");
-    NK_PP_PATHTEST_CHECK(nkppPathAppend(state,    "a/b//c/d",                     "/../../../../"),         ".");
-    NK_PP_PATHTEST_CHECK(nkppPathAppend(state,    "/a/b//c/d",                    "/../../../../"),         "/");
-    NK_PP_PATHTEST_CHECK(nkppPathAppend(state,    "a/b/./././././././c/d",        "/../../../../"),         ".");
+    NK_PP_PATHTEST_CHECK(nkppPathAppend(state, "../", "/.."), "../..");
+    NK_PP_PATHTEST_CHECK(nkppPathAppend(state, "a/b//c/d", "/../"), "a/b/c");
+    NK_PP_PATHTEST_CHECK(nkppPathAppend(state, "a/b//c/d", "/../../../../"), ".");
+    NK_PP_PATHTEST_CHECK(nkppPathAppend(state, "/a/b//c/d", "/../../../../"), "/");
+    NK_PP_PATHTEST_CHECK(nkppPathAppend(state, "a/b/./././././././c/d", "/../../../../"), ".");
+
+    NK_PPTEST_SECTION("nkppPathIsAbsolute()");
+
+    NK_PP_PATHTEST_CHECK2(nkppPathIsAbsolute("c:/")        == nktrue);
+    NK_PP_PATHTEST_CHECK2(nkppPathIsAbsolute("./c:/")      == nktrue);
+    NK_PP_PATHTEST_CHECK2(nkppPathIsAbsolute(".")          == nkfalse);
+    NK_PP_PATHTEST_CHECK2(nkppPathIsAbsolute("/")          == nktrue);
+    NK_PP_PATHTEST_CHECK2(nkppPathIsAbsolute("\\whatever") == nktrue);
 
     nkppStateDestroy(state);
 

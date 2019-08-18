@@ -732,7 +732,6 @@ nkbool nkppDirective_include(
         ret = nkfalse;
         goto nkppDirective_include_cleanup;
     }
-
     appendedPath = nkppPathAppend(state, currentDirname, unquotedName);
     if(!appendedPath) {
         ret = nkfalse;
