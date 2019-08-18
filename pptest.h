@@ -5,7 +5,7 @@
 
 #if NK_PP_ENABLETESTS
 
-#define NK_PPTEST_SECTION(x)                                       \
+#define NK_PPTEST_SECTION(x)                                            \
     do {                                                                \
         printf("----------------------------------------------------------------------\n"); \
         printf("  %s\n", x);                                            \
@@ -14,6 +14,8 @@
 
 #define NK_PPTEST_PASS "\x1b[1;32mPASS\x1b[0m"
 #define NK_PPTEST_FAIL "\x1b[1;31mFAIL\x1b[0m"
+
+nkbool nkppTestRun(void);
 
 #endif // NK_PP_ENABLETESTS
 

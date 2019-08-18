@@ -389,6 +389,7 @@ nkbool nkppPathTest_checkString(struct NkppState *state, char *testOutput, const
         testVal = (x);                                          \
         if(!nkppPathTest_checkString(state, testVal, (y))) {    \
             printf("%s\n", NK_PPTEST_FAIL);                     \
+            ret = nkfalse;                                      \
         } else {                                                \
             printf("%s\n", NK_PPTEST_PASS);                     \
         }                                                       \
@@ -398,6 +399,7 @@ nkbool nkppPathTest_checkString(struct NkppState *state, char *testOutput, const
 nkbool nkppTest_pathTest(void)
 {
     struct NkppState *state = nkppStateCreate(NULL, NULL);
+    nkbool ret = nktrue;
 
     NK_PPTEST_SECTION("nkppPathDirname()");
 
@@ -455,7 +457,7 @@ nkbool nkppTest_pathTest(void)
 
     nkppStateDestroy(state);
 
-    return nktrue;
+    return ret;
 }
 
 #endif // NK_PP_ENABLETESTS

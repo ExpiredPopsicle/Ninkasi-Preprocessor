@@ -168,60 +168,12 @@ int main(int argc, char *argv[])
 
         nkppFree(state, testStr2);
 
-
-
-        char *tmp;
-        {
-            printf("PATH TESTS!\n");
-            printf(" dirname\n");
-            printf("  %s\n", tmp = nkppPathDirname(state, "/foo")); nkppFree(state, tmp); tmp = NULL;
-            printf("  %s\n", tmp = nkppPathDirname(state, "foo")); nkppFree(state, tmp); tmp = NULL;
-            printf("  %s\n", tmp = nkppPathDirname(state, "foo/")); nkppFree(state, tmp); tmp = NULL;
-            printf("  %s\n", tmp = nkppPathDirname(state, "/foo/")); nkppFree(state, tmp); tmp = NULL;
-            printf("  %s\n", tmp = nkppPathDirname(state, "directoryname/foo/bar")); nkppFree(state, tmp); tmp = NULL;
-            printf("  %s\n", tmp = nkppPathDirname(state, "directoryname/foo/bar/")); nkppFree(state, tmp); tmp = NULL;
-            printf("  %s\n", tmp = nkppPathDirname(state, "/f/b")); nkppFree(state, tmp); tmp = NULL;
-            printf("  %s\n", tmp = nkppPathDirname(state, "/////f/b/////")); nkppFree(state, tmp); tmp = NULL;
-            printf(" basename\n"); nkppFree(state, tmp); tmp = NULL;
-            printf("  %s\n", tmp = nkppPathBasename(state, "/foo")); nkppFree(state, tmp); tmp = NULL;
-            printf("  %s\n", tmp = nkppPathBasename(state, "foo")); nkppFree(state, tmp); tmp = NULL;
-            printf("  %s\n", tmp = nkppPathBasename(state, "foo/")); nkppFree(state, tmp); tmp = NULL;
-            printf("  %s\n", tmp = nkppPathBasename(state, "/foo/")); nkppFree(state, tmp); tmp = NULL;
-            printf("  %s\n", tmp = nkppPathBasename(state, "directoryname/foo/bar")); nkppFree(state, tmp); tmp = NULL;
-            printf("  %s\n", tmp = nkppPathBasename(state, "directoryname/foo/bar/")); nkppFree(state, tmp); tmp = NULL;
-            printf("  %s\n", tmp = nkppPathBasename(state, "/f/b")); nkppFree(state, tmp); tmp = NULL;
-            printf("  %s\n", tmp = nkppPathBasename(state, "/f/b2")); nkppFree(state, tmp); tmp = NULL;
-            printf("  %s\n", tmp = nkppPathBasename(state, "/////f/b/////")); nkppFree(state, tmp); tmp = NULL;
-            printf(" tidypath\n"); nkppFree(state, tmp); tmp = NULL;
-            printf("  %s\n", tmp = nkppPathTidyPath(state, "/foo")); nkppFree(state, tmp); tmp = NULL;
-            printf("  %s\n", tmp = nkppPathTidyPath(state, "foo")); nkppFree(state, tmp); tmp = NULL;
-            printf("  %s\n", tmp = nkppPathTidyPath(state, "foo/")); nkppFree(state, tmp); tmp = NULL;
-            printf("  %s\n", tmp = nkppPathTidyPath(state, "/foo/")); nkppFree(state, tmp); tmp = NULL;
-            printf("  %s\n", tmp = nkppPathTidyPath(state, "directoryname/foo/bar")); nkppFree(state, tmp); tmp = NULL;
-            printf("  %s\n", tmp = nkppPathTidyPath(state, "directoryname/foo/bar/")); nkppFree(state, tmp); tmp = NULL;
-            printf("  %s\n", tmp = nkppPathTidyPath(state, "/f/b")); nkppFree(state, tmp); tmp = NULL; // FIXME: This case is borked.
-            printf("  %s\n", tmp = nkppPathTidyPath(state, "/f/b2")); nkppFree(state, tmp); tmp = NULL;
-            printf("  %s\n", tmp = nkppPathTidyPath(state, "/////f/b/////")); nkppFree(state, tmp); tmp = NULL;
-            printf("  %s\n", tmp = nkppPathTidyPath(state, "/f/b/././././../../a/b/c/..")); nkppFree(state, tmp); tmp = NULL;
-            printf("  %s\n", tmp = nkppPathTidyPath(state, "////")); nkppFree(state, tmp); tmp = NULL;
-            printf("  %s\n", tmp = nkppPathTidyPath(state, "")); nkppFree(state, tmp); tmp = NULL;
-            printf(" pathAppend\n"); nkppFree(state, tmp); tmp = NULL;
-            printf("  %s\n", tmp = nkppPathAppend(state, "../", "/..")); nkppFree(state, tmp); tmp = NULL;
-            printf("  %s\n", tmp = nkppPathAppend(state, "a/b//c/d", "/../")); nkppFree(state, tmp); tmp = NULL;
-            printf("  %s\n", tmp = nkppPathAppend(state, "a/b//c/d", "/../../../../")); nkppFree(state, tmp); tmp = NULL;
-            printf("  %s\n", tmp = nkppPathAppend(state, "/a/b//c/d", "/../../../../")); nkppFree(state, tmp); tmp = NULL;
-            printf("  %s\n", tmp = nkppPathAppend(state, "a/b/./././././././c/d", "/../../../../")); nkppFree(state, tmp); tmp = NULL;
-        }
-
-        nkppTest_pathTest();
-
         nkppStateDestroy(state);
 
     }
 
-
-
-
+    // nkppTest_pathTest();
+    nkppTestRun();
 
     return 0;
 }
