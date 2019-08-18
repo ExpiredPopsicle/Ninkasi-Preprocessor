@@ -429,17 +429,6 @@ nkbool nkppPathTest_checkString(struct NkppState *state, char *testOutput, const
         nkppFree(state, testVal);                                   \
     } while(0)
 
-#define NK_PP_PATHTEST_CHECK2(x)                \
-    do {                                        \
-        printf("%-80s : ", #x);                 \
-        if(!(x)) {                              \
-            printf("%s\n", NK_PPTEST_FAIL);     \
-            ret = nkfalse;                      \
-        } else {                                \
-            printf("%s\n", NK_PPTEST_PASS);     \
-        }                                       \
-    } while(0)
-
 nkbool nkppTest_pathTest(void)
 {
     struct NkppState *state = nkppStateCreate(NULL, NULL);
@@ -501,11 +490,11 @@ nkbool nkppTest_pathTest(void)
 
     NK_PPTEST_SECTION("nkppPathIsAbsolute()");
 
-    NK_PP_PATHTEST_CHECK2(nkppPathIsAbsolute("c:/")        == nktrue);
-    NK_PP_PATHTEST_CHECK2(nkppPathIsAbsolute("./c:/")      == nktrue);
-    NK_PP_PATHTEST_CHECK2(nkppPathIsAbsolute(".")          == nkfalse);
-    NK_PP_PATHTEST_CHECK2(nkppPathIsAbsolute("/")          == nktrue);
-    NK_PP_PATHTEST_CHECK2(nkppPathIsAbsolute("\\whatever") == nktrue);
+    NK_PPTEST_CHECK(nkppPathIsAbsolute("c:/")        == nktrue);
+    NK_PPTEST_CHECK(nkppPathIsAbsolute("./c:/")      == nktrue);
+    NK_PPTEST_CHECK(nkppPathIsAbsolute(".")          == nkfalse);
+    NK_PPTEST_CHECK(nkppPathIsAbsolute("/")          == nktrue);
+    NK_PPTEST_CHECK(nkppPathIsAbsolute("\\whatever") == nktrue);
 
     nkppStateDestroy(state);
 
