@@ -9,6 +9,7 @@
 #include "ppstring.h"
 #include "pptoken.h"
 #include "pppath.h"
+#include "pptest.h"
 
 #include <string.h>
 #include <malloc.h>

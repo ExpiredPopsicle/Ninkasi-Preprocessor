@@ -372,3 +372,91 @@ char *nkppPathAppend(
     return ret;
 }
 
+
+
+#if NK_PP_ENABLETESTS
+
+nkbool nkppPathTest_checkString(struct NkppState *state, char *testOutput, const char *reference)
+{
+    nkbool ret = !nkppStrcmp(testOutput, reference);
+    return ret;
+}
+
+#define NK_PP_PATHTEST_CHECK(x, y)                              \
+    do {                                                        \
+        char *testVal;                                          \
+        printf("%-80s : ", #x " == " #y);                       \
+        testVal = (x);                                          \
+        if(!nkppPathTest_checkString(state, testVal, (y))) {    \
+            printf("%s\n", NK_PPTEST_FAIL);                     \
+        } else {                                                \
+            printf("%s\n", NK_PPTEST_PASS);                     \
+        }                                                       \
+        nkppFree(state, testVal);                               \
+    } while(0)
+
+nkbool nkppTest_pathTest(void)
+{
+    struct NkppState *state = nkppStateCreate(NULL, NULL);
+
+    NK_PPTEST_SECTION("nkppPathDirname()");
+
+    NK_PP_PATHTEST_CHECK(nkppPathDirname(state, "/foo"),                    "/");
+    NK_PP_PATHTEST_CHECK(nkppPathDirname(state, "foo"),                     ".");
+    NK_PP_PATHTEST_CHECK(nkppPathDirname(state, "foo/"),                    ".");
+    NK_PP_PATHTEST_CHECK(nkppPathDirname(state, "/foo/"),                   "/");
+    NK_PP_PATHTEST_CHECK(nkppPathDirname(state, "directoryname/foo/bar"),   "directoryname/foo");
+    NK_PP_PATHTEST_CHECK(nkppPathDirname(state, "directoryname/foo/bar/"),  "directoryname/foo");
+    NK_PP_PATHTEST_CHECK(nkppPathDirname(state, "/f/b"),                    "/f");
+
+    // This test case is weird, because it tests some not-well-formed
+    // input and spits back some not-well-formed output. We can change
+    // this test case later if we want to spit back better formed
+    // results.
+    //
+    // We still want a test case here for the usual memory
+    // leak/crash/uninitialized mememy/whatever testing.
+    NK_PP_PATHTEST_CHECK(nkppPathDirname(state,   "/////f/b/////"),               "/////f");
+
+    NK_PPTEST_SECTION("nkppPathBasename()");
+
+    NK_PP_PATHTEST_CHECK(nkppPathBasename(state,  "/foo"),                        "foo");
+    NK_PP_PATHTEST_CHECK(nkppPathBasename(state,  "foo"),                         "foo");
+    NK_PP_PATHTEST_CHECK(nkppPathBasename(state,  "foo/"),                        "foo");
+    NK_PP_PATHTEST_CHECK(nkppPathBasename(state,  "/foo/"),                       "foo");
+    NK_PP_PATHTEST_CHECK(nkppPathBasename(state,  "directoryname/foo/bar"),       "bar");
+    NK_PP_PATHTEST_CHECK(nkppPathBasename(state,  "directoryname/foo/bar/"),      "bar");
+    NK_PP_PATHTEST_CHECK(nkppPathBasename(state,  "/f/b"),                        "b");
+    NK_PP_PATHTEST_CHECK(nkppPathBasename(state,  "/f/b2"),                       "b2");
+    NK_PP_PATHTEST_CHECK(nkppPathBasename(state,  "/////f/b/////"),               "b");
+
+    NK_PPTEST_SECTION("nkppPathTidyPath()");
+
+    NK_PP_PATHTEST_CHECK(nkppPathTidyPath(state,  "/foo"),                        "/foo");
+    NK_PP_PATHTEST_CHECK(nkppPathTidyPath(state,  "foo"),                         "foo");
+    NK_PP_PATHTEST_CHECK(nkppPathTidyPath(state,  "foo/"),                        "foo");
+    NK_PP_PATHTEST_CHECK(nkppPathTidyPath(state,  "/foo/"),                       "/foo");
+    NK_PP_PATHTEST_CHECK(nkppPathTidyPath(state,  "directoryname/foo/bar"),       "directoryname/foo/bar");
+    NK_PP_PATHTEST_CHECK(nkppPathTidyPath(state,  "directoryname/foo/bar/"),      "directoryname/foo/bar");
+    NK_PP_PATHTEST_CHECK(nkppPathTidyPath(state,  "/f/b"),                        "/f/b");
+    NK_PP_PATHTEST_CHECK(nkppPathTidyPath(state,  "/f/b2"),                       "/f/b2");
+    NK_PP_PATHTEST_CHECK(nkppPathTidyPath(state,  "/////f/b/////"),               "/f/b");
+    NK_PP_PATHTEST_CHECK(nkppPathTidyPath(state,  "/f/b/././././../../a/b/c/.."), "/a/b");
+    NK_PP_PATHTEST_CHECK(nkppPathTidyPath(state,  "////"),                        "/");
+    NK_PP_PATHTEST_CHECK(nkppPathTidyPath(state,  ""),                            ".");
+
+    NK_PPTEST_SECTION("nkppPathAppend()");
+
+    NK_PP_PATHTEST_CHECK(nkppPathAppend(state,    "../",                          "/.."),                   "../..");
+    NK_PP_PATHTEST_CHECK(nkppPathAppend(state,    "a/b//c/d",                     "/../"),                  "a/b/c");
+    NK_PP_PATHTEST_CHECK(nkppPathAppend(state,    "a/b//c/d",                     "/../../../../"),         ".");
+    NK_PP_PATHTEST_CHECK(nkppPathAppend(state,    "/a/b//c/d",                    "/../../../../"),         "/");
+    NK_PP_PATHTEST_CHECK(nkppPathAppend(state,    "a/b/./././././././c/d",        "/../../../../"),         ".");
+
+    nkppStateDestroy(state);
+
+    return nktrue;
+}
+
+#endif // NK_PP_ENABLETESTS
+

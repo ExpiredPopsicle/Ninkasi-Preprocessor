@@ -1,6 +1,8 @@
 #ifndef NK_PPMEM_H
 #define NK_PPMEM_H
 
+#include "ppconfig.h"
+
 // ----------------------------------------------------------------------
 // Memory functions
 
@@ -35,10 +37,6 @@ char *nkppDefaultLoadFileCallback(
 
 // ----------------------------------------------------------------------
 // Debugging stuff
-
-#ifndef NK_PP_MEMDEBUG
-#define NK_PP_MEMDEBUG 0
-#endif
 
 #if NK_PP_MEMDEBUG
 void nkppMemDebugSetAllocationFailureTestLimits(

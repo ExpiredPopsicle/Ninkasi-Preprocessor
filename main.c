@@ -213,7 +213,7 @@ int main(int argc, char *argv[])
             printf("  %s\n", tmp = nkppPathAppend(state, "a/b/./././././././c/d", "/../../../../")); nkppFree(state, tmp); tmp = NULL;
         }
 
-
+        nkppTest_pathTest();
 
         nkppStateDestroy(state);
 

@@ -34,6 +34,10 @@ char *nkppPathAppend(
     const char *path1,
     const char *path2);
 
+#if NK_PP_ENABLETESTS
+nkbool nkppTest_pathTest(void);
+#endif // NK_PP_ENABLETESTS
+
 #endif // NK_PPPATH_H
 
 
