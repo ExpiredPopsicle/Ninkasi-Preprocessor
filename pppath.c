@@ -382,18 +382,22 @@ nkbool nkppPathTest_checkString(struct NkppState *state, char *testOutput, const
     return ret;
 }
 
-#define NK_PP_PATHTEST_CHECK(x, y)                              \
-    do {                                                        \
-        char *testVal;                                          \
-        printf("%-80s : ", #x " == " #y);                       \
-        testVal = (x);                                          \
-        if(!nkppPathTest_checkString(state, testVal, (y))) {    \
-            printf("%s\n", NK_PPTEST_FAIL);                     \
-            ret = nkfalse;                                      \
-        } else {                                                \
-            printf("%s\n", NK_PPTEST_PASS);                     \
-        }                                                       \
-        nkppFree(state, testVal);                               \
+#define NK_PP_PATHTEST_CHECK(x, y)                                  \
+    do {                                                            \
+        char *testVal;                                              \
+        printf("%-80s : ", #x " == " #y);                           \
+        testVal = (x);                                              \
+        if(testVal) {                                               \
+            if(!nkppPathTest_checkString(state, testVal, (y))) {    \
+                printf("%s\n", NK_PPTEST_FAIL);                     \
+                ret = nkfalse;                                      \
+            } else {                                                \
+                printf("%s\n", NK_PPTEST_PASS);                     \
+            }                                                       \
+        } else {                                                    \
+            printf("%s\n", NK_PPTEST_NULL);                         \
+        }                                                           \
+        nkppFree(state, testVal);                                   \
     } while(0)
 
 nkbool nkppTest_pathTest(void)

@@ -14,6 +14,7 @@
 
 #define NK_PPTEST_PASS "\x1b[1;32mPASS\x1b[0m"
 #define NK_PPTEST_FAIL "\x1b[1;31mFAIL\x1b[0m"
+#define NK_PPTEST_NULL "\x1b[1;31mNULL\x1b[0m"
 
 nkbool nkppTestRun(void);
 

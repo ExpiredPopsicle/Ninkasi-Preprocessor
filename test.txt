@@ -191,7 +191,7 @@ butts
 ----------------------------------------------------------------------
   Line tests
 ----------------------------------------------------------------------
-#line 189 "testfile.h"
+#line 194 "testfile.h"
 //#line 190 "this is a bad quoted string
 
 ASDF
@@ -205,6 +205,19 @@ ASDF
 #include "test2.txt
 #include <test2.txt
 #include "test3.txt" "and another thing"
+
+
+
+
+Testing test4
+#error BUTT
+#include "test/test4.h"
+Done testing test4
+
+
+
+
+
 
 
 #include "filethatdoesntexist.txt"

@@ -1284,15 +1284,15 @@ nkbool nkppStateExecute(
 
                     } else {
 
+                        nkuint32_t directiveLineCount = 0;
+
                         // Check to see if this is something we
                         // understand by going through the *actual*
                         // list of directives.
                         if(nkppDirectiveIsValid(directiveNameToken->str)) {
 
-                            nkuint32_t lineCount = 0;
-
                             line = nkppStateInputReadRestOfLine(
-                                state, &lineCount);
+                                state, &directiveLineCount);
 
                             if(!line) {
 
@@ -1326,11 +1326,22 @@ nkbool nkppStateExecute(
 
                             }
 
-                        } else {
+                        } else if(!nkppMacroStringify(state, directiveNameToken->str)) {
 
-                            if(!nkppMacroStringify(state, directiveNameToken->str)) {
-                                ret = nkfalse;
-                            }
+                            ret = nkfalse;
+
+                            // FIXME: Maybe we should change this to
+                            // allow unknown directives to pass
+                            // through.
+
+                            // Not a macro to stringify and not a
+                            // directive. Treat it as a bad directive
+                            // and eat the rest of the input.
+                            line = nkppStateInputReadRestOfLine(
+                                state, &directiveLineCount);
+                            nkppFree(state, line);
+                            line = NULL;
+
                         }
 
                         nkppTokenDestroy(state, directiveNameToken);

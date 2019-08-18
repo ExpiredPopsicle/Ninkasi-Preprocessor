@@ -669,6 +669,8 @@ nkbool nkppDirective_include(
     char *unquotedName = NULL;
     nkuint32_t filenameEnd = 0;
     char endChar = 0;
+    char *currentDirname = NULL;
+    char *appendedPath = NULL;
 
     // Trim input.
     trimmedInput = nkppStripCommentsAndTrim(state, restOfLine);
@@ -724,10 +726,21 @@ nkbool nkppDirective_include(
     unquotedName = nkppStrdup(state, trimmedInput + 1);
     unquotedName[filenameEnd - 1] = 0;
 
-    // FIXME!!! Handle path relativity.
+    // Handle path relativity.
+    currentDirname = nkppPathDirname(state, state->filename);
+    if(!currentDirname) {
+        ret = nkfalse;
+        goto nkppDirective_include_cleanup;
+    }
+
+    appendedPath = nkppPathAppend(state, currentDirname, unquotedName);
+    if(!appendedPath) {
+        ret = nkfalse;
+        goto nkppDirective_include_cleanup;
+    }
 
     if(!state->nestedFailedIfs) {
-        if(!nkppDirective_include_handleInclusion(state, unquotedName)) {
+        if(!nkppDirective_include_handleInclusion(state, appendedPath)) {
             ret = nkfalse;
             goto nkppDirective_include_cleanup;
         }
@@ -735,6 +748,12 @@ nkbool nkppDirective_include(
 
 nkppDirective_include_cleanup:
 
+    if(currentDirname) {
+        nkppFree(state, currentDirname);
+    }
+    if(appendedPath) {
+        nkppFree(state, appendedPath);
+    }
     if(trimmedInput) {
         nkppFree(state, trimmedInput);
     }
