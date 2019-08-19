@@ -12,9 +12,9 @@
         printf("----------------------------------------------------------------------\n"); \
     } while(0)
 
-#define NK_PPTEST_CHECK(x)                \
+#define NK_PPTEST_CHECK(x)                      \
     do {                                        \
-        printf("%-70s : ", #x);                 \
+        nkppTestPrintTestLine(#x);              \
         if(!(x)) {                              \
             printf("%s\n", NK_PPTEST_FAIL);     \
             ret = nkfalse;                      \
@@ -27,6 +27,10 @@
 #define NK_PPTEST_FAIL "\x1b[1;31mFAIL\x1b[0m"
 #define NK_PPTEST_NULL "\x1b[1;31mNULL\x1b[0m"
 
+/// This is just a utility function for our testing macros.
+void nkppTestPrintTestLine(const char *testStr);
+
+/// This is the entry point to the test system.
 nkbool nkppTestRun(void);
 
 #endif // NK_PP_ENABLETESTS

@@ -429,6 +429,14 @@ nkbool nkppPathTest_checkString(struct NkppState *state, char *testOutput, const
         nkppFree(state, testVal);                                   \
     } while(0)
 
+#undef NK_PP_PATHTEST_CHECK
+
+#define NK_PP_PATHTEST_CHECK(x, y)              \
+    do {                                        \
+        NK_PPTEST_CHECK(!nkppStrcmp((x), (y))); \
+        nkppFree(state, (x));                   \
+    } while(0);
+
 nkbool nkppTest_pathTest(void)
 {
     struct NkppState *state = nkppStateCreate(NULL, NULL);
@@ -436,7 +444,7 @@ nkbool nkppTest_pathTest(void)
 
     NK_PPTEST_SECTION("nkppTest_pathTest()");
 
-    NK_PPTEST_CHECK(!!state == nktrue);
+    NK_PPTEST_CHECK(state);
 
     if(!state) {
         return nkfalse;
