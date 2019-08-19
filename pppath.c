@@ -115,19 +115,24 @@ nkbool nkppPathTidyPath_addToken(
     struct NkppPathTidyPathTokens *tokenList)
 {
     char **newTokenList = NULL;
+    nkbool overflow = nkfalse;
+    nkuint32_t newTokenCount;
 
-    // FIXME: Check overflow.
-    tokenList->tokenCount++;
+    NK_CHECK_OVERFLOW_UINT_ADD(tokenList->tokenCount, 1, newTokenCount, overflow);
+    if(overflow) {
+        return nkfalse;
+    }
 
     newTokenList = nkppRealloc(
         state,
         tokenList->tokens,
-        sizeof(char*) * tokenList->tokenCount);
+        sizeof(char*) * newTokenCount);
     if(!newTokenList) {
         return nkfalse;
     }
 
     tokenList->tokens = newTokenList;
+    tokenList->tokenCount = newTokenCount;
 
     tokenList->tokens[tokenList->tokenCount - 1] = token;
 
