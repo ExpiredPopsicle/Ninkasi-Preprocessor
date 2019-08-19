@@ -74,13 +74,17 @@ int main(int argc, char *argv[])
     nkuint32_t counter;
 
     // 10691?
-    // for(nkuint32_t counter = 4200; counter < 2000000; counter++) {
+    // for(counter = 8022; counter < 2000000; counter++) {
     // for(nkuint32_t counter = 0; counter < 2430; counter++) {
     // for(nkuint32_t counter = 0; counter < 1; counter++) {
     // for(nkuint32_t counter = 18830; counter < 2000000; counter++) {
-    for(counter = 18830; counter < 18831; counter++) {
+    // for(counter = 18830; counter < 18831; counter++) {
     // for(nkuint32_t counter = 0; counter < 18831; counter++) {
     // for(nkuint32_t counter = 2432; counter < 18831; counter++) {
+
+    // for(counter = 18830; counter < 18831; counter++) {
+
+    for(counter = 2000000; counter < 2000001; counter++) {
 
         struct NkppMemoryCallbacks memCallbacks;
         struct NkppErrorState errorState;
@@ -172,12 +176,18 @@ int main(int argc, char *argv[])
 
         nkppFree(state, testStr2);
 
+
+        printf("----------------------------------------------------------------------\n");
+        printf("  Iteration: %lu\n", (unsigned long)counter);
+        printf("    Allocation failure? %s\n", errorState.allocationFailure ? "yes" : "no");
+        printf("----------------------------------------------------------------------\n");
+
         nkppStateDestroy(state);
 
+        // nkppTest_pathTest();
+        nkppTestRun();
     }
 
-    // nkppTest_pathTest();
-    nkppTestRun();
 
     return 0;
 }

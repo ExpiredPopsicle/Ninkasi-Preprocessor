@@ -724,6 +724,10 @@ nkbool nkppDirective_include(
     // Make an un-quoted version of the name. Note: No un-escaping
     // happens here.
     unquotedName = nkppStrdup(state, trimmedInput + 1);
+    if(!unquotedName) {
+        ret = nkfalse;
+        goto nkppDirective_include_cleanup;
+    }
     unquotedName[filenameEnd - 1] = 0;
 
     // Handle path relativity.

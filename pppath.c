@@ -434,6 +434,14 @@ nkbool nkppTest_pathTest(void)
     struct NkppState *state = nkppStateCreate(NULL, NULL);
     nkbool ret = nktrue;
 
+    NK_PPTEST_SECTION("nkppTest_pathTest()");
+
+    NK_PPTEST_CHECK(!!state == nktrue);
+
+    if(!state) {
+        return nkfalse;
+    }
+
     NK_PPTEST_SECTION("nkppPathDirname()");
 
     NK_PP_PATHTEST_CHECK(nkppPathDirname(state, "/foo"),                    "/");

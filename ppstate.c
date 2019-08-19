@@ -1404,6 +1404,14 @@ nkbool nkppStateExecute(
 
     }
 
+    // If we didn't make it to the end of the input, then we had an
+    // error. Cases where this can occur would be allocation failures
+    // inside nkppStateInputGetNextToken(). From there an EOF and
+    // allocation failure both return NULL.
+    if(state->str[state->index] != 0) {
+        ret = nkfalse;
+    }
+
     return ret;
 }
 

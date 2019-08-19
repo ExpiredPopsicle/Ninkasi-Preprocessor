@@ -93,6 +93,14 @@ void *nkppMalloc(struct NkppState *state, nkuint32_t size)
         return NULL;
     }
 
+#if NK_PP_MEMDEBUG
+    if(allocationsUntilFailure) {
+        allocationsUntilFailure--;
+    } else {
+        return NULL;
+    }
+#endif // NK_PP_MEMDEBUG
+
     if(state->memoryCallbacks && state->memoryCallbacks->mallocWrapper) {
         newHeader = state->memoryCallbacks->mallocWrapper(
             state, state->memoryCallbacks->userData, actualSize);

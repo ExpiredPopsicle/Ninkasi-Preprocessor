@@ -2,7 +2,7 @@
 #define NK_PPCONFIG_H
 
 #ifndef NK_PP_MEMDEBUG
-#define NK_PP_MEMDEBUG 0
+#define NK_PP_MEMDEBUG 1
 #endif
 
 #ifndef NK_PP_ENABLETESTS

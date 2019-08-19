@@ -447,8 +447,13 @@ char *nkppRemoveQuotes(
 
     }
 
-    // Make the new string and snip off the start and end.
+    // Make the new string and snip off the start.
     ret = nkppStrdup(state, src + 1);
+    if(!ret) {
+        return NULL;
+    }
+
+    // ... And strip off the end.
     ret[originalLen - 2] = 0;
     return ret;
 }
