@@ -186,6 +186,7 @@ nkbool nkppMacroExecute(
     if(!clonedState) {
         return nkfalse;
     }
+    clonedState->concatenationEnabled = nktrue;
 
     // Input is the macro definition. Output is
     // appending to the "parent" state.

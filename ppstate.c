@@ -37,6 +37,7 @@ struct NkppState *nkppStateCreate(
         ret->nestedFailedIfs = 0;
         ret->memoryCallbacks = memoryCallbacks;
         ret->recursionLevel = 0;
+        ret->concatenationEnabled = nkfalse;
 
         // Memory callbacks now set up. Can use normal functions that
         // require allocations.
@@ -386,6 +387,38 @@ nkbool nkppStateInputSkipWhitespaceAndComments(
     return nktrue;
 }
 
+char *nkppStateInputReadBytes(
+    struct NkppState *state,
+    nkuint32_t count)
+{
+    nkuint32_t len = 0;
+    nkbool overflow = nkfalse;
+    char *ret = NULL;
+    nkuint32_t i;
+
+    NK_CHECK_OVERFLOW_UINT_ADD(count, 1, len, overflow);
+    if(overflow) {
+        return NULL;
+    }
+
+    ret = nkppMalloc(state, len);
+    if(!ret) {
+        return NULL;
+    }
+
+    for(i = 0; i < count; i++) {
+        ret[i] = state->str[state->index];
+        if(state->str[state->index] == 0) {
+            break;
+        }
+        nkppStateInputSkipChar(state, nkfalse);
+    }
+
+    ret[i] = 0;
+
+    return ret;
+}
+
 struct NkppToken *nkppStateInputGetNextToken(
     struct NkppState *state,
     nkbool outputWhitespace)
@@ -416,21 +449,18 @@ struct NkppToken *nkppStateInputGetNextToken(
     if(nkppIsValidIdentifierCharacter(state->str[state->index], nktrue)) {
 
         // Read identifiers (and directives).
-
         ret->str = nkppStateInputReadIdentifier(state);
         ret->type = NK_PPTOKEN_IDENTIFIER;
 
     } else if(nkppIsDigit(state->str[state->index])) {
 
         // Read number.
-
         ret->str = nkppStateInputReadInteger(state);
         ret->type = NK_PPTOKEN_NUMBER;
 
     } else if(state->str[state->index] == '"') {
 
         // Read quoted string.
-
         ret->str = nkppStateInputReadQuotedString(state);
         ret->type = NK_PPTOKEN_QUOTEDSTRING;
 
@@ -438,107 +468,55 @@ struct NkppToken *nkppStateInputGetNextToken(
         state->str[state->index+1] == '#')
     {
         // Double-hash (concatenation) symbol.
-
-        ret->str = nkppMalloc(state, 3);
-        if(ret->str) {
-            ret->str[0] = state->str[state->index];
-            ret->str[1] = state->str[state->index+1];
-            ret->str[2] = 0;
-        }
+        ret->str = nkppStateInputReadBytes(state, 2);
         ret->type = NK_PPTOKEN_DOUBLEHASH;
-
-        success = success && nkppStateInputSkipChar(state, nkfalse);
-        success = success && nkppStateInputSkipChar(state, nkfalse);
 
     } else if(state->str[state->index] == '#') {
 
         // Hash symbol.
-
-        ret->str = nkppMalloc(state, 2);
-        if(ret->str) {
-            ret->str[0] = state->str[state->index];
-            ret->str[1] = 0;
-        }
+        ret->str = nkppStateInputReadBytes(state, 1);
         ret->type = NK_PPTOKEN_HASH;
-
-        success = success && nkppStateInputSkipChar(state, nkfalse);
 
     } else if(state->str[state->index] == ',') {
 
         // Comma.
-
-        ret->str = nkppMalloc(state, 2);
-        if(ret->str) {
-            ret->str[0] = state->str[state->index];
-            ret->str[1] = 0;
-        }
+        ret->str = nkppStateInputReadBytes(state, 1);
         ret->type = NK_PPTOKEN_COMMA;
-
-        success = success && nkppStateInputSkipChar(state, nkfalse);
 
     } else if(state->str[state->index] == '(') {
 
         // Open parenthesis.
-
-        ret->str = nkppMalloc(state, 2);
-        if(ret->str) {
-            ret->str[0] = state->str[state->index];
-            ret->str[1] = 0;
-        }
+        ret->str = nkppStateInputReadBytes(state, 1);
         ret->type = NK_PPTOKEN_OPENPAREN;
-
-        success = success && nkppStateInputSkipChar(state, nkfalse);
 
     } else if(state->str[state->index] == ')') {
 
-        // Open parenthesis.
-
-        ret->str = nkppMalloc(state, 2);
-        if(ret->str) {
-            ret->str[0] = state->str[state->index];
-            ret->str[1] = 0;
-        }
+        // Close parenthesis.
+        ret->str = nkppStateInputReadBytes(state, 1);
         ret->type = NK_PPTOKEN_CLOSEPAREN;
-
-        success = success && nkppStateInputSkipChar(state, nkfalse);
 
     } else if(state->str[state->index] == '>') {
 
         // Greater-than.
-
-        ret->str = nkppMalloc(state, 2);
-        if(ret->str) {
-            ret->str[0] = state->str[state->index];
-            ret->str[1] = 0;
-        }
+        ret->str = nkppStateInputReadBytes(state, 1);
         ret->type = NK_PPTOKEN_GREATERTHAN;
-
-        success = success && nkppStateInputSkipChar(state, nkfalse);
 
     } else if(state->str[state->index] == '<') {
 
         // Less-than.
-
-        ret->str = nkppMalloc(state, 2);
-        if(ret->str) {
-            ret->str[0] = state->str[state->index];
-            ret->str[1] = 0;
-        }
+        ret->str = nkppStateInputReadBytes(state, 1);
         ret->type = NK_PPTOKEN_LESSTHAN;
 
-        success = success && nkppStateInputSkipChar(state, nkfalse);
+    } else if(state->str[state->index] == '=' && state->str[state->index + 1] == '=') {
+
+        // Equality comparison.
+        ret->str = nkppStateInputReadBytes(state, 2);
+        ret->type = NK_PPTOKEN_COMPARISONEQUALS;
 
     } else {
 
         // Unknown.
-
-        ret->str = nkppMalloc(state, 2);
-        if(ret->str) {
-            ret->str[0] = state->str[state->index];
-            ret->str[1] = 0;
-        }
-
-        success = success && nkppStateInputSkipChar(state, nkfalse);
+        ret->str = nkppStateInputReadBytes(state, 1);
     }
 
     if(!ret->str || !success) {
@@ -1262,7 +1240,7 @@ nkbool nkppStateExecute(
 
         if(token) {
 
-            if(token->type == NK_PPTOKEN_DOUBLEHASH) {
+            if(state->concatenationEnabled && token->type == NK_PPTOKEN_DOUBLEHASH) {
 
                 // Output nothing. This is the symbol concatenation
                 // token, and it does its job by effectively just

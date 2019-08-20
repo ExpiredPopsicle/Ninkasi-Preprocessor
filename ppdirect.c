@@ -7,7 +7,6 @@ struct NkppDirectiveMapping
 };
 
 // TODO: Add these...
-//   include
 //   if (with more complicated expressions)
 //   elif (implement "if" first)
 //   warning (passthrough?)
@@ -633,6 +632,9 @@ nkbool nkppDirective_include_handleInclusion(
         ret = nkfalse;
         goto nkppDirective_include_handleInclusion_cleanup;
     }
+
+    // Make sure we output the new file/line marker immediately.
+    nkppStateFlagFileLineMarkersForUpdate(state);
 
     // Execute it.
     nkppStateExecute(state, fileData);

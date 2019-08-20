@@ -15,6 +15,7 @@ enum NkppTokenType
     NK_PPTOKEN_CLOSEPAREN,
     NK_PPTOKEN_LESSTHAN,
     NK_PPTOKEN_GREATERTHAN,
+    NK_PPTOKEN_COMPARISONEQUALS,
 
     // It's the preprocessor, so we have to let anything we don't
     // understand slide through.

@@ -49,7 +49,16 @@ concat(thing1, thing2)
 concat(thing1)
 concat()
 concat
+
+stuff
+
 concat(,)
+
+
+
+
+
+
 
 #define foo 1234 // ASF
 #undef foo
@@ -221,3 +230,12 @@ Done testing test4
 
 
 #include "filethatdoesntexist.txt"
+
+shit concatenation##test
+
+
+#define blagh1 asdf##asdf
+blagh1
+
+TODO: Only do directives if they're the first thing on the line.
+TODO: Remove concatenation handling outside directives.

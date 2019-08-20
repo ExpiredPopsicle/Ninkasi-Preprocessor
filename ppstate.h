@@ -118,6 +118,10 @@ struct NkppState
     struct NkppMemoryCallbacks *memoryCallbacks;
 
     nkuint32_t recursionLevel;
+
+    // Concatenation ("##") is only enabled in certain cases. We don't
+    // do it outside of #defines.
+    nkbool concatenationEnabled;
 };
 
 // ----------------------------------------------------------------------
