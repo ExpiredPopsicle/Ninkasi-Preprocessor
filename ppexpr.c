@@ -27,12 +27,12 @@ nkppEvaluateExpression_cleanup:
 }
 
 // Operators and "stuff" to support...
-//   Parenthesis                  ( 0)
-//   defined()                    ( 0)
+//   Parenthesis                  ( 0) (treat as value)
+//   defined()                    ( 0) (treat as value)
 //   Prefix operators...
-//     "-" negation               ( 1)
-//     "~" binary inverse         ( 1)
-//     "!" not                    ( 1)
+//     "-" negation               ( 1) (handled in value parsing)
+//     "~" binary inverse         ( 1) (handled in value parsing)
+//     "!" not                    ( 1) (handled in value parsing)
 //   Math...
 //     "*" multiply               ( 2)
 //     "/" divide                 ( 2)
