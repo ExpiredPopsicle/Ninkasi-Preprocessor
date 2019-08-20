@@ -35,7 +35,8 @@ int nkppStrcmp(const char *a, const char *b);
 nkuint32_t nkppStrlen(const char *str);
 
 /// Slightly different from the "real" strtol. Base is determined
-/// automatically (0x10 == 16, etc).
+/// automatically (0x10 == 16, etc). Also, this is unsigned-only
+/// (parsing of negation operator happens separately.
 nkbool nkppStrtol(const char *str, nkuint32_t *out);
 
 // ----------------------------------------------------------------------

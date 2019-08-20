@@ -436,10 +436,11 @@ nkbool nkppPathTest_checkString(struct NkppState *state, char *testOutput, const
 
 #undef NK_PP_PATHTEST_CHECK
 
-#define NK_PP_PATHTEST_CHECK(x, y)              \
-    do {                                        \
-        NK_PPTEST_CHECK(!nkppStrcmp((x), (y))); \
-        nkppFree(state, (x));                   \
+#define NK_PP_PATHTEST_CHECK(x, y)                          \
+    do {                                                    \
+        char *testVal = NULL;                               \
+        NK_PPTEST_CHECK(!nkppStrcmp(testVal = (x), (y)));   \
+        nkppFree(state, testVal);                           \
     } while(0);
 
 nkbool nkppTest_pathTest(void)

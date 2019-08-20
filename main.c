@@ -189,5 +189,15 @@ int main(int argc, char *argv[])
     }
 
 
+
+    {
+        struct NkppState *state = nkppStateCreate(NULL, NULL);
+
+        nkppEvaluateExpression(state, "1 + 2 * (3 + 4)", NULL);
+
+        nkppStateDestroy(state);
+    }
+
+
     return 0;
 }
