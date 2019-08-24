@@ -5,9 +5,11 @@
 
 struct NkppState;
 
+/// Evaluate an expression from a string.
 nkbool nkppEvaluateExpression(
     struct NkppState *state,
     const char *expression,
-    nkint32_t *output);
+    nkint32_t *output,
+    nkuint32_t recursionLevel);
 
 #endif // NK_PPEXPR_H

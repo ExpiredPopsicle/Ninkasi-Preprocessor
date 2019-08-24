@@ -1,20 +1,140 @@
 #include "ppcommon.h"
 
+nkbool nkppEvaluateExpression_parseValue(
+    struct NkppState *expressionState,
+    nkint32_t *output,
+    nkuint32_t recursionLevel)
+{
+    struct NkppToken *token =
+        nkppStateInputGetNextToken(expressionState, nkfalse);
+    nkbool ret = nktrue;
+    nkuint32_t outputTmp = 0;
+    nkint32_t outputSignedTmp = 0;
+
+    // FIXME: Check recursion limit!
+
+    printf("nkppEvaluateExpression_parseValue: %s\n", expressionState->str);
+
+    if(!token) {
+        return nkfalse;
+    }
+
+    switch(token->type) {
+
+        case NK_PPTOKEN_TILDE:
+            ret = nkppEvaluateExpression_parseValue(
+                expressionState,
+                &outputSignedTmp,
+                recursionLevel + 1);
+            *output = ~outputSignedTmp;
+            break;
+
+        case NK_PPTOKEN_MINUS:
+            ret = nkppEvaluateExpression_parseValue(
+                expressionState,
+                &outputSignedTmp,
+                recursionLevel + 1);
+            *output = -outputSignedTmp;
+            break;
+
+        case NK_PPTOKEN_NUMBER:
+
+            // FIXME: Check overflow.
+
+            ret = nkppStrtol(token->str, &outputTmp);
+
+            if(!ret) {
+                printf("Number fail\n");
+            } else {
+                printf("Number success\n");
+            }
+
+            *output = (nkint32_t)outputTmp;
+            break;
+
+        case NK_PPTOKEN_OPENPAREN:
+
+            ret = nkppEvaluateExpression(
+                expressionState,
+                expressionState->str + expressionState->index,
+                output, recursionLevel + 1);
+
+            if(!ret) {
+                printf("Open paren fail\n");
+            } else {
+                printf("Open paren success\n");
+            }
+
+            break;
+
+        case NK_PPTOKEN_IDENTIFIER:
+
+            // Identifiers are just undefined macros in this context,
+            // with the exception of "defined", which we'll do the
+            // logic for here.
+
+            // FIXME: Handle "defined()"
+
+            *output = 0;
+            break;
+
+        default:
+
+            nkppStateAddError(expressionState, "Expected value token.");
+            ret = nkfalse;
+            break;
+    }
+
+    if(!ret) {
+        nkppStateAddError(expressionState, "Failed to parse value token.");
+    }
+
+    nkppTokenDestroy(expressionState, token);
+
+    return ret;
+}
+
 nkbool nkppEvaluateExpression(
     struct NkppState *state,
     const char *expression,
-    nkint32_t *output)
+    nkint32_t *output,
+    nkuint32_t recursionLevel)
 {
     struct NkppState *expressionState;
-    nkbool ret = nkfalse;
+    nkbool ret = nktrue;
+    nkuint32_t actualRecursionLevel =
+        state->recursionLevel + recursionLevel;
 
+    // FIXME: Make this less arbitrary.
+    if(actualRecursionLevel > 20) {
+        nkppStateAddError(state, "Arbitrary recursion limit reached in expression parser.");
+        return nkfalse;
+    }
+
+    // Create a state just for reading tokens out of the input string.
     expressionState = nkppStateCreate(
         state->errorState, state->memoryCallbacks);
     if(!expressionState) {
+        ret = nkfalse;
         goto nkppEvaluateExpression_cleanup;
     }
-
     expressionState->str = expression;
+
+    // Parse a value.
+    {
+        nkint32_t tmpVal;
+        if(!nkppEvaluateExpression_parseValue(
+                expressionState, &tmpVal, recursionLevel + 1))
+        {
+            ret = nkfalse;
+            goto nkppEvaluateExpression_cleanup;
+        }
+
+        printf("Value parsed: %ld\n", (long)tmpVal);
+        *output = tmpVal;
+    }
+
+    // Parse an operator.
 
     // TODO
 

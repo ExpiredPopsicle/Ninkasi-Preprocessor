@@ -446,6 +446,9 @@ struct NkppToken *nkppStateInputGetNextToken(
         return NULL;
     }
 
+    // FIXME: This list is getting long enough that I think we need a
+    // table of values that we just search through.
+
     if(nkppIsValidIdentifierCharacter(state->str[state->index], nktrue)) {
 
         // Read identifiers (and directives).
@@ -512,6 +515,24 @@ struct NkppToken *nkppStateInputGetNextToken(
         // Equality comparison.
         ret->str = nkppStateInputReadBytes(state, 2);
         ret->type = NK_PPTOKEN_COMPARISONEQUALS;
+
+    } else if(state->str[state->index] == '-') {
+
+        // Minus.
+        ret->str = nkppStateInputReadBytes(state, 1);
+        ret->type = NK_PPTOKEN_MINUS;
+
+    } else if(state->str[state->index] == '~') {
+
+        // Tilde.
+        ret->str = nkppStateInputReadBytes(state, 1);
+        ret->type = NK_PPTOKEN_TILDE;
+
+    } else if(state->str[state->index] == '!') {
+
+        // Exclamation.
+        ret->str = nkppStateInputReadBytes(state, 1);
+        ret->type = NK_PPTOKEN_EXCLAMATION;
 
     } else {
 
@@ -1227,7 +1248,7 @@ nkbool nkppStateExecute(
 
     // FIXME: Maybe make this less arbitraty.
     if(state->recursionLevel > 20) {
-        nkppStateAddError(state, "Arbitrary recursion limit reached.");
+        nkppStateAddError(state, "Arbitrary recursion limit reached in preprocessor.");
         return nkfalse;
     }
 

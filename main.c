@@ -191,9 +191,33 @@ int main(int argc, char *argv[])
 
 
     {
-        struct NkppState *state = nkppStateCreate(NULL, NULL);
+        struct NkppErrorState errorState;
+        struct NkppState *state;
+        nkint32_t output = 0;
 
-        nkppEvaluateExpression(state, "1 + 2 * (3 + 4)", NULL);
+        memset(&errorState, 0, sizeof(errorState));
+
+        state = nkppStateCreate(NULL, NULL);
+
+        nkppEvaluateExpression(state, "-(~(-(~(-(~100))))) + 2 * (3 + 4)", &output, 0);
+
+        printf("Final expression output: %ld\n", (long)output);
+
+        while(errorState.firstError) {
+
+            printf("error: %s:%ld: %s\n",
+                errorState.firstError->filename,
+                (long)errorState.firstError->lineNumber,
+                errorState.firstError->text);
+
+            {
+                struct NkppError *next = errorState.firstError->next;
+                nkppFree(state, errorState.firstError->filename);
+                nkppFree(state, errorState.firstError->text);
+                nkppFree(state, errorState.firstError);
+                errorState.firstError = next;
+            }
+        }
 
         nkppStateDestroy(state);
     }
