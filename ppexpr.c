@@ -439,7 +439,7 @@ nkbool nkppEvaluateExpression_applyStackTop(
     if(!nkppEvaluateExpression_applyOperator(
             state,
             operatorStackTop,
-            a, b, &result))
+            b, a, &result))
     {
         return nkfalse;
     }

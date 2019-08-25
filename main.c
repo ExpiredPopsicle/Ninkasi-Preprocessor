@@ -223,6 +223,8 @@ int main(int argc, char *argv[])
 
         printf("Exp preprocessed: %s\n", preprocessExpressionState->output);
 
+
+
         {
             nkbool r =
                 nkppEvaluateExpression(preprocessExpressionState, preprocessExpressionState->output, &output, 0);
@@ -230,6 +232,29 @@ int main(int argc, char *argv[])
             // nkppEvaluateExpression(state, "-(~(-(~(-(~100))))) + 2 * (3 + 4)", &output, 0);
             printf("Final expression output (%s): %ld\n", r ? "good" : "bad", (long)output);
         }
+
+      #define TEST_EXPRESSION(x)                                        \
+        do {                                                            \
+            nkint32_t output = 0;                                       \
+            nkppEvaluateExpression(preprocessExpressionState, #x, &output, 0); \
+            printf("%20s == %ld\n", #x, (long)output);                  \
+            assert(output == (x));                                      \
+    } while(0)
+
+        TEST_EXPRESSION(1 + 1);
+        TEST_EXPRESSION(1 + 1 * 2);
+        TEST_EXPRESSION(1 + 1 * -2);
+        TEST_EXPRESSION(1 + 1 * ~2);
+        TEST_EXPRESSION(1 + (1 * -2));
+        TEST_EXPRESSION((1 + 5) * -2);
+        TEST_EXPRESSION((1 + 5) * (3 * 8));
+        TEST_EXPRESSION((1 + 5) / (3 * 8));
+        TEST_EXPRESSION((3 * 8) / (1 + 5));
+        TEST_EXPRESSION((3/2));
+        TEST_EXPRESSION(5/(3/2));
+        TEST_EXPRESSION(-1/(-2147483646 - 2));
+
+
 
         // while(errorState.firstError) {
 
