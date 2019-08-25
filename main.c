@@ -219,6 +219,7 @@ int main(int argc, char *argv[])
 
         nkppStateExecute(
             preprocessExpressionState,
+            "#define foo\n"
             "5 * (1 + 2) * 10");
 
         printf("Exp preprocessed: %s\n", preprocessExpressionState->output);

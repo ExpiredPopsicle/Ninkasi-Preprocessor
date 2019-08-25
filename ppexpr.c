@@ -228,9 +228,6 @@ nkbool nkppEvaluateExpression_parseValue(
         return nkfalse;
     }
 
-    printf("nkppEvaluateExpression_parseValue: %s\n",
-        expressionState->str + expressionState->index);
-
     if(!token) {
         return nkfalse;
     }
@@ -239,6 +236,7 @@ nkbool nkppEvaluateExpression_parseValue(
 
         case NK_PPTOKEN_DEFINED:
 
+            // defined() expression.
             ret = nkppEvaluateExpression_macroDefined(
                 state, expressionState,
                 output);
@@ -291,17 +289,10 @@ nkbool nkppEvaluateExpression_parseValue(
 
         case NK_PPTOKEN_OPENPAREN:
 
-            printf("Parsing subexpression: %s\n",
-                expressionState->str + expressionState->index);
-
             ret = nkppEvaluateExpression_internal(
                 expressionState,
                 expressionState,
                 output, recursionLevel + 1);
-
-            printf("Parsed subexpression: %s\n",
-                expressionState->str + expressionState->index);
-
             break;
 
         case NK_PPTOKEN_IDENTIFIER:
@@ -380,21 +371,66 @@ nkbool nkppEvaluateExpression_applyOperator(
             *result = type == NK_PPTOKEN_SLASH ? (a /  b) : (a %  b);
             break;
 
-        case NK_PPTOKEN_PLUS:                *result = (a +  b); break;  // Add
-        case NK_PPTOKEN_MINUS:               *result = (a -  b); break;  // Subtract (NOT negation prefix!)
-        case NK_PPTOKEN_LEFTSHIFT:           *result = (a << b); break;
-        case NK_PPTOKEN_RIGHTSHIFT:          *result = (a >> b); break;
-        case NK_PPTOKEN_BINARYAND:           *result = (a &  b); break;
-        case NK_PPTOKEN_BINARYXOR:           *result = (a ^  b); break;
-        case NK_PPTOKEN_BINARYOR:            *result = (a |  b); break;
-        case NK_PPTOKEN_LOGICALAND:          *result = (a && b); break;
-        case NK_PPTOKEN_LOGICALOR:           *result = (a || b); break;
-        case NK_PPTOKEN_NOTEQUAL:            *result = (a != b); break;
-        case NK_PPTOKEN_COMPARISONEQUALS:    *result = (a == b); break;
-        case NK_PPTOKEN_GREATERTHAN:         *result = (a >  b); break;
-        case NK_PPTOKEN_GREATERTHANOREQUALS: *result = (a >= b); break;
-        case NK_PPTOKEN_LESSTHAN:            *result = (a <  b); break;
-        case NK_PPTOKEN_LESSTHANOREQUALS:    *result = (a <= b); break;
+        case NK_PPTOKEN_PLUS:
+            *result = (a + b);
+            break;
+
+        case NK_PPTOKEN_MINUS:
+            *result = (a - b);
+            break;
+
+        case NK_PPTOKEN_LEFTSHIFT:
+            *result = (a << b);
+            break;
+
+        case NK_PPTOKEN_RIGHTSHIFT:
+            *result = (a >> b);
+            break;
+
+        case NK_PPTOKEN_BINARYAND:
+            *result = (a & b);
+            break;
+
+        case NK_PPTOKEN_BINARYXOR:
+            *result = (a ^ b);
+            break;
+
+        case NK_PPTOKEN_BINARYOR:
+            *result = (a | b);
+            break;
+
+        case NK_PPTOKEN_LOGICALAND:
+            *result = (a && b);
+            break;
+
+        case NK_PPTOKEN_LOGICALOR:
+            *result = (a || b);
+            break;
+
+        case NK_PPTOKEN_NOTEQUAL:
+            *result = (a != b);
+            break;
+
+        case NK_PPTOKEN_COMPARISONEQUALS:
+            *result = (a == b);
+            break;
+
+        case NK_PPTOKEN_GREATERTHAN:
+            *result = (a > b);
+            break;
+
+        case NK_PPTOKEN_GREATERTHANOREQUALS:
+            *result = (a >= b);
+            break;
+
+        case NK_PPTOKEN_LESSTHAN:
+            *result = (a < b);
+            break;
+
+        case NK_PPTOKEN_LESSTHANOREQUALS:
+            *result = (a <= b);
+            break;
+
         default:
             *result = NK_INVALID_VALUE;
             return nkfalse;
@@ -505,8 +541,6 @@ nkbool nkppEvaluateExpression_internal(
         if(expressionState->str[expressionState->index] &&
             expressionState->str[expressionState->index] != ')')
         {
-            printf("Hrmmm... %s\n", expressionState->str + expressionState->index);
-
             // Parse next operator.
             operatorToken = nkppStateInputGetNextToken(expressionState, nkfalse);
             if(!operatorToken) {
@@ -524,21 +558,21 @@ nkbool nkppEvaluateExpression_internal(
                 goto nkppEvaluateExpression_cleanup;
             }
 
-            // Resolve all higher-precedence operators.
+            // Resolve all operators with a higher-precedence than
+            // this one that are on the top of the stack.
             while(nkppExpressionStackGetSize(operatorStack)) {
 
                 nkint32_t stackTop;
                 nkuint32_t stackPrecedence;
                 nkuint32_t currentPrecedence;
 
+                // Compare precedence.
                 if(!nkppExpressionStackPeekTop(operatorStack, &stackTop)) {
                     ret = nkfalse;
                     goto nkppEvaluateExpression_cleanup;
                 }
-
                 stackPrecedence = nkppEvaluateExpression_getPrecedence(stackTop);
                 currentPrecedence = nkppEvaluateExpression_getPrecedence(currentOperator);
-
                 if(currentPrecedence <= stackPrecedence) {
                     break;
                 }
@@ -549,16 +583,14 @@ nkbool nkppEvaluateExpression_internal(
                     goto nkppEvaluateExpression_cleanup;
                 }
 
+                // Apply it.
                 if(!nkppEvaluateExpression_applyStackTop(state, valueStack, operatorStack)) {
                     ret = nkfalse;
                     goto nkppEvaluateExpression_cleanup;
                 }
-
-
-                printf("Applied operator\n");
             }
 
-            // Push this one onto the stack.
+            // Push this operator onto the stack.
             nkppExpressionStackPush(state, operatorStack, currentOperator);
         }
 
