@@ -39,9 +39,13 @@ char *nkppDefaultLoadFileCallback(
 // Debugging stuff
 
 #if NK_PP_MEMDEBUG
+
 void nkppMemDebugSetAllocationFailureTestLimits(
     nkuint32_t limitMemory,
     nkuint32_t limitAllocations);
+
+nkuint32_t nkppMemDebugGetTotalAllocations(void);
+
 #endif // NK_PP_MEMDEBUG
 
 #endif // NK_PPMEM_H

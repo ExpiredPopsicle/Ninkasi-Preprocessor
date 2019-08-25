@@ -41,6 +41,11 @@ void nkppMemDebugSetAllocationFailureTestLimits(
     nkppMemDebugAllocationsUntilFailure = limitAllocations;
 }
 
+nkuint32_t nkppMemDebugGetTotalAllocations(void)
+{
+    return nkppMemDebugTotalAllocations;
+}
+
 #endif
 
 // ----------------------------------------------------------------------
@@ -97,6 +102,9 @@ void *nkppMalloc(struct NkppState *state, nkuint32_t size)
     if(nkppMemDebugAllocationsUntilFailure) {
         nkppMemDebugAllocationsUntilFailure--;
     } else {
+        if(state->errorState) {
+            state->errorState->allocationFailure = nktrue;
+        }
         return NULL;
     }
 #endif // NK_PP_MEMDEBUG

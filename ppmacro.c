@@ -159,6 +159,7 @@ struct NkppMacro *nkppMacroClone(
         clonedArg->next = NULL;
         clonedArg->name = nkppStrdup(state, currentArgument->name);
         if(!clonedArg->name) {
+            nkppFree(state, clonedArg);
             nkppMacroDestroy(state, ret);
             return NULL;
         }

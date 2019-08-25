@@ -1,5 +1,35 @@
 #include "ppcommon.h"
 
+// Operators and "stuff" to support...
+//   Parenthesis                  ( 0) (treat as value)
+//   defined()                    ( 0) (treat as value)
+//   Prefix operators...
+//     "-" negation               ( 1) (handled in value parsing)
+//     "~" binary inverse         ( 1) (handled in value parsing)
+//     "!" not                    ( 1) (handled in value parsing)
+//   Math...
+//     "*" multiply               ( 2)
+//     "/" divide                 ( 2)
+//     "%" modulo                 ( 2)
+//     "+" add                    ( 3)
+//     "-" subtract               ( 3)
+//   Binary...
+//     "<<" left-shift            ( 4)
+//     ">>" right-shift           ( 4)
+//     "&" binary and             ( 7)
+//     "^" xor                    ( 8)
+//     "|" binary or              ( 9)
+//   Logic...
+//     "||" logical or            (11)
+//     "&&" logical and           (10)
+//     "!=" not-equal             ( 6)
+//     "==" equal                 ( 6)
+//     ">" greater-than           ( 5)
+//     ">=" greater-than or equal ( 5)
+//     "<" less-than              ( 5)
+//     "<=" less-than or equal    ( 5)
+//   Ternary (?:) operator        (12)
+
 struct NkppExpressionStack
 {
     nkint32_t *values;
@@ -115,18 +145,6 @@ nkuint32_t nkppExpressionStackGetSize(
 {
     return stack->size;
 }
-
-
-
-
-
-
-
-
-
-
-
-
 
 nkbool nkppEvaluateExpression_macroDefined(
     struct NkppState *state,
@@ -302,7 +320,7 @@ nkbool nkppEvaluateExpression_parseValue(
             break;
 
         case NK_PPTOKEN_IDENTIFIER:
-\
+
             // Identifiers are just undefined macros in this context,
             // with the exception of "defined".
             *output = 0;
@@ -628,8 +646,6 @@ nkbool nkppEvaluateExpression_internal(
                     state, expressionState,
                     &option1Value, recursionLevel + 1))
                 {
-                    assert(0);
-
                     ret = nkfalse;
                     goto nkppEvaluateExpression_cleanup;
                 }
@@ -650,17 +666,12 @@ nkbool nkppEvaluateExpression_internal(
                     state, expressionState,
                     &option2Value, recursionLevel + 1))
                 {
-                    assert(0);
-
                     ret = nkfalse;
                     goto nkppEvaluateExpression_cleanup;
                 }
 
                 // Remove the value from the top.
                 if(!nkppExpressionStackPop(valueStack)) {
-
-                    assert(0);
-
                     ret = nkfalse;
                     goto nkppEvaluateExpression_cleanup;
                 }
@@ -670,8 +681,6 @@ nkbool nkppEvaluateExpression_internal(
                         expressionState, valueStack,
                         valueStackTop ? option1Value : option2Value))
                 {
-                    assert(0);
-
                     ret = nkfalse;
                     goto nkppEvaluateExpression_cleanup;
                 }
@@ -754,94 +763,24 @@ nkppEvaluateExpression_outer_cleanup:
     return ret;
 }
 
-
-// Operators and "stuff" to support...
-//   Parenthesis                  ( 0) (treat as value)
-//   defined()                    ( 0) (treat as value)
-//   Prefix operators...
-//     "-" negation               ( 1) (handled in value parsing)
-//     "~" binary inverse         ( 1) (handled in value parsing)
-//     "!" not                    ( 1) (handled in value parsing)
-//   Math...
-//     "*" multiply               ( 2)
-//     "/" divide                 ( 2)
-//     "%" modulo                 ( 2)
-//     "+" add                    ( 3)
-//     "-" subtract               ( 3)
-//   Binary...
-//     "<<" left-shift            ( 4)
-//     ">>" right-shift           ( 4)
-//     "&" binary and             ( 7)
-//     "^" xor                    ( 8)
-//     "|" binary or              ( 9)
-//   Logic...
-//     "||" logical or            (11)
-//     "&&" logical and           (10)
-//     "!=" not-equal             ( 6)
-//     "==" equal                 ( 6)
-//     ">" greater-than           ( 5)
-//     ">=" greater-than or equal ( 5)
-//     "<" less-than              ( 5)
-//     "<=" less-than or equal    ( 5)
-//   Ternary (?:) operator        (12)
-
-
-
-
-
 #if NK_PP_ENABLETESTS
 
 nkbool nkppTest_expressionTest(void)
 {
-    // struct NkppErrorState errorState;
-    // struct NkppState *state;
     struct NkppState *exprState;
     nkbool ret = nktrue;
 
     NK_PPTEST_SECTION("nkppTest_expressionTest()");
 
-    // memset(&errorState, 0, sizeof(errorState));
-
-    // state = nkppStateCreate(NULL, NULL);
     exprState = nkppStateCreate(NULL, NULL);
+
+    NK_PPTEST_CHECK(exprState);
+
+    if(!exprState) {
+        return nkfalse;
+    }
+
     exprState->preprocessingIfExpression = nktrue;
-
-    // nkppStateExecute(
-    //     exprState,
-    //     "#define junk 1\n"
-    //     "defined(junk) + \n"
-    //     "junk + \n"
-    //     "junk\n");
-
-    // nkppStateExecute(
-    //     exprState,
-    //     "1 + 2 * 5 * 4 * 2 + 6");
-
-    // nkppStateExecute(
-    //     exprState,
-    //     "1 + 5 * 2 * 3");
-
-    // nkppStateExecute(
-    //     exprState,
-    //     "#define foo\n"
-    //     "5 * (1 + 2) * 10");
-
-    // printf("Exp preprocessed: %s\n", exprState->output);
-
-
-
-    // {
-    //     nkbool r =
-    //         nkppEvaluateExpression(exprState, exprState->output, &output, 0);
-
-    //     // nkppEvaluateExpression(state, "-(~(-(~(-(~100))))) + 2 * (3 + 4)", &output, 0);
-    //     printf("Final expression output (%s): %ld\n", r ? "good" : "bad", (long)output);
-    // }
-
-
-    // printf("[%4s] %20s == %ld ? %ld\n",                          \
-    //     success ? "good" : "bad", #x, (long)(x), (long)output);  \
-    //
 
   #define NK_PP_EXPRESSIONTEST_CHECK(x)                         \
     do {                                                        \

@@ -11,6 +11,7 @@
 #include "pppath.h"
 #include "pptest.h"
 #include "ppexpr.h"
+#include "pperror.h"
 
 #include <string.h>
 #include <malloc.h>

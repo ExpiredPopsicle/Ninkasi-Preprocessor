@@ -562,6 +562,10 @@ struct NkppToken *nkppStateInputGetNextToken(
 
         // Read identifiers (and directives).
         ret->str = nkppStateInputReadIdentifier(state);
+        if(!ret->str) {
+            nkppFree(state, ret);
+            return NULL;
+        }
 
         if(!nkppStrcmp(ret->str, "defined")) {
             ret->type = NK_PPTOKEN_DEFINED;
