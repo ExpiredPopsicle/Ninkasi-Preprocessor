@@ -122,6 +122,11 @@ struct NkppState
     // Concatenation ("##") is only enabled in certain cases. We don't
     // do it outside of #defines.
     nkbool concatenationEnabled;
+
+    // We need to know if we're preprocessing a block for an "if"
+    // expression. If we are, then we need to skip macros inside of
+    // "defined()" expressions.
+    nkbool preprocessingIfExpression;
 };
 
 // ----------------------------------------------------------------------

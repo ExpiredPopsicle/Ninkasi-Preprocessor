@@ -191,34 +191,59 @@ int main(int argc, char *argv[])
 
 
     {
-        struct NkppErrorState errorState;
+        // struct NkppErrorState errorState;
         struct NkppState *state;
+        struct NkppState *preprocessExpressionState;
         nkint32_t output = 0;
 
-        memset(&errorState, 0, sizeof(errorState));
+        // memset(&errorState, 0, sizeof(errorState));
 
         state = nkppStateCreate(NULL, NULL);
+        preprocessExpressionState = nkppStateCreate(NULL, NULL);
+        preprocessExpressionState->preprocessingIfExpression = nktrue;
 
-        nkppEvaluateExpression(state, "-(~(-(~(-(~100))))) + 2 * (3 + 4)", &output, 0);
+        // nkppStateExecute(
+        //     preprocessExpressionState,
+        //     "#define junk 1\n"
+        //     "defined(junk) + \n"
+        //     "junk + \n"
+        //     "junk\n");
 
-        printf("Final expression output: %ld\n", (long)output);
+        nkppStateExecute(
+            preprocessExpressionState,
+            "1 + 2 * 5 * 4 * 2 + 6");
 
-        while(errorState.firstError) {
+        // nkppStateExecute(
+        //     preprocessExpressionState,
+        //     "1 + 5 * 2 * 3");
 
-            printf("error: %s:%ld: %s\n",
-                errorState.firstError->filename,
-                (long)errorState.firstError->lineNumber,
-                errorState.firstError->text);
+        printf("Exp preprocessed: %s\n", preprocessExpressionState->output);
 
-            {
-                struct NkppError *next = errorState.firstError->next;
-                nkppFree(state, errorState.firstError->filename);
-                nkppFree(state, errorState.firstError->text);
-                nkppFree(state, errorState.firstError);
-                errorState.firstError = next;
-            }
+        {
+            nkbool r =
+                nkppEvaluateExpression(preprocessExpressionState, preprocessExpressionState->output, &output, 0);
+
+            // nkppEvaluateExpression(state, "-(~(-(~(-(~100))))) + 2 * (3 + 4)", &output, 0);
+            printf("Final expression output (%s): %ld\n", r ? "good" : "bad", (long)output);
         }
 
+        // while(errorState.firstError) {
+
+        //     printf("error: %s:%ld: %s\n",
+        //         errorState.firstError->filename,
+        //         (long)errorState.firstError->lineNumber,
+        //         errorState.firstError->text);
+
+        //     {
+        //         struct NkppError *next = errorState.firstError->next;
+        //         nkppFree(state, errorState.firstError->filename);
+        //         nkppFree(state, errorState.firstError->text);
+        //         nkppFree(state, errorState.firstError);
+        //         errorState.firstError = next;
+        //     }
+        // }
+
+        nkppStateDestroy(preprocessExpressionState);
         nkppStateDestroy(state);
     }
 

@@ -38,6 +38,7 @@ struct NkppState *nkppStateCreate(
         ret->memoryCallbacks = memoryCallbacks;
         ret->recursionLevel = 0;
         ret->concatenationEnabled = nkfalse;
+        ret->preprocessingIfExpression = nkfalse;
 
         // Memory callbacks now set up. Can use normal functions that
         // require allocations.
@@ -419,6 +420,114 @@ char *nkppStateInputReadBytes(
     return ret;
 }
 
+nkbool nkppStateInputGetNextToken_stringStartsWith(
+    const char *needle,
+    const char *haystack)
+{
+    while(*needle) {
+        if(*needle != *haystack) {
+            return nkfalse;
+        }
+        if(!*haystack) {
+            return nkfalse;
+        }
+        if(!*needle) {
+            break;
+        }
+
+        haystack++;
+        needle++;
+    }
+    return nktrue;
+}
+
+// This is pretty ugly. In order to detect "defined()" expressions
+// inside "#if" and "#elif" arguments, we actually need to go
+// backwards through the output to see if the last thing we emitted
+// was the start of that expression. We need to do this so we *don't*
+// evaluate the macro inside the expression.
+//
+// The "defined" text can make it into our expression in many
+// different ways, and the only consistent way to deal with it is
+// going to be to check the output.
+nkbool nkppStateInputGetNextToken_checkForDefinedExpression(
+    struct NkppState *state)
+{
+    nkuint32_t i = state->index - 1;
+    nkuint32_t tokenEnd;
+
+    // Skip the identifier we parsed that lead us here.
+    while(i != NK_UINT_MAX) {
+        if(nkppIsValidIdentifierCharacter(state->str[i], nktrue)) {
+            i--;
+        } else {
+            break;
+        }
+    }
+    if(i == NK_UINT_MAX) {
+        return nkfalse;
+    }
+
+    // Skip whitespace.
+    while(i != NK_UINT_MAX) {
+        if(nkppIsWhitespace(state->str[i])) {
+            i--;
+        } else {
+            break;
+        }
+    }
+    if(i == NK_UINT_MAX) {
+        return nkfalse;
+    }
+
+    // Find '('.
+    if(state->str[i] != '(') {
+        return nkfalse;
+    }
+
+    // Go back from the '('.
+    i--;
+    if(i == NK_UINT_MAX) {
+        return nkfalse;
+    }
+
+    // Skip more whitespace.
+    while(i != NK_UINT_MAX) {
+        if(nkppIsWhitespace(state->str[i])) {
+            i--;
+        } else {
+            break;
+        }
+    }
+    if(i == NK_UINT_MAX) {
+        return nkfalse;
+    }
+
+    // Find "defined".
+    tokenEnd = i + 1;
+    while(i != NK_UINT_MAX) {
+        if(nkppIsValidIdentifierCharacter(state->str[i], nktrue)) {
+            i--;
+        } else {
+            i++;
+            break;
+        }
+    }
+    if(i == NK_UINT_MAX) {
+        return nkfalse;
+    }
+
+    // Check to see if the identifier we just blew past was, indeed,
+    // the "defined" text we're looking for.
+    if(nkppStateInputGetNextToken_stringStartsWith("defined", state->str + i) &&
+        tokenEnd - i == nkppStrlen("defined"))
+    {
+        return nktrue;
+    }
+
+    return nkfalse;
+}
+
 struct NkppToken *nkppStateInputGetNextToken(
     struct NkppState *state,
     nkbool outputWhitespace)
@@ -453,7 +562,12 @@ struct NkppToken *nkppStateInputGetNextToken(
 
         // Read identifiers (and directives).
         ret->str = nkppStateInputReadIdentifier(state);
-        ret->type = NK_PPTOKEN_IDENTIFIER;
+
+        if(!nkppStrcmp(ret->str, "defined")) {
+            ret->type = NK_PPTOKEN_DEFINED;
+        } else {
+            ret->type = NK_PPTOKEN_IDENTIFIER;
+        }
 
     } else if(nkppIsDigit(state->str[state->index])) {
 
@@ -498,6 +612,26 @@ struct NkppToken *nkppStateInputGetNextToken(
         ret->str = nkppStateInputReadBytes(state, 1);
         ret->type = NK_PPTOKEN_CLOSEPAREN;
 
+    } else if(state->str[state->index] == '<' && state->str[state->index + 1] == '<') {
+
+        ret->str = nkppStateInputReadBytes(state, 2);
+        ret->type = NK_PPTOKEN_LEFTSHIFT;
+
+    } else if(state->str[state->index] == '>' && state->str[state->index + 1] == '>') {
+
+        ret->str = nkppStateInputReadBytes(state, 2);
+        ret->type = NK_PPTOKEN_RIGHTSHIFT;
+
+    } else if(state->str[state->index] == '<' && state->str[state->index + 1] == '=') {
+
+        ret->str = nkppStateInputReadBytes(state, 2);
+        ret->type = NK_PPTOKEN_LESSTHANOREQUALS;
+
+    } else if(state->str[state->index] == '>' && state->str[state->index + 1] == '=') {
+
+        ret->str = nkppStateInputReadBytes(state, 2);
+        ret->type = NK_PPTOKEN_GREATERTHANOREQUALS;
+
     } else if(state->str[state->index] == '>') {
 
         // Greater-than.
@@ -509,6 +643,11 @@ struct NkppToken *nkppStateInputGetNextToken(
         // Less-than.
         ret->str = nkppStateInputReadBytes(state, 1);
         ret->type = NK_PPTOKEN_LESSTHAN;
+
+    } else if(state->str[state->index] == '!' && state->str[state->index + 1] == '=') {
+
+        ret->str = nkppStateInputReadBytes(state, 2);
+        ret->type = NK_PPTOKEN_NOTEQUAL;
 
     } else if(state->str[state->index] == '=' && state->str[state->index + 1] == '=') {
 
@@ -533,6 +672,51 @@ struct NkppToken *nkppStateInputGetNextToken(
         // Exclamation.
         ret->str = nkppStateInputReadBytes(state, 1);
         ret->type = NK_PPTOKEN_EXCLAMATION;
+
+    } else if(state->str[state->index] == '*') {
+
+        ret->str = nkppStateInputReadBytes(state, 1);
+        ret->type = NK_PPTOKEN_ASTERISK;
+
+    } else if(state->str[state->index] == '/') {
+
+        ret->str = nkppStateInputReadBytes(state, 1);
+        ret->type = NK_PPTOKEN_SLASH;
+
+    } else if(state->str[state->index] == '%') {
+
+        ret->str = nkppStateInputReadBytes(state, 1);
+        ret->type = NK_PPTOKEN_PERCENT;
+
+    } else if(state->str[state->index] == '+') {
+
+        ret->str = nkppStateInputReadBytes(state, 1);
+        ret->type = NK_PPTOKEN_PLUS;
+
+    } else if(state->str[state->index] == '^') {
+
+        ret->str = nkppStateInputReadBytes(state, 1);
+        ret->type = NK_PPTOKEN_BINARYXOR;
+
+    } else if(state->str[state->index] == '|' && state->str[state->index + 1] == '|') {
+
+        ret->str = nkppStateInputReadBytes(state, 2);
+        ret->type = NK_PPTOKEN_LOGICALOR;
+
+    } else if(state->str[state->index] == '|') {
+
+        ret->str = nkppStateInputReadBytes(state, 1);
+        ret->type = NK_PPTOKEN_BINARYOR;
+
+    } else if(state->str[state->index] == '&' && state->str[state->index + 1] == '&') {
+
+        ret->str = nkppStateInputReadBytes(state, 2);
+        ret->type = NK_PPTOKEN_LOGICALAND;
+
+    } else if(state->str[state->index] == '&') {
+
+        ret->str = nkppStateInputReadBytes(state, 1);
+        ret->type = NK_PPTOKEN_BINARYAND;
 
     } else {
 
@@ -761,6 +945,7 @@ struct NkppState *nkppStateClone(
     ret->lineNumber = state->lineNumber;
     ret->outputLineNumber = state->outputLineNumber;
     ret->recursionLevel = state->recursionLevel + 1;
+    ret->preprocessingIfExpression = state->preprocessingIfExpression;
 
     // Copy output.
     if(copyOutput) {
@@ -1362,26 +1547,50 @@ nkbool nkppStateExecute(
 
             } else if(token->type == NK_PPTOKEN_IDENTIFIER) {
 
-                // See if we can find a macro with this name.
-                struct NkppMacro *macro =
-                    nkppStateFindMacro(
-                        state, token->str);
-
-                if(macro) {
-
-                    // Execute that macro.
-                    if(!nkppMacroExecute(state, macro)) {
+                // If we see the "defined" token, and we're
+                // preprocessing something for an "#if" directive (an
+                // expression), then we must skip the identifier in
+                // parenthesis after it!
+                //
+                // This is really annoying, because the "defined" text
+                // can come into the expression in many different
+                // ways, and it looks like the only way to check to
+                // see if we should leave this identifier alone is to
+                // check to see if we have already emitted it in this
+                // string already.
+                //
+                // This is a weird special case that goes against some
+                // of my better judgment.
+                if(state->preprocessingIfExpression &&
+                    nkppStateInputGetNextToken_checkForDefinedExpression(state))
+                {
+                    if(!nkppStateOutputAppendString(state, token->str)) {
                         ret = nkfalse;
                     }
 
                 } else {
 
-                    // This is an identifier, but it's not a defined
-                    // macro.
-                    if(!nkppStateOutputAppendString(state, token->str)) {
-                        ret = nkfalse;
-                    }
+                    // See if we can find a macro with this name.
+                    struct NkppMacro *macro =
+                        nkppStateFindMacro(
+                            state, token->str);
 
+                    if(macro) {
+
+                        // Execute that macro.
+                        if(!nkppMacroExecute(state, macro)) {
+                            ret = nkfalse;
+                        }
+
+                    } else {
+
+                        // This is an identifier, but it's not a defined
+                        // macro.
+                        if(!nkppStateOutputAppendString(state, token->str)) {
+                            ret = nkfalse;
+                        }
+
+                    }
                 }
 
             } else {
