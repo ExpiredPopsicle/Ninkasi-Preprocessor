@@ -5,9 +5,15 @@
 nkbool nkppTestRun(void)
 {
     nkbool ret = nktrue;
+
     if(!nkppTest_pathTest()) {
         ret = nkfalse;
     }
+
+    if(!nkppTest_expressionTest()) {
+        ret = nkfalse;
+    }
+
     return ret;
 }
 

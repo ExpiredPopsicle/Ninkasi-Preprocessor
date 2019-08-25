@@ -293,10 +293,16 @@ nkbool nkppEvaluateExpression_parseValue(
                 expressionState,
                 expressionState,
                 output, recursionLevel + 1);
+
+            // Skip closing paren.
+            if(ret && expressionState->str[expressionState->index] == ')') {
+                nkppStateInputSkipChar(expressionState, nkfalse);
+            }
+
             break;
 
         case NK_PPTOKEN_IDENTIFIER:
-
+\
             // Identifiers are just undefined macros in this context,
             // with the exception of "defined".
             *output = 0;
@@ -340,6 +346,7 @@ nkuint32_t nkppEvaluateExpression_getPrecedence(
         case NK_PPTOKEN_GREATERTHANOREQUALS: return 5;
         case NK_PPTOKEN_LESSTHAN:            return 5;
         case NK_PPTOKEN_LESSTHANOREQUALS:    return 5;
+        case NK_PPTOKEN_QUESTIONMARK:        return 12; // Ternary operator
         default:
             return NK_INVALID_VALUE;
     }
@@ -487,6 +494,18 @@ nkbool nkppEvaluateExpression_applyStackTop(
     return nktrue;
 }
 
+nkbool nkppEvaluateExpression_atEndOfExpression(
+    struct NkppState *expressionState)
+{
+    if(!expressionState->str[expressionState->index] ||
+        expressionState->str[expressionState->index] == ')' ||
+        expressionState->str[expressionState->index] == ':')
+    {
+        return nktrue;
+    }
+    return nkfalse;
+}
+
 nkbool nkppEvaluateExpression_internal(
     struct NkppState *state,
     struct NkppState *expressionState,
@@ -517,41 +536,38 @@ nkbool nkppEvaluateExpression_internal(
         goto nkppEvaluateExpression_cleanup;
     }
 
-    while(expressionState->str[expressionState->index] &&
-        expressionState->str[expressionState->index] != ')')
-    {
-        // Parse a value.
-        {
-            nkint32_t tmpVal;
-            if(!nkppEvaluateExpression_parseValue(
-                    state,
-                    expressionState,
-                    &tmpVal,
-                    recursionLevel + 1))
-            {
-                ret = nkfalse;
-                goto nkppEvaluateExpression_cleanup;
-            }
+    while(!nkppEvaluateExpression_atEndOfExpression(expressionState)) {
 
-            nkppExpressionStackPush(state, valueStack, tmpVal);
+        nkint32_t tmpVal;
+
+        // Parse a value.
+        if(!nkppEvaluateExpression_parseValue(
+                state,
+                expressionState,
+                &tmpVal,
+                recursionLevel + 1))
+        {
+            ret = nkfalse;
+            goto nkppEvaluateExpression_cleanup;
         }
+        nkppExpressionStackPush(state, valueStack, tmpVal);
 
         // Parse an operator.
         nkppStateInputSkipWhitespaceAndComments(expressionState, nkfalse, nkfalse);
-        if(expressionState->str[expressionState->index] &&
-            expressionState->str[expressionState->index] != ')')
-        {
-            // Parse next operator.
+        if(!nkppEvaluateExpression_atEndOfExpression(expressionState)) {
+
+            // Parse operator token.
             operatorToken = nkppStateInputGetNextToken(expressionState, nkfalse);
             if(!operatorToken) {
                 ret = nkfalse;
                 goto nkppEvaluateExpression_cleanup;
             }
             currentOperator = operatorToken->type;
+
             nkppTokenDestroy(state, operatorToken);
             operatorToken = NULL;
 
-            // Make sure whatever we parsed was a good operator.
+            // Make sure whatever we parsed was actually an operator.
             if(nkppEvaluateExpression_getPrecedence(currentOperator) == NK_INVALID_VALUE) {
                 nkppStateAddError(expressionState, "Bad operator token.");
                 ret = nkfalse;
@@ -562,9 +578,9 @@ nkbool nkppEvaluateExpression_internal(
             // this one that are on the top of the stack.
             while(nkppExpressionStackGetSize(operatorStack)) {
 
-                nkint32_t stackTop;
-                nkuint32_t stackPrecedence;
-                nkuint32_t currentPrecedence;
+                nkint32_t stackTop = 0;
+                nkuint32_t stackPrecedence = 0;
+                nkuint32_t currentPrecedence = 0;
 
                 // Compare precedence.
                 if(!nkppExpressionStackPeekTop(operatorStack, &stackTop)) {
@@ -577,6 +593,7 @@ nkbool nkppEvaluateExpression_internal(
                     break;
                 }
 
+                // Stack size sanity check.
                 if(nkppExpressionStackGetSize(valueStack) < 2) {
                     nkppStateAddError(expressionState, "Expression parse error.");
                     ret = nkfalse;
@@ -590,23 +607,88 @@ nkbool nkppEvaluateExpression_internal(
                 }
             }
 
-            // Push this operator onto the stack.
-            nkppExpressionStackPush(state, operatorStack, currentOperator);
+            // Special case for ternary operator handling. Apply this
+            // operator immediately instead of pushing onto the stack.
+            // This is okay, because it's the lowest precedence and
+            // would get applied before anything else anyway.
+            if(currentOperator == NK_PPTOKEN_QUESTIONMARK) {
+
+                nkint32_t valueStackTop = 0;
+                nkint32_t option1Value = 0;
+                nkint32_t option2Value = 0;
+
+                // Get the value at the top of the stack.
+                if(!nkppExpressionStackPeekTop(valueStack, &valueStackTop)) {
+                    ret = nkfalse;
+                    goto nkppEvaluateExpression_cleanup;
+                }
+
+                // Evaluate the sub-expression to use if it passes.
+                if(!nkppEvaluateExpression_internal(
+                    state, expressionState,
+                    &option1Value, recursionLevel + 1))
+                {
+                    assert(0);
+
+                    ret = nkfalse;
+                    goto nkppEvaluateExpression_cleanup;
+                }
+
+                // Skip colon.
+                if(expressionState->str[expressionState->index] != ':') {
+                    nkppStateAddError(expressionState, "Expected ':'.");
+                    ret = nkfalse;
+                    goto nkppEvaluateExpression_cleanup;
+                }
+                if(!nkppStateInputSkipChar(expressionState, nkfalse)) {
+                    ret = nkfalse;
+                    goto nkppEvaluateExpression_cleanup;
+                }
+
+                // Evaluate the sub-expression to use if it fails.
+                if(!nkppEvaluateExpression_internal(
+                    state, expressionState,
+                    &option2Value, recursionLevel + 1))
+                {
+                    assert(0);
+
+                    ret = nkfalse;
+                    goto nkppEvaluateExpression_cleanup;
+                }
+
+                // Remove the value from the top.
+                if(!nkppExpressionStackPop(valueStack)) {
+
+                    assert(0);
+
+                    ret = nkfalse;
+                    goto nkppEvaluateExpression_cleanup;
+                }
+
+                // Push the result.
+                if(!nkppExpressionStackPush(
+                        expressionState, valueStack,
+                        valueStackTop ? option1Value : option2Value))
+                {
+                    assert(0);
+
+                    ret = nkfalse;
+                    goto nkppEvaluateExpression_cleanup;
+                }
+
+            } else {
+
+                // Push this operator onto the stack.
+                nkppExpressionStackPush(state, operatorStack, currentOperator);
+
+            }
         }
 
         nkppStateInputSkipWhitespaceAndComments(expressionState, nkfalse, nkfalse);
     }
 
-    if(expressionState->str[expressionState->index] == ')') {
-        nkppStateInputSkipChar(expressionState, nkfalse);
-    }
-
+    // Evaluate the rest of the operators on the operator stack.
     while(nkppExpressionStackGetSize(operatorStack)) {
-
-        printf("Applying final operator %lu %lu\n",
-            (long)nkppExpressionStackGetSize(operatorStack),
-            (long)nkppExpressionStackGetSize(valueStack));
-
         if(!nkppEvaluateExpression_applyStackTop(
                 expressionState,
                 valueStack,
@@ -617,17 +699,13 @@ nkbool nkppEvaluateExpression_internal(
         }
     }
 
-    printf("Operators parsed: %lu\n", operatorStack ? (long)operatorStack->size : 0);
-    printf("Values parsed: %lu\n", valueStack ? (long)valueStack->size : 0);
-
+    // Expression result is the last value on the top of the stack.
     if(nkppExpressionStackGetSize(valueStack) == 1) {
         nkppExpressionStackPeekTop(valueStack, output);
     } else {
         ret = nkfalse;
         goto nkppEvaluateExpression_cleanup;
     }
-
-    printf("Output: %ld\n", (long)*output);
 
 nkppEvaluateExpression_cleanup:
     if(operatorToken) {
@@ -707,3 +785,91 @@ nkppEvaluateExpression_outer_cleanup:
 //     "<=" less-than or equal    ( 5)
 //   Ternary (?:) operator        (12)
 
+
+
+
+
+#if NK_PP_ENABLETESTS
+
+nkbool nkppTest_expressionTest(void)
+{
+    // struct NkppErrorState errorState;
+    // struct NkppState *state;
+    struct NkppState *exprState;
+    nkbool ret = nktrue;
+
+    NK_PPTEST_SECTION("nkppTest_expressionTest()");
+
+    // memset(&errorState, 0, sizeof(errorState));
+
+    // state = nkppStateCreate(NULL, NULL);
+    exprState = nkppStateCreate(NULL, NULL);
+    exprState->preprocessingIfExpression = nktrue;
+
+    // nkppStateExecute(
+    //     exprState,
+    //     "#define junk 1\n"
+    //     "defined(junk) + \n"
+    //     "junk + \n"
+    //     "junk\n");
+
+    // nkppStateExecute(
+    //     exprState,
+    //     "1 + 2 * 5 * 4 * 2 + 6");
+
+    // nkppStateExecute(
+    //     exprState,
+    //     "1 + 5 * 2 * 3");
+
+    // nkppStateExecute(
+    //     exprState,
+    //     "#define foo\n"
+    //     "5 * (1 + 2) * 10");
+
+    // printf("Exp preprocessed: %s\n", exprState->output);
+
+
+
+    // {
+    //     nkbool r =
+    //         nkppEvaluateExpression(exprState, exprState->output, &output, 0);
+
+    //     // nkppEvaluateExpression(state, "-(~(-(~(-(~100))))) + 2 * (3 + 4)", &output, 0);
+    //     printf("Final expression output (%s): %ld\n", r ? "good" : "bad", (long)output);
+    // }
+
+
+    // printf("[%4s] %20s == %ld ? %ld\n",                          \
+    //     success ? "good" : "bad", #x, (long)(x), (long)output);  \
+    //
+
+  #define NK_PP_EXPRESSIONTEST_CHECK(x)                         \
+    do {                                                        \
+        nkint32_t output = 0;                                   \
+        NK_PPTEST_CHECK(                                        \
+            nkppEvaluateExpression(                             \
+                exprState, #x, &output, 0) && output == (x));   \
+    } while(0)
+
+    NK_PP_EXPRESSIONTEST_CHECK(1 + 1);
+    NK_PP_EXPRESSIONTEST_CHECK(1 + 1 * 2);
+    NK_PP_EXPRESSIONTEST_CHECK(1 + 1 * -2);
+    NK_PP_EXPRESSIONTEST_CHECK(1 + 1 * ~2);
+    NK_PP_EXPRESSIONTEST_CHECK(1 + (1 * -2));
+    NK_PP_EXPRESSIONTEST_CHECK((1 + 5) * -2);
+    NK_PP_EXPRESSIONTEST_CHECK((1 + 5) * (3 * 8));
+    NK_PP_EXPRESSIONTEST_CHECK((1 + 5) / (3 * 8));
+    NK_PP_EXPRESSIONTEST_CHECK((3 * 8) / (1 + 5));
+    NK_PP_EXPRESSIONTEST_CHECK((3/2));
+    NK_PP_EXPRESSIONTEST_CHECK(5/(3/2));
+    NK_PP_EXPRESSIONTEST_CHECK(-1/(-2147483646 - 2));
+    NK_PP_EXPRESSIONTEST_CHECK(1 ? 2 : 3);
+    NK_PP_EXPRESSIONTEST_CHECK(1 ? 2 : 3 ? 4 : 5);
+    NK_PP_EXPRESSIONTEST_CHECK(1 ? 2 ? 6 : 7 : 3 ? 4 : 5);
+
+    nkppStateDestroy(exprState);
+
+    return ret;
+}
+
+#endif // NK_PP_ENABLETESTS

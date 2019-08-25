@@ -718,6 +718,16 @@ struct NkppToken *nkppStateInputGetNextToken(
         ret->str = nkppStateInputReadBytes(state, 1);
         ret->type = NK_PPTOKEN_BINARYAND;
 
+    } else if(state->str[state->index] == '?') {
+
+        ret->str = nkppStateInputReadBytes(state, 1);
+        ret->type = NK_PPTOKEN_QUESTIONMARK;
+
+    } else if(state->str[state->index] == ':') {
+
+        ret->str = nkppStateInputReadBytes(state, 1);
+        ret->type = NK_PPTOKEN_COLON;
+
     } else {
 
         // Unknown.

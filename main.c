@@ -190,92 +190,103 @@ int main(int argc, char *argv[])
 
 
 
-    {
-        // struct NkppErrorState errorState;
-        struct NkppState *state;
-        struct NkppState *preprocessExpressionState;
-        nkint32_t output = 0;
+//     {
+//         // struct NkppErrorState errorState;
+//         struct NkppState *state;
+//         struct NkppState *exprState;
+//         nkint32_t output = 0;
 
-        // memset(&errorState, 0, sizeof(errorState));
+//         // memset(&errorState, 0, sizeof(errorState));
 
-        state = nkppStateCreate(NULL, NULL);
-        preprocessExpressionState = nkppStateCreate(NULL, NULL);
-        preprocessExpressionState->preprocessingIfExpression = nktrue;
+//         state = nkppStateCreate(NULL, NULL);
+//         exprState = nkppStateCreate(NULL, NULL);
+//         exprState->preprocessingIfExpression = nktrue;
 
-        // nkppStateExecute(
-        //     preprocessExpressionState,
-        //     "#define junk 1\n"
-        //     "defined(junk) + \n"
-        //     "junk + \n"
-        //     "junk\n");
+//         // nkppStateExecute(
+//         //     exprState,
+//         //     "#define junk 1\n"
+//         //     "defined(junk) + \n"
+//         //     "junk + \n"
+//         //     "junk\n");
 
-        // nkppStateExecute(
-        //     preprocessExpressionState,
-        //     "1 + 2 * 5 * 4 * 2 + 6");
+//         // nkppStateExecute(
+//         //     exprState,
+//         //     "1 + 2 * 5 * 4 * 2 + 6");
 
-        // nkppStateExecute(
-        //     preprocessExpressionState,
-        //     "1 + 5 * 2 * 3");
+//         // nkppStateExecute(
+//         //     exprState,
+//         //     "1 + 5 * 2 * 3");
 
-        nkppStateExecute(
-            preprocessExpressionState,
-            "#define foo\n"
-            "5 * (1 + 2) * 10");
+//         nkppStateExecute(
+//             exprState,
+//             "#define foo\n"
+//             "5 * (1 + 2) * 10");
 
-        printf("Exp preprocessed: %s\n", preprocessExpressionState->output);
-
-
-
-        {
-            nkbool r =
-                nkppEvaluateExpression(preprocessExpressionState, preprocessExpressionState->output, &output, 0);
-
-            // nkppEvaluateExpression(state, "-(~(-(~(-(~100))))) + 2 * (3 + 4)", &output, 0);
-            printf("Final expression output (%s): %ld\n", r ? "good" : "bad", (long)output);
-        }
-
-      #define TEST_EXPRESSION(x)                                        \
-        do {                                                            \
-            nkint32_t output = 0;                                       \
-            nkppEvaluateExpression(preprocessExpressionState, #x, &output, 0); \
-            printf("%20s == %ld\n", #x, (long)output);                  \
-            assert(output == (x));                                      \
-    } while(0)
-
-        TEST_EXPRESSION(1 + 1);
-        TEST_EXPRESSION(1 + 1 * 2);
-        TEST_EXPRESSION(1 + 1 * -2);
-        TEST_EXPRESSION(1 + 1 * ~2);
-        TEST_EXPRESSION(1 + (1 * -2));
-        TEST_EXPRESSION((1 + 5) * -2);
-        TEST_EXPRESSION((1 + 5) * (3 * 8));
-        TEST_EXPRESSION((1 + 5) / (3 * 8));
-        TEST_EXPRESSION((3 * 8) / (1 + 5));
-        TEST_EXPRESSION((3/2));
-        TEST_EXPRESSION(5/(3/2));
-        TEST_EXPRESSION(-1/(-2147483646 - 2));
+//         printf("Exp preprocessed: %s\n", exprState->output);
 
 
 
-        // while(errorState.firstError) {
+//         {
+//             nkbool r =
+//                 nkppEvaluateExpression(exprState, exprState->output, &output, 0);
 
-        //     printf("error: %s:%ld: %s\n",
-        //         errorState.firstError->filename,
-        //         (long)errorState.firstError->lineNumber,
-        //         errorState.firstError->text);
+//             // nkppEvaluateExpression(state, "-(~(-(~(-(~100))))) + 2 * (3 + 4)", &output, 0);
+//             printf("Final expression output (%s): %ld\n", r ? "good" : "bad", (long)output);
+//         }
 
-        //     {
-        //         struct NkppError *next = errorState.firstError->next;
-        //         nkppFree(state, errorState.firstError->filename);
-        //         nkppFree(state, errorState.firstError->text);
-        //         nkppFree(state, errorState.firstError);
-        //         errorState.firstError = next;
-        //     }
-        // }
+// #if NK_PP_ENABLETESTS
 
-        nkppStateDestroy(preprocessExpressionState);
-        nkppStateDestroy(state);
-    }
+//         // printf("[%4s] %20s == %ld ? %ld\n",                          \
+//         //     success ? "good" : "bad", #x, (long)(x), (long)output);  \
+//         //
+
+//       #define NK_PP_EXPRESSIONTEST_CHECK(x)                         \
+//         do {                                                        \
+//             nkbool ret = nktrue;                                    \
+//             nkint32_t output = 0;                                   \
+//             nkbool success;                                         \
+//             NK_PPTEST_CHECK(                                        \
+//                 nkppEvaluateExpression(                             \
+//                     exprState, #x, &output, 0) && output == (x));   \
+//         } while(0)
+
+//         NK_PP_EXPRESSIONTEST_CHECK(1 + 1);
+//         NK_PP_EXPRESSIONTEST_CHECK(1 + 1 * 2);
+//         NK_PP_EXPRESSIONTEST_CHECK(1 + 1 * -2);
+//         NK_PP_EXPRESSIONTEST_CHECK(1 + 1 * ~2);
+//         NK_PP_EXPRESSIONTEST_CHECK(1 + (1 * -2));
+//         NK_PP_EXPRESSIONTEST_CHECK((1 + 5) * -2);
+//         NK_PP_EXPRESSIONTEST_CHECK((1 + 5) * (3 * 8));
+//         NK_PP_EXPRESSIONTEST_CHECK((1 + 5) / (3 * 8));
+//         NK_PP_EXPRESSIONTEST_CHECK((3 * 8) / (1 + 5));
+//         NK_PP_EXPRESSIONTEST_CHECK((3/2));
+//         NK_PP_EXPRESSIONTEST_CHECK(5/(3/2));
+//         NK_PP_EXPRESSIONTEST_CHECK(-1/(-2147483646 - 2));
+//         NK_PP_EXPRESSIONTEST_CHECK(1 ? 2 : 3);
+//         NK_PP_EXPRESSIONTEST_CHECK(1 ? 2 : 3 ? 4 : 5);
+//         NK_PP_EXPRESSIONTEST_CHECK(1 ? 2 ? 6 : 7 : 3 ? 4 : 5);
+
+// #endif // NK_PP_ENABLETESTS
+
+//         // while(errorState.firstError) {
+
+//         //     printf("error: %s:%ld: %s\n",
+//         //         errorState.firstError->filename,
+//         //         (long)errorState.firstError->lineNumber,
+//         //         errorState.firstError->text);
+
+//         //     {
+//         //         struct NkppError *next = errorState.firstError->next;
+//         //         nkppFree(state, errorState.firstError->filename);
+//         //         nkppFree(state, errorState.firstError->text);
+//         //         nkppFree(state, errorState.firstError);
+//         //         errorState.firstError = next;
+//         //     }
+//         // }
+
+//         nkppStateDestroy(exprState);
+//         nkppStateDestroy(state);
+//     }
 
 
     return 0;

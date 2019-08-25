@@ -12,4 +12,8 @@ nkbool nkppEvaluateExpression(
     nkint32_t *output,
     nkuint32_t recursionLevel);
 
+#if NK_PP_ENABLETESTS
+nkbool nkppTest_expressionTest(void);
+#endif // NK_PP_ENABLETESTS
+
 #endif // NK_PPEXPR_H
