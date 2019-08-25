@@ -209,13 +209,17 @@ int main(int argc, char *argv[])
         //     "junk + \n"
         //     "junk\n");
 
-        nkppStateExecute(
-            preprocessExpressionState,
-            "1 + 2 * 5 * 4 * 2 + 6");
+        // nkppStateExecute(
+        //     preprocessExpressionState,
+        //     "1 + 2 * 5 * 4 * 2 + 6");
 
         // nkppStateExecute(
         //     preprocessExpressionState,
         //     "1 + 5 * 2 * 3");
+
+        nkppStateExecute(
+            preprocessExpressionState,
+            "5 * (1 + 2) * 10");
 
         printf("Exp preprocessed: %s\n", preprocessExpressionState->output);
 

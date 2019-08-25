@@ -201,6 +201,12 @@ nkppEvaluateExpression_macroDefined_cleanup:
     return ret;
 }
 
+nkbool nkppEvaluateExpression_internal(
+    struct NkppState *state,
+    struct NkppState *expressionState,
+    nkint32_t *output,
+    nkuint32_t recursionLevel);
+
 nkbool nkppEvaluateExpression_parseValue(
     struct NkppState *state,
     struct NkppState *expressionState,
@@ -285,20 +291,23 @@ nkbool nkppEvaluateExpression_parseValue(
 
         case NK_PPTOKEN_OPENPAREN:
 
-            ret = nkppEvaluateExpression(
+            printf("Parsing subexpression: %s\n",
+                expressionState->str + expressionState->index);
+
+            ret = nkppEvaluateExpression_internal(
                 expressionState,
-                expressionState->str + expressionState->index,
+                expressionState,
                 output, recursionLevel + 1);
+
+            printf("Parsed subexpression: %s\n",
+                expressionState->str + expressionState->index);
+
             break;
 
         case NK_PPTOKEN_IDENTIFIER:
 
             // Identifiers are just undefined macros in this context,
-            // with the exception of "defined", which we'll do the
-            // logic for here.
-
-            // FIXME: Handle "defined()"
-
+            // with the exception of "defined".
             *output = 0;
             break;
 
@@ -345,35 +354,52 @@ nkuint32_t nkppEvaluateExpression_getPrecedence(
     }
 }
 
-nkint32_t nkppEvaluateExpression_applyOperator(
+nkbool nkppEvaluateExpression_applyOperator(
+    struct NkppState *state,
     enum NkppTokenType type,
     nkint32_t a,
-    nkint32_t b)
+    nkint32_t b,
+    nkint32_t *result)
 {
     switch(type) {
-        case NK_PPTOKEN_ASTERISK:            return a *  b;  // Multiply
-            // FIXME: Check for div0 or -1/-2^31
-        case NK_PPTOKEN_SLASH:               return a /  b;  // Divide
-            // FIXME: Same as above.
-        case NK_PPTOKEN_PERCENT:             return a %  b;  // Modulo
-        case NK_PPTOKEN_PLUS:                return a +  b;  // Add
-        case NK_PPTOKEN_MINUS:               return a -  b;  // Subtract (NOT negation prefix!)
-        case NK_PPTOKEN_LEFTSHIFT:           return a << b;
-        case NK_PPTOKEN_RIGHTSHIFT:          return a >> b;
-        case NK_PPTOKEN_BINARYAND:           return a &  b;
-        case NK_PPTOKEN_BINARYXOR:           return a ^  b;
-        case NK_PPTOKEN_BINARYOR:            return a |  b;
-        case NK_PPTOKEN_LOGICALAND:          return a && b;
-        case NK_PPTOKEN_LOGICALOR:           return a || b;
-        case NK_PPTOKEN_NOTEQUAL:            return a != b;
-        case NK_PPTOKEN_COMPARISONEQUALS:    return a == b;
-        case NK_PPTOKEN_GREATERTHAN:         return a >  b;
-        case NK_PPTOKEN_GREATERTHANOREQUALS: return a >= b;
-        case NK_PPTOKEN_LESSTHAN:            return a <  b;
-        case NK_PPTOKEN_LESSTHANOREQUALS:    return a <= b;
+
+        case NK_PPTOKEN_ASTERISK:
+            *result = (a *  b);
+            break;
+
+        case NK_PPTOKEN_SLASH:
+        case NK_PPTOKEN_PERCENT:
+            if(b == 0) {
+                nkppStateAddError(state, "Division by zero in expression.");
+                return nkfalse;
+            }
+            if(b == -1 && a == -2147483647 - 1) {
+                nkppStateAddError(state, "Result of division cannot be expressed.");
+                return nkfalse;
+            }
+            *result = type == NK_PPTOKEN_SLASH ? (a /  b) : (a %  b);
+            break;
+
+        case NK_PPTOKEN_PLUS:                *result = (a +  b); break;  // Add
+        case NK_PPTOKEN_MINUS:               *result = (a -  b); break;  // Subtract (NOT negation prefix!)
+        case NK_PPTOKEN_LEFTSHIFT:           *result = (a << b); break;
+        case NK_PPTOKEN_RIGHTSHIFT:          *result = (a >> b); break;
+        case NK_PPTOKEN_BINARYAND:           *result = (a &  b); break;
+        case NK_PPTOKEN_BINARYXOR:           *result = (a ^  b); break;
+        case NK_PPTOKEN_BINARYOR:            *result = (a |  b); break;
+        case NK_PPTOKEN_LOGICALAND:          *result = (a && b); break;
+        case NK_PPTOKEN_LOGICALOR:           *result = (a || b); break;
+        case NK_PPTOKEN_NOTEQUAL:            *result = (a != b); break;
+        case NK_PPTOKEN_COMPARISONEQUALS:    *result = (a == b); break;
+        case NK_PPTOKEN_GREATERTHAN:         *result = (a >  b); break;
+        case NK_PPTOKEN_GREATERTHANOREQUALS: *result = (a >= b); break;
+        case NK_PPTOKEN_LESSTHAN:            *result = (a <  b); break;
+        case NK_PPTOKEN_LESSTHANOREQUALS:    *result = (a <= b); break;
         default:
-            return NK_INVALID_VALUE;
+            *result = NK_INVALID_VALUE;
+            return nkfalse;
     }
+    return nktrue;
 }
 
 nkbool nkppEvaluateExpression_applyStackTop(
@@ -387,37 +413,36 @@ nkbool nkppEvaluateExpression_applyStackTop(
     nkint32_t operatorStackTop = NK_INVALID_VALUE;
 
     if(!nkppExpressionStackPeekTop(operatorStack, &operatorStackTop)) {
-        printf("ASDF: 1\n");
         return nkfalse;
     }
 
     if(!nkppExpressionStackPop(operatorStack)) {
-        printf("ASDF: 1.5\n");
         return nkfalse;
     }
 
     if(!nkppExpressionStackPeekTop(valueStack, &a)) {
-        printf("ASDF: 2\n");
         return nkfalse;
     }
 
     if(!nkppExpressionStackPop(valueStack)) {
-        printf("ASDF: 3\n");
         return nkfalse;
     }
 
     if(!nkppExpressionStackPeekTop(valueStack, &b)) {
-        printf("ASDF: 4\n");
         return nkfalse;
     }
 
     if(!nkppExpressionStackPop(valueStack)) {
-        printf("ASDF: 5\n");
         return nkfalse;
     }
 
-    result = nkppEvaluateExpression_applyOperator(
-        operatorStackTop, a, b);
+    if(!nkppEvaluateExpression_applyOperator(
+            state,
+            operatorStackTop,
+            a, b, &result))
+    {
+        return nkfalse;
+    }
 
     if(!nkppExpressionStackPush(state, valueStack, result)) {
         return nkfalse;
@@ -426,13 +451,12 @@ nkbool nkppEvaluateExpression_applyStackTop(
     return nktrue;
 }
 
-nkbool nkppEvaluateExpression(
+nkbool nkppEvaluateExpression_internal(
     struct NkppState *state,
-    const char *expression,
+    struct NkppState *expressionState,
     nkint32_t *output,
     nkuint32_t recursionLevel)
 {
-    struct NkppState *expressionState = NULL;
     nkbool ret = nktrue;
     nkuint32_t actualRecursionLevel =
         state->recursionLevel + recursionLevel;
@@ -457,18 +481,9 @@ nkbool nkppEvaluateExpression(
         goto nkppEvaluateExpression_cleanup;
     }
 
-    // Create a state just for reading tokens out of the input string.
-    expressionState = nkppStateCreate(
-        state->errorState, state->memoryCallbacks);
-    if(!expressionState) {
-        ret = nkfalse;
-        goto nkppEvaluateExpression_cleanup;
-    }
-    expressionState->str = expression;
-    expressionState->recursionLevel = state->recursionLevel;
-
-    while(expressionState->str[expressionState->index]) {
-
+    while(expressionState->str[expressionState->index] &&
+        expressionState->str[expressionState->index] != ')')
+    {
         // Parse a value.
         {
             nkint32_t tmpVal;
@@ -487,7 +502,10 @@ nkbool nkppEvaluateExpression(
 
         // Parse an operator.
         nkppStateInputSkipWhitespaceAndComments(expressionState, nkfalse, nkfalse);
-        if(expressionState->str[expressionState->index]) {
+        if(expressionState->str[expressionState->index] &&
+            expressionState->str[expressionState->index] != ')')
+        {
+            printf("Hrmmm... %s\n", expressionState->str + expressionState->index);
 
             // Parse next operator.
             operatorToken = nkppStateInputGetNextToken(expressionState, nkfalse);
@@ -531,25 +549,11 @@ nkbool nkppEvaluateExpression(
                     goto nkppEvaluateExpression_cleanup;
                 }
 
-                nkppExpressionStackPop(operatorStack);
-
-                // Apply operator.
-                {
-                    nkint32_t a = 0;
-                    nkint32_t b = 0;
-
-                    nkint32_t result = 0;
-
-                    nkppExpressionStackPeekTop(valueStack, &a);
-                    nkppExpressionStackPop(valueStack);
-                    nkppExpressionStackPeekTop(valueStack, &b);
-                    nkppExpressionStackPop(valueStack);
-
-                    result = nkppEvaluateExpression_applyOperator(
-                        stackTop, a, b);
-
-                    nkppExpressionStackPush(state, valueStack, result);
+                if(!nkppEvaluateExpression_applyStackTop(state, valueStack, operatorStack)) {
+                    ret = nkfalse;
+                    goto nkppEvaluateExpression_cleanup;
                 }
+
 
                 printf("Applied operator\n");
             }
@@ -561,11 +565,15 @@ nkbool nkppEvaluateExpression(
         nkppStateInputSkipWhitespaceAndComments(expressionState, nkfalse, nkfalse);
     }
 
+    if(expressionState->str[expressionState->index] == ')') {
+        nkppStateInputSkipChar(expressionState, nkfalse);
+    }
+
     while(nkppExpressionStackGetSize(operatorStack)) {
 
         printf("Applying final operator %lu %lu\n",
-            nkppExpressionStackGetSize(operatorStack),
-            nkppExpressionStackGetSize(valueStack));
+            (long)nkppExpressionStackGetSize(operatorStack),
+            (long)nkppExpressionStackGetSize(valueStack));
 
         if(!nkppEvaluateExpression_applyStackTop(
                 expressionState,
@@ -580,13 +588,14 @@ nkbool nkppEvaluateExpression(
     printf("Operators parsed: %lu\n", operatorStack ? (long)operatorStack->size : 0);
     printf("Values parsed: %lu\n", valueStack ? (long)valueStack->size : 0);
 
-
     if(nkppExpressionStackGetSize(valueStack) == 1) {
         nkppExpressionStackPeekTop(valueStack, output);
     } else {
         ret = nkfalse;
         goto nkppEvaluateExpression_cleanup;
     }
+
+    printf("Output: %ld\n", (long)*output);
 
 nkppEvaluateExpression_cleanup:
     if(operatorToken) {
@@ -598,12 +607,43 @@ nkppEvaluateExpression_cleanup:
     if(operatorStack) {
         nkppExpressionStackDestroy(state, operatorStack);
     }
+
+    return ret;
+}
+
+nkbool nkppEvaluateExpression(
+    struct NkppState *state,
+    const char *expression,
+    nkint32_t *output,
+    nkuint32_t recursionLevel)
+{
+    nkbool ret;
+
+    struct NkppState *expressionState = NULL;
+
+    // Create a state just for reading tokens out of the input string.
+    expressionState = nkppStateCreate(
+        state->errorState, state->memoryCallbacks);
+    if(!expressionState) {
+        ret = nkfalse;
+        goto nkppEvaluateExpression_outer_cleanup;
+    }
+    expressionState->str = expression;
+    expressionState->recursionLevel = state->recursionLevel;
+
+    // Execute.
+    ret = nkppEvaluateExpression_internal(
+        state, expressionState,
+        output, recursionLevel);
+
+nkppEvaluateExpression_outer_cleanup:
     if(expressionState) {
         nkppStateDestroy(expressionState);
     }
 
     return ret;
 }
+
 
 // Operators and "stuff" to support...
 //   Parenthesis                  ( 0) (treat as value)
