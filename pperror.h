@@ -21,4 +21,17 @@ struct NkppErrorState
     nkbool allocationFailure;
 };
 
+/// Use this to initialize an NkppErrorState *before* being used to
+/// create an NkppState.
+void nkppErrorStateInit(struct NkppErrorState *errorState);
+
+/// Use this to clean up an NkppErrorState *before* destroying the
+/// root NkppState that used this. NkppErrorState is not owned by a
+/// particular NkppState, but the errors inside were allocated through
+/// one, and as such must be deleted before the last NkppState is
+/// fully destroyed.
+void nkppErrorStateClear(
+    struct NkppState *state,
+    struct NkppErrorState *errorState);
+
 #endif // NK_PPERROR_H

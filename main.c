@@ -94,11 +94,13 @@ int main(int argc, char *argv[])
         struct NkppState *state;
         char *testStr2;
 
-        // FIXME: Make a real init function for this.
-        errorState.firstError = NULL;
-        errorState.lastError = NULL;
-        errorState.allocationFailure = nkfalse;
+        // errorState.firstError = NULL;
+        // errorState.lastError = NULL;
+        // errorState.allocationFailure = nkfalse;
 
+        nkppErrorStateInit(&errorState);
+
+        // FIXME: Make a real init function for this.
         memCallbacks.mallocWrapper = NULL;
         memCallbacks.freeWrapper = NULL;
         memCallbacks.loadFileCallback = loadFile;
@@ -161,21 +163,18 @@ int main(int argc, char *argv[])
 
         }
 
-        while(errorState.firstError) {
-
-            printf("error: %s:%ld: %s\n",
-                errorState.firstError->filename,
-                (long)errorState.firstError->lineNumber,
-                errorState.firstError->text);
-
-            {
-                struct NkppError *next = errorState.firstError->next;
-                nkppFree(state, errorState.firstError->filename);
-                nkppFree(state, errorState.firstError->text);
-                nkppFree(state, errorState.firstError);
-                errorState.firstError = next;
+        {
+            struct NkppError *error = errorState.firstError;
+            while(error) {
+                printf("error: %s:%ld: %s\n",
+                    error->filename,
+                    (long)error->lineNumber,
+                    error->text);
+                error = error->next;
             }
         }
+
+        nkppErrorStateClear(state, &errorState);
 
         nkppFree(state, testStr2);
 

@@ -51,6 +51,7 @@ struct NkppMemoryCallbacks
     /// so that it may be freed by the preprocessor.
     NkppLoadFileCallback loadFileCallback;
 
+    /// Userdata used by all callbacks.
     void *userData;
 };
 
