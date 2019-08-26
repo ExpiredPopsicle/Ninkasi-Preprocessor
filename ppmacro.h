@@ -22,6 +22,12 @@ struct NkppMacro
     // NULL and we need this instead.
     nkbool functionStyleMacro;
 
+    // This is true if this macro is part of the parameter list being
+    // used in an outer macro. For example, the 'x' in foo(x). These
+    // are NOT carried on to child states, and stringification only
+    // works with them.
+    nkbool isArgumentName;
+
     struct NkppMacro *next;
 };
 

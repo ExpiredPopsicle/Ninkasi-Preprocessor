@@ -29,6 +29,7 @@ struct NkppMacro *nkppMacroCreate(
         ret->arguments = NULL;
         ret->next = NULL;
         ret->functionStyleMacro = nkfalse;
+        ret->isArgumentName = nkfalse;
     }
 
     return ret;
@@ -246,6 +247,8 @@ nkbool nkppMacroExecute(
                         ret = nkfalse;
                         goto nkppMacroExecute_cleanup;
                     }
+
+                    newMacro->isArgumentName = nktrue;
 
                     nkppStateAddMacro(clonedState, newMacro);
                     newMacro = NULL;

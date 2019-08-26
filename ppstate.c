@@ -259,7 +259,7 @@ nkbool nkppStateOutputAppendChar(struct NkppState *state, char c)
         if(!state->output || state->output[state->outputLength - 1] == '\n') {
 
             // FIXME: Make this optional.
-            ret = ret && nkppStateDebugOutputLineStart(state);
+            ret = nkppStateDebugOutputLineStart(state) && ret;
 
             if(state->outputLineNumber != state->lineNumber) {
 
@@ -904,8 +904,41 @@ struct NkppMacro *nkppStateFindMacro(
 
         // Update to whatever it is now.
         if(currentMacro) {
+
             if(!nkppStrcmp(identifier, "__FILE__")) {
-                nkppMacroSetDefinition(state, currentMacro, state->filename);
+
+                char *escapedString = nkppEscapeString(state, state->filename);
+
+                if(escapedString) {
+
+                    nkuint32_t escapedStringLen = nkppStrlen(escapedString);
+                    nkuint32_t quotedStringBufLen;
+                    nkbool overflow = nkfalse;
+
+                    NK_CHECK_OVERFLOW_UINT_ADD(
+                        escapedStringLen, 3,
+                        quotedStringBufLen, overflow);
+
+                    if(!overflow) {
+                        char *quotedString = nkppMalloc(state, quotedStringBufLen);
+
+                        if(quotedString) {
+
+                            // Add the actual quotes in.
+                            quotedString[0] = '"';
+                            nkppMemcpy(quotedString + 1, escapedString, escapedStringLen);
+                            quotedString[escapedStringLen + 1] = '"';
+                            quotedString[escapedStringLen + 2] = 0;
+
+                            nkppMacroSetDefinition(state, currentMacro, quotedString);
+
+                            nkppFree(state, quotedString);
+                        }
+                    }
+
+                    nkppFree(state, escapedString);
+                }
+
             } else if(!nkppStrcmp(identifier, "__LINE__")) {
                 char tmp[128];
                 sprintf(tmp, "%lu", (unsigned long)state->lineNumber);
@@ -999,20 +1032,26 @@ struct NkppState *nkppStateClone(
 
     // Note: Nested if state is not copied.
 
+    // Note: Macros that come in as arguments to another macro are not
+    // copied.
+
     currentMacro = state->macros;
     macroWritePtr = &ret->macros;
 
     while(currentMacro) {
 
-        struct NkppMacro *clonedMacro =
-            nkppMacroClone(state, currentMacro);
-        if(!clonedMacro) {
-            nkppStateDestroy(ret);
-            return NULL;
-        }
+        if(!currentMacro->isArgumentName) {
 
-        *macroWritePtr = clonedMacro;
-        macroWritePtr = &clonedMacro->next;
+            struct NkppMacro *clonedMacro =
+                nkppMacroClone(state, currentMacro);
+            if(!clonedMacro) {
+                nkppStateDestroy(ret);
+                return NULL;
+            }
+
+            *macroWritePtr = clonedMacro;
+            macroWritePtr = &clonedMacro->next;
+        }
 
         currentMacro = currentMacro->next;
     }
@@ -1565,9 +1604,7 @@ nkbool nkppStateExecute(
                 nkuint32_t stringificationStartIndex = state->index - 1;
                 nkuint32_t stringificationEndIndex;
                 struct NkppToken *nameToken = NULL;
-
-                // FIXME: Only stringify macro parameters!
-                // FIXME: Fix the name of the token variable here.
+                struct NkppMacro *macro = NULL;
 
                 // Stringification.
                 nameToken = nkppStateInputGetNextToken(state, nkfalse);
@@ -1575,8 +1612,8 @@ nkbool nkppStateExecute(
 
                 if(nameToken &&
                     nameToken->type == NK_PPTOKEN_IDENTIFIER &&
-                    nkppStateFindMacro(state, nameToken->str)
-                    /* FIXME: Check macro is argument here*/)
+                    (macro = nkppStateFindMacro(state, nameToken->str)) &&
+                    macro->isArgumentName)
                 {
                     if(!nkppMacroStringify(state, nameToken->str)) {
                         nkppStateAddError(state, "Stringification failed.");
