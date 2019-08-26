@@ -39,6 +39,7 @@ struct NkppState *nkppStateCreate(
         ret->recursionLevel = 0;
         ret->concatenationEnabled = nkfalse;
         ret->preprocessingIfExpression = nkfalse;
+        ret->tokensOnThisLine = 0;
 
         // Memory callbacks now set up. Can use normal functions that
         // require allocations.
@@ -309,6 +310,7 @@ nkbool nkppStateInputSkipChar(struct NkppState *state, nkbool output)
 
     if(state->str && state->str[state->index] == '\n') {
         state->lineNumber++;
+        state->tokensOnThisLine = 0;
 
         // FIXME: Remove this.
         printf("Line: %ld\n", (long)state->lineNumber);
@@ -743,6 +745,8 @@ struct NkppToken *nkppStateInputGetNextToken(
         nkppFree(state, ret);
         ret = NULL;
     }
+
+    state->tokensOnThisLine++;
 
     return ret;
 }
@@ -1436,14 +1440,96 @@ nkbool nkppStateFlipIfResult(
     return !overflow;
 }
 
+nkbool nkppStateDirective(
+    struct NkppState *state)
+{
+    nkbool ret = nktrue;
+    struct NkppToken *directiveNameToken = NULL;
+    nkuint32_t directiveLineCount = 0;
+    char *line = NULL;
+
+    if(!nkppStateInputSkipWhitespaceAndComments(state, nkfalse, nktrue)) {
+        ret = nkfalse;
+        goto nkppStateDirective_cleanup;
+    }
+    if(state->str[state->index] == '\n') {
+        // Made it to the end of a line and didn't find anything.
+        // Don't do anything (just like GCC).
+        ret = nktrue;
+        goto nkppStateDirective_cleanup;
+    }
+
+    // Make sure there's the start of a valid identifier
+    // as the very next character. We don't support
+    // whitespace between the hash and a directive name.
+    if(!nkppIsValidIdentifierCharacter(state->str[state->index], nktrue)) {
+        nkppStateAddError(state, "Invalid token in directive.\n");
+        ret = nkfalse;
+        goto nkppStateDirective_cleanup;
+    }
+
+    // Get the directive name.
+    directiveNameToken = nkppStateInputGetNextToken(state, nktrue);
+    if(!directiveNameToken) {
+        nkppStateAddError(state, "Expected directive name.");
+        ret = nkfalse;
+        goto nkppStateDirective_cleanup;
+    }
+
+    // Check to see if this is something we
+    // understand by going through the *actual*
+    // list of directives.
+    if(!nkppDirectiveIsValid(directiveNameToken->str)) {
+        nkppStateAddError(state, "Invalid directive name.");
+        ret = nkfalse;
+        goto nkppStateDirective_cleanup;
+    }
+
+    // Read all the arguments for this directive.
+    line = nkppStateInputReadRestOfLine(
+        state, &directiveLineCount);
+    if(!line) {
+        ret = nkfalse;
+        goto nkppStateDirective_cleanup;
+    }
+
+    // Execute the directive.
+    if(nkppDirectiveHandleDirective(
+            state,
+            directiveNameToken->str,
+            line))
+    {
+        // That went well.
+
+    } else {
+
+        // I don't know if we really need
+        // to report an error here,
+        // because an error would have
+        // been added in nkppDirectiveHandleDirective()
+        // for whatever went wrong.
+        nkppStateAddError(
+            state, "Bad directive.");
+        ret = nkfalse;
+    }
+
+nkppStateDirective_cleanup:
+    if(directiveNameToken) {
+        nkppTokenDestroy(state, directiveNameToken);
+    }
+    if(line) {
+        nkppFree(state, line);
+    }
+
+    return ret;
+}
+
 nkbool nkppStateExecute(
     struct NkppState *state,
     const char *str)
 {
     nkbool ret = nktrue;
     struct NkppToken *token = NULL;
-    struct NkppToken *directiveNameToken = NULL;
-    char *line = NULL;
 
     // FIXME: Maybe make this less arbitraty.
     if(state->recursionLevel > 20) {
@@ -1466,97 +1552,50 @@ nkbool nkppStateExecute(
                 // token, and it does its job by effectively just
                 // dropping out.
 
-            } else if(token->type == NK_PPTOKEN_HASH) {
+            } else if(token->type == NK_PPTOKEN_HASH &&
+                !state->concatenationEnabled &&
+                state->tokensOnThisLine == 1)
+            {
+                // Directives.
+                ret = nkppStateDirective(state) && ret;
 
-                // Make sure there's the start of a valid identifier
-                // as the very next character. We don't support
-                // whitespace between the hash and a directive name.
-                if(nkppIsValidIdentifierCharacter(state->str[state->index], nktrue)) {
+            } else if(token->type == NK_PPTOKEN_HASH &&
+                state->concatenationEnabled)
+            {
+                nkuint32_t stringificationStartIndex = state->index - 1;
+                nkuint32_t stringificationEndIndex;
+                struct NkppToken *nameToken = NULL;
 
-                    // Get the directive name.
-                    directiveNameToken = nkppStateInputGetNextToken(state, nktrue);
+                // FIXME: Only stringify macro parameters!
+                // FIXME: Fix the name of the token variable here.
 
-                    if(!directiveNameToken) {
+                // Stringification.
+                nameToken = nkppStateInputGetNextToken(state, nkfalse);
+                stringificationEndIndex = state->index;
 
+                if(nameToken &&
+                    nameToken->type == NK_PPTOKEN_IDENTIFIER &&
+                    nkppStateFindMacro(state, nameToken->str)
+                    /* FIXME: Check macro is argument here*/)
+                {
+                    if(!nkppMacroStringify(state, nameToken->str)) {
+                        nkppStateAddError(state, "Stringification failed.");
                         ret = nkfalse;
-
-                    } else {
-
-                        nkuint32_t directiveLineCount = 0;
-
-                        // Check to see if this is something we
-                        // understand by going through the *actual*
-                        // list of directives.
-                        if(nkppDirectiveIsValid(directiveNameToken->str)) {
-
-                            line = nkppStateInputReadRestOfLine(
-                                state, &directiveLineCount);
-
-                            if(!line) {
-
-                                ret = nkfalse;
-
-                            } else {
-
-                                if(nkppDirectiveHandleDirective(
-                                        state,
-                                        directiveNameToken->str,
-                                        line))
-                                {
-
-                                    // That went well.
-
-                                } else {
-
-                                    // I don't know if we really need
-                                    // to report an error here,
-                                    // because an error would have
-                                    // been added in nkppDirectiveHandleDirective()
-                                    // for whatever went wrong.
-                                    nkppStateAddError(
-                                        state, "Bad directive.");
-                                    ret = nkfalse;
-                                }
-
-                                // Clean up.
-                                nkppFree(state, line);
-                                line = NULL;
-
-                            }
-
-                        } else if(!nkppMacroStringify(state, directiveNameToken->str)) {
-
-                            ret = nkfalse;
-
-                            // FIXME: Maybe we should change this to
-                            // allow unknown directives to pass
-                            // through.
-
-                            // Not a macro to stringify and not a
-                            // directive. Treat it as a bad directive
-                            // and eat the rest of the input.
-                            line = nkppStateInputReadRestOfLine(
-                                state, &directiveLineCount);
-                            nkppFree(state, line);
-                            line = NULL;
-
-                        }
-
-                        nkppTokenDestroy(state, directiveNameToken);
-                        directiveNameToken = NULL;
-
                     }
-
                 } else {
 
-                    // Some non-directive identifier came after the
-                    // '#', so we're going to ignore it and just
-                    // output it directly as though it's not a
-                    // preprocessor directive.
-                    if(!nkppStateOutputAppendString(state, token->str)) {
-                        ret = nkfalse;
+                    // Oh. That wasn't something to stringify. Better
+                    // go back and emit all the text in between.
+                    state->index = stringificationStartIndex;
+                    while(state->index < stringificationEndIndex) {
+                        nkppStateInputSkipChar(state, nktrue);
                     }
 
+                }
+
+                if(nameToken) {
+                    nkppTokenDestroy(state, nameToken);
+                    nameToken = NULL;
                 }
 
             } else if(token->type == NK_PPTOKEN_IDENTIFIER) {

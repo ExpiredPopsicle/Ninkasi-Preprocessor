@@ -108,6 +108,9 @@ struct NkppState
     // do it outside of #defines.
     nkbool concatenationEnabled;
 
+    // Number of tokens we've seen on the current line.
+    nkuint32_t tokensOnThisLine;
+
     // We need to know if we're preprocessing a block for an "if"
     // expression. If we are, then we need to skip macros inside of
     // "defined()" expressions.

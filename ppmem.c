@@ -1,5 +1,7 @@
 #include "ppcommon.h"
 
+#include <stdio.h>
+
 // ----------------------------------------------------------------------
 // Allocation header stuff
 

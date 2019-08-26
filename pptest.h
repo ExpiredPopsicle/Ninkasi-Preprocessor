@@ -23,9 +23,15 @@
         }                                       \
     } while(0)
 
+#ifdef __DOS__
+#define NK_PPTEST_PASS "PASS"
+#define NK_PPTEST_FAIL "FAIL"
+#define NK_PPTEST_NULL "NULL"
+#else
 #define NK_PPTEST_PASS "\x1b[1;32mPASS\x1b[0m"
 #define NK_PPTEST_FAIL "\x1b[1;31mFAIL\x1b[0m"
 #define NK_PPTEST_NULL "\x1b[1;31mNULL\x1b[0m"
+#endif
 
 /// This is just a utility function for our testing macros.
 void nkppTestPrintTestLine(const char *testStr);

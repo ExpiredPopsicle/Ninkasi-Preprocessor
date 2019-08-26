@@ -55,4 +55,12 @@ nkbool nkppDirective_include(
     struct NkppState *state,
     const char *restOfLine);
 
+nkbool nkppDirective_if(
+    struct NkppState *state,
+    const char *restOfLine);
+
+nkbool nkppDirective_elif(
+    struct NkppState *state,
+    const char *restOfLine);
+
 #endif // PPDIRECT_H

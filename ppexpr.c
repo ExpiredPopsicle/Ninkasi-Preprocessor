@@ -733,8 +733,7 @@ nkppEvaluateExpression_cleanup:
 nkbool nkppEvaluateExpression(
     struct NkppState *state,
     const char *expression,
-    nkint32_t *output,
-    nkuint32_t recursionLevel)
+    nkint32_t *output)
 {
     nkbool ret;
 
@@ -753,7 +752,7 @@ nkbool nkppEvaluateExpression(
     // Execute.
     ret = nkppEvaluateExpression_internal(
         state, expressionState,
-        output, recursionLevel);
+        output, 0);
 
 nkppEvaluateExpression_outer_cleanup:
     if(expressionState) {
@@ -782,12 +781,12 @@ nkbool nkppTest_expressionTest(void)
 
     exprState->preprocessingIfExpression = nktrue;
 
-  #define NK_PP_EXPRESSIONTEST_CHECK(x)                         \
-    do {                                                        \
-        nkint32_t output = 0;                                   \
-        NK_PPTEST_CHECK(                                        \
-            nkppEvaluateExpression(                             \
-                exprState, #x, &output, 0) && output == (x));   \
+  #define NK_PP_EXPRESSIONTEST_CHECK(x)                     \
+    do {                                                    \
+        nkint32_t output = 0;                               \
+        NK_PPTEST_CHECK(                                    \
+            nkppEvaluateExpression(                         \
+                exprState, #x, &output) && output == (x));  \
     } while(0)
 
     NK_PP_EXPRESSIONTEST_CHECK(1 + 1);

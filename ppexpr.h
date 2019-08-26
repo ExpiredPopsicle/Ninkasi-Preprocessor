@@ -5,12 +5,15 @@
 
 struct NkppState;
 
-/// Evaluate an expression from a string.
+/// Evaluate an expression from a string. This is used primarily in
+/// the #if and #elif directives.
+///
+/// recursionLevel argument is the level of expression evaluation
+/// levels.
 nkbool nkppEvaluateExpression(
     struct NkppState *state,
     const char *expression,
-    nkint32_t *output,
-    nkuint32_t recursionLevel);
+    nkint32_t *output);
 
 #if NK_PP_ENABLETESTS
 nkbool nkppTest_expressionTest(void);

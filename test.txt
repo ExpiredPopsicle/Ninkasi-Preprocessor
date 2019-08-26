@@ -236,6 +236,3 @@ shit concatenation##test
 
 #define blagh1 asdf##asdf
 blagh1
-
-TODO: Only do directives if they're the first thing on the line.
-TODO: Remove concatenation handling outside directives.

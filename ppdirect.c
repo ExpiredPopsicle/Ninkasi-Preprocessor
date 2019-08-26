@@ -7,8 +7,6 @@ struct NkppDirectiveMapping
 };
 
 // TODO: Add these...
-//   if (with more complicated expressions)
-//   elif (implement "if" first)
 //   warning (passthrough?)
 //   pragma? (passthrough?)
 //   ... anything else I think of
@@ -22,6 +20,8 @@ struct NkppDirectiveMapping nkppDirectiveMapping[] = {
     { "line",    nkppDirective_line    },
     { "error",   nkppDirective_error   },
     { "include", nkppDirective_include },
+    { "if",      nkppDirective_if      },
+    { "elif",    nkppDirective_elif    },
 };
 
 static nkuint32_t nkppDirectiveMappingLen =
@@ -112,12 +112,10 @@ nkbool nkppDirective_ifdefReal(
                     state, identifierToken->str);
 
                 if(macro) {
-                    nkppStatePushIfResult(state, !invert);
+                    ret = nkppStatePushIfResult(state, !invert);
                 } else {
-                    nkppStatePushIfResult(state, invert);
+                    ret = nkppStatePushIfResult(state, invert);
                 }
-
-                ret = nktrue;
 
             } else {
 
@@ -767,6 +765,30 @@ nkppDirective_include_cleanup:
     }
 
     return ret;
+}
+
+nkbool nkppDirective_if(
+    struct NkppState *state,
+    const char *restOfLine)
+{
+    nkint32_t expressionResult = 0;
+
+    if(!nkppEvaluateExpression(
+        state, restOfLine,
+        &expressionResult))
+    {
+        return nkfalse;
+    }
+
+    return nkppStatePushIfResult(state, !!expressionResult);
+}
+
+nkbool nkppDirective_elif(
+    struct NkppState *state,
+    const char *restOfLine)
+{
+    nkppStateAddError(state, "\"elif\" not implemented yet.");
+    return nkfalse;
 }
 
 
