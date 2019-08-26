@@ -154,7 +154,7 @@ nkbool nkppDirective_else(
     struct NkppState *state,
     const char *restOfLine)
 {
-    return nkppStateFlipIfResult(state);
+    return nkppStateFlipIfResultForElse(state);
 }
 
 nkbool nkppDirective_endif(
@@ -162,6 +162,42 @@ nkbool nkppDirective_endif(
     const char *restOfLine)
 {
     return nkppStatePopIfResult(state);
+}
+
+nkbool nkppDirective_if(
+    struct NkppState *state,
+    const char *restOfLine)
+{
+    nkint32_t expressionResult = 0;
+
+    if(!nkppEvaluateExpression(
+        state, restOfLine,
+        &expressionResult))
+    {
+        return nkfalse;
+    }
+
+    return nkppStatePushIfResult(state, !!expressionResult);
+}
+
+nkbool nkppDirective_elif(
+    struct NkppState *state,
+    const char *restOfLine)
+{
+    nkint32_t expressionResult = 0;
+
+    if(!nkppEvaluateExpression(
+        state, restOfLine,
+        &expressionResult))
+    {
+        return nkfalse;
+    }
+
+    if(!nkppStateFlipIfResultForElif(state, expressionResult)) {
+        return nkfalse;
+    }
+
+    return nktrue;
 }
 
 nkbool nkppDirective_undef(
@@ -192,7 +228,7 @@ nkbool nkppDirective_undef(
 
         // Now that we've checked the syntax, we can skip doing the
         // actual work if we're inside a failed #if block.
-        if(!state->nestedFailedIfs) {
+        if(nkppStateConditionalOutputPassed(state)) {
 
             if(nkppStateDeleteMacro(state, identifierToken->str)) {
 
@@ -410,7 +446,7 @@ nkbool nkppDirective_define(
 
         // Now that we've checked the syntax, we can skip doing the
         // actual work if we're inside a failed #if block.
-        if(!state->nestedFailedIfs) {
+        if(nkppStateConditionalOutputPassed(state)) {
 
             // Add the macro.
             nkppStateAddMacro(state, macro);
@@ -511,7 +547,7 @@ nkbool nkppDirective_line(
 
         // Only actually do something if we're outside of a failed
         // "if" block.
-        if(!state->nestedFailedIfs) {
+        if(nkppStateConditionalOutputPassed(state)) {
             state->lineNumber = num;
         }
 
@@ -572,7 +608,7 @@ nkbool nkppDirective_error(
         return nkfalse;
     }
 
-    if(!state->nestedFailedIfs) {
+    if(nkppStateConditionalOutputPassed(state)) {
         nkppStateAddError(state, trimmedLine);
     }
 
@@ -596,11 +632,11 @@ nkbool nkppDirective_include_handleInclusion(
     // Save original place.
     char *originalFilename = nkppStrdup(state, state->filename);
     nkuint32_t originalLine = state->lineNumber;
-    nkuint32_t originalFailedIfs = state->nestedFailedIfs; // Always 0 here?
-    nkuint32_t originalPassedIfs = state->nestedPassedIfs;
     nkuint32_t originalRecursionLevel = state->recursionLevel;
     nkuint32_t originalIndex = state->index;
     const char *originalSource = state->str;
+    struct NkppStateConditional *originalConditionals = state->conditionalStack;
+
     if(!originalFilename) {
         // Bail out before we have anything we need to clean up,
         // because clean up here is going to be a little weird.
@@ -622,10 +658,9 @@ nkbool nkppDirective_include_handleInclusion(
     // Set up new state.
     state->index = 0;
     state->str = fileData;
-    state->nestedFailedIfs = 0;
-    state->nestedPassedIfs = 0;
     state->recursionLevel++;
     state->lineNumber = 0;
+    state->conditionalStack = NULL;
     if(!nkppStateSetFilename(state, unquotedName)) {
         ret = nkfalse;
         goto nkppDirective_include_handleInclusion_cleanup;
@@ -650,11 +685,10 @@ nkppDirective_include_handleInclusion_cleanup:
 
     // Restore all the other random things we saved on the state.
     state->lineNumber = originalLine;
-    state->nestedFailedIfs = originalFailedIfs;
-    state->nestedPassedIfs = originalPassedIfs;
     state->recursionLevel = originalRecursionLevel;
     state->index = originalIndex;
     state->str = originalSource;
+    state->conditionalStack = originalConditionals;
 
     return ret;
 }
@@ -742,7 +776,8 @@ nkbool nkppDirective_include(
         goto nkppDirective_include_cleanup;
     }
 
-    if(!state->nestedFailedIfs) {
+    // Handle the inclusion itself.
+    if(nkppStateConditionalOutputPassed(state)) {
         if(!nkppDirective_include_handleInclusion(state, appendedPath)) {
             ret = nkfalse;
             goto nkppDirective_include_cleanup;
@@ -765,30 +800,6 @@ nkppDirective_include_cleanup:
     }
 
     return ret;
-}
-
-nkbool nkppDirective_if(
-    struct NkppState *state,
-    const char *restOfLine)
-{
-    nkint32_t expressionResult = 0;
-
-    if(!nkppEvaluateExpression(
-        state, restOfLine,
-        &expressionResult))
-    {
-        return nkfalse;
-    }
-
-    return nkppStatePushIfResult(state, !!expressionResult);
-}
-
-nkbool nkppDirective_elif(
-    struct NkppState *state,
-    const char *restOfLine)
-{
-    nkppStateAddError(state, "\"elif\" not implemented yet.");
-    return nkfalse;
 }
 
 

@@ -736,8 +736,16 @@ nkbool nkppEvaluateExpression(
     nkint32_t *output)
 {
     nkbool ret;
-
     struct NkppState *expressionState = NULL;
+    struct NkppState *clonedState = NULL;
+
+    // Make cloned state to preprocess the equation.
+    clonedState = nkppStateClone(state, nkfalse);
+    clonedState->preprocessingIfExpression = nktrue;
+    if(!nkppStateExecute(clonedState, expression)) {
+        ret = nkfalse;
+        goto nkppEvaluateExpression_outer_cleanup;
+    }
 
     // Create a state just for reading tokens out of the input string.
     expressionState = nkppStateCreate(
@@ -746,7 +754,7 @@ nkbool nkppEvaluateExpression(
         ret = nkfalse;
         goto nkppEvaluateExpression_outer_cleanup;
     }
-    expressionState->str = expression;
+    expressionState->str = clonedState->output;
     expressionState->recursionLevel = state->recursionLevel;
 
     // Execute.
@@ -755,6 +763,9 @@ nkbool nkppEvaluateExpression(
         output, 0);
 
 nkppEvaluateExpression_outer_cleanup:
+    if(clonedState) {
+        nkppStateDestroy(clonedState);
+    }
     if(expressionState) {
         nkppStateDestroy(expressionState);
     }

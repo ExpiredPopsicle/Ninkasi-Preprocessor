@@ -236,3 +236,20 @@ shit concatenation##test
 
 #define blagh1 asdf##asdf
 blagh1
+
+
+
+#define ELIFTEST 0
+
+#if ELIFTEST == 0
+Case 0
+#elif ELIFTEST == 1
+Case 1
+#elif ELIFTEST == 2
+Case 2
+#elif ELIFTEST == 3
+Case 3
+#else
+Case else
+#endif
+

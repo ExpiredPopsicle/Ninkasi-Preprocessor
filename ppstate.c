@@ -33,13 +33,12 @@ struct NkppState *nkppStateCreate(
         ret->writePositionMarkers = nkfalse;
         ret->updateMarkers = nkfalse;
         ret->errorState = errorState;
-        ret->nestedPassedIfs = 0;
-        ret->nestedFailedIfs = 0;
         ret->memoryCallbacks = memoryCallbacks;
         ret->recursionLevel = 0;
         ret->concatenationEnabled = nkfalse;
         ret->preprocessingIfExpression = nkfalse;
         ret->tokensOnThisLine = 0;
+        ret->conditionalStack = NULL;
 
         // Memory callbacks now set up. Can use normal functions that
         // require allocations.
@@ -223,8 +222,8 @@ nkbool nkppStateDebugOutputLineStart(struct NkppState *state)
     ret = ret && nkppStateDebugOutputNumber(state, state->outputLineNumber);
 
     // Add number of nested "if" results.
-    ret = ret && nkppStateDebugOutputNumber(state, state->nestedFailedIfs);
-    ret = ret && nkppStateDebugOutputNumber(state, state->nestedPassedIfs);
+    ret = ret && nkppStateDebugOutputNumber(state, 0);
+    ret = ret && nkppStateDebugOutputNumber(state, 0);
 
     // Add a marker indicating that input/output line numbers may be
     // out of sync and it's an appropriate place to put a marker to
@@ -290,7 +289,7 @@ nkbool nkppStateOutputAppendChar(struct NkppState *state, char c)
     }
 
     if(c) {
-        if(!state->nestedFailedIfs || c == '\n') {
+        if(nkppStateConditionalOutputPassed(state) || c == '\n') {
             ret = ret && nkppStateOutputAppendChar_real(state, c);
         }
     }
@@ -1401,82 +1400,119 @@ nkbool nkppStateSetFilename(
     return nktrue;
 }
 
+nkbool nkppStateConditionalOutputPassed(struct NkppState *state)
+{
+    // No conditionals at all. Default to outputting.
+    if(!state->conditionalStack) {
+        return nktrue;
+    }
+
+    // Whatever our current result is, if the outer conditional
+    // failed, then this one is too.
+    if(!state->conditionalStack->parentPassed) {
+        return nkfalse;
+    }
+
+    return state->conditionalStack->passed;
+}
+
 nkbool nkppStatePushIfResult(
     struct NkppState *state,
     nkbool ifResult)
 {
-    nkbool overflow = nkfalse;
+    struct NkppStateConditional *newConditional =
+        nkppMalloc(state, sizeof(struct NkppStateConditional));
 
-    if(!ifResult) {
-
-        NK_CHECK_OVERFLOW_UINT_ADD(
-            state->nestedFailedIfs, 1,
-            state->nestedFailedIfs, overflow);
-
-    } else {
-
-        if(state->nestedFailedIfs) {
-
-            // If we're inside a failed "if" block, then we're going
-            // to count this result as failed, too.
-            NK_CHECK_OVERFLOW_UINT_ADD(
-                state->nestedFailedIfs, 1,
-                state->nestedFailedIfs, overflow);
-
-        } else {
-
-            NK_CHECK_OVERFLOW_UINT_ADD(
-                state->nestedPassedIfs, 1,
-                state->nestedPassedIfs, overflow);
-
-        }
+    if(!newConditional) {
+        return nkfalse;
     }
 
-    return !overflow;
+    newConditional->parentPassed =
+        nkppStateConditionalOutputPassed(state);
+    newConditional->passed = ifResult;
+    newConditional->passedOriginalConditional = ifResult;
+    newConditional->seenElseAlready = nkfalse;
+    newConditional->passedElifAlready = nkfalse;
+    newConditional->next = state->conditionalStack;
+    state->conditionalStack = newConditional;
+
+    return nktrue;
 }
 
 nkbool nkppStatePopIfResult(
     struct NkppState *state)
 {
-    if(state->nestedFailedIfs) {
-        state->nestedFailedIfs--;
-    } else if(state->nestedPassedIfs) {
-        state->nestedPassedIfs--;
-    } else {
-        nkppStateAddError(
-            state,
-            "\"endif\" directive without \"if\"");
+    struct NkppStateConditional *stackTop = state->conditionalStack;
+
+    if(!stackTop) {
         return nkfalse;
     }
+    state->conditionalStack = stackTop->next;
+    nkppFree(state, stackTop);
 
     return nktrue;
 }
 
-nkbool nkppStateFlipIfResult(
+nkbool nkppStateFlipIfResultForElse(
     struct NkppState *state)
 {
-    nkbool overflow = nkfalse;
-
-    if(!state->nestedPassedIfs && !state->nestedFailedIfs) {
+    struct NkppStateConditional *stackTop = state->conditionalStack;
+    if(!stackTop) {
         nkppStateAddError(
             state,
-            "\"else\" directive without \"if\"");
+            "\"else\" directive without \"if\".");
         return nkfalse;
     }
 
-    if(state->nestedFailedIfs == 1) {
-        state->nestedFailedIfs--;
-        NK_CHECK_OVERFLOW_UINT_ADD(
-            state->nestedPassedIfs, 1,
-            state->nestedPassedIfs, overflow);
-    } else if(state->nestedPassedIfs) {
-        state->nestedPassedIfs--;
-        NK_CHECK_OVERFLOW_UINT_ADD(
-            state->nestedFailedIfs, 1,
-            state->nestedFailedIfs, overflow);
+    if(stackTop->seenElseAlready) {
+        nkppStateAddError(
+            state,
+            "Multiple \"else\" directives.");
+        return nkfalse;
     }
 
-    return !overflow;
+    if(stackTop->passedOriginalConditional) {
+        stackTop->passed = nkfalse;
+    } else {
+        stackTop->passed = !stackTop->passed;
+    }
+    stackTop->seenElseAlready = nktrue;
+    stackTop->passedElifAlready = nktrue;
+
+    return nktrue;
+}
+
+nkbool nkppStateFlipIfResultForElif(
+    struct NkppState *state,
+    nkbool result)
+{
+    struct NkppStateConditional *stackTop = state->conditionalStack;
+    if(!stackTop) {
+        nkppStateAddError(
+            state,
+            "\"elif\" directive without \"if\".");
+        return nkfalse;
+    }
+
+    if(stackTop->seenElseAlready) {
+        nkppStateAddError(
+            state,
+            "\"elif\" after \"else\" directives.");
+        return nkfalse;
+    }
+
+    if(result &&
+        !stackTop->passed &&
+        !stackTop->passedElifAlready &&
+        !stackTop->passedOriginalConditional)
+    {
+        stackTop->passed = nktrue;
+        stackTop->passedElifAlready = nktrue;
+    } else {
+        stackTop->passed = nkfalse;
+    }
+
+    return nktrue;
 }
 
 nkbool nkppStateDirective(

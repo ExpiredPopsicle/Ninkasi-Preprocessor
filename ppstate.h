@@ -55,6 +55,39 @@ struct NkppMemoryCallbacks
     void *userData;
 };
 
+struct NkppStateConditional
+{
+    // Save us time looking all the way through the chain for a
+    // failure. Cache whatever the parent result was.
+    nkbool parentPassed;
+
+    // Whether this specific conditional has passed. This is the first
+    // "if", "ifndef", or "ifdef".
+    nkbool passedOriginalConditional;
+
+    // This is whether we have currently passed a test. This could be
+    // from an "else", or from an "elif".
+    nkbool passed;
+
+    // This will be true if we've used our "else" block, whether we've
+    // taken that branch or not.
+    //
+    // If there are multiple "else" directives at this level, that is
+    // an error.
+    //
+    // If there is an "elif" directive after an "else" directive, that
+    // is an error.
+    nkbool seenElseAlready;
+
+    // This will be true if we've taken the branch on an "elif", seen
+    // our "else" branch, or if the first condition passed. All of
+    // these will rule out taking the branch of any more "elif"
+    // directives.
+    nkbool passedElifAlready;
+
+    struct NkppStateConditional *next;
+};
+
 // Main preprocessor state object.
 struct NkppState
 {
@@ -97,8 +130,7 @@ struct NkppState
     // will be directed to stderr.
     struct NkppErrorState *errorState;
 
-    nkuint32_t nestedPassedIfs;
-    nkuint32_t nestedFailedIfs;
+    struct NkppStateConditional *conditionalStack;
 
     struct NkppMemoryCallbacks *memoryCallbacks;
 
@@ -230,9 +262,17 @@ nkbool nkppStatePopIfResult(
     struct NkppState *state);
 
 /// For handling the topmost "else" statement. This just inverts the
-/// result of the "if" result on the top of the stack.
-nkbool nkppStateFlipIfResult(
+/// result of the "if" on the top of the stack.
+nkbool nkppStateFlipIfResultForElse(
     struct NkppState *state);
+
+nkbool nkppStateFlipIfResultForElif(
+    struct NkppState *state,
+    nkbool result);
+
+/// Check to see if we should be emitting stuff and acting on
+/// directives right now.
+nkbool nkppStateConditionalOutputPassed(struct NkppState *state);
 
 // ----------------------------------------------------------------------
 // Main entrypoint
