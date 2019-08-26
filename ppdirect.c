@@ -628,6 +628,7 @@ nkbool nkppDirective_include_handleInclusion(
     NkppLoadFileCallback loadFileCallback =
         state->memoryCallbacks && state->memoryCallbacks->loadFileCallback ?
         state->memoryCallbacks->loadFileCallback : nkppDefaultLoadFileCallback;
+    struct NkppStateConditional *currentConditional = NULL;
 
     // Save original place.
     char *originalFilename = nkppStrdup(state, state->filename);
@@ -688,6 +689,14 @@ nkppDirective_include_handleInclusion_cleanup:
     state->recursionLevel = originalRecursionLevel;
     state->index = originalIndex;
     state->str = originalSource;
+
+    // Restore conditionals. Clean up the current conditional stack.
+    currentConditional = state->conditionalStack;
+    while(currentConditional) {
+        state->conditionalStack = currentConditional->next;
+        nkppFree(state, currentConditional);
+        currentConditional = state->conditionalStack;
+    }
     state->conditionalStack = originalConditionals;
 
     return ret;

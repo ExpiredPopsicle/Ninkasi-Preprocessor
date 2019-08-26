@@ -741,6 +741,10 @@ nkbool nkppEvaluateExpression(
 
     // Make cloned state to preprocess the equation.
     clonedState = nkppStateClone(state, nkfalse);
+    if(!clonedState) {
+        ret = nkfalse;
+        goto nkppEvaluateExpression_outer_cleanup;
+    }
     clonedState->preprocessingIfExpression = nktrue;
     if(!nkppStateExecute(clonedState, expression)) {
         ret = nkfalse;

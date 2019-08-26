@@ -60,11 +60,21 @@ void nkppStateDestroy(struct NkppState *state)
     void *userData =
         state->memoryCallbacks ? state->memoryCallbacks->userData : NULL;
 
-    struct NkppMacro *currentMacro = state->macros;
+    struct NkppMacro *currentMacro = NULL;
+    struct NkppStateConditional *currentConditional = NULL;
+
+    currentMacro = state->macros;
     while(currentMacro) {
         struct NkppMacro *next = currentMacro->next;
         nkppMacroDestroy(state, currentMacro);
         currentMacro = next;
+    }
+
+    currentConditional = state->conditionalStack;
+    while(currentConditional) {
+        struct NkppStateConditional *next = currentConditional->next;
+        nkppFree(state, currentConditional);
+        currentConditional = next;
     }
 
     nkppFree(state, state->output);
@@ -299,11 +309,13 @@ nkbool nkppStateOutputAppendChar(struct NkppState *state, char c)
 
 nkbool nkppStateInputSkipChar(struct NkppState *state, nkbool output)
 {
+    nkbool ret = nktrue;
+
     assert(state->str[state->index]);
 
     if(output) {
         if(!nkppStateOutputAppendChar(state, state->str[state->index])) {
-            return nkfalse;
+            ret = nkfalse;
         }
     }
 
@@ -317,7 +329,7 @@ nkbool nkppStateInputSkipChar(struct NkppState *state, nkbool output)
 
     state->index++;
 
-    return nktrue;
+    return ret;
 }
 
 nkbool nkppStateInputSkipWhitespaceAndComments(

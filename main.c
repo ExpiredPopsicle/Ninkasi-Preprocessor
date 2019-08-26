@@ -84,10 +84,10 @@ int main(int argc, char *argv[])
 
     // for(counter = 18830; counter < 18831; counter++) {
 
-    for(counter = 2000000; counter < 2000001; counter++) {
+    // for(counter = 2000000; counter < 2000001; counter++) {
 
     // for(counter = 62400; counter < 2000000; counter++) {
-    // for(counter = 0; counter < 2000000; counter++) {
+    for(counter = 0; counter < 2000000; counter++) {
 
         struct NkppMemoryCallbacks memCallbacks;
         struct NkppErrorState errorState;
