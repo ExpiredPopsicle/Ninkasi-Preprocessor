@@ -431,7 +431,7 @@ int nkppTestStrcmp(const char *a, const char *b)
 
 nkbool nkppTest_pathTest(void)
 {
-    struct NkppState *state = nkppStateCreate(NULL, NULL);
+    struct NkppState *state = nkppStateCreate_internal(NULL, NULL);
     nkbool ret = nktrue;
 
     NK_PPTEST_SECTION("nkppTest_pathTest()");
@@ -504,7 +504,7 @@ nkbool nkppTest_pathTest(void)
     NK_PPTEST_CHECK(nkppPathIsAbsolute("/")          == nktrue);
     NK_PPTEST_CHECK(nkppPathIsAbsolute("\\whatever") == nktrue);
 
-    nkppStateDestroy(state);
+    nkppStateDestroy_internal(state);
 
     return ret;
 }

@@ -1,4 +1,5 @@
 #include "ppcommon.h"
+#include "ppx.h"
 
 #include <stdio.h>
 #include <assert.h>
@@ -90,11 +91,11 @@ int main(int argc, char *argv[])
     for(counter = 0; counter < 2000000; counter++) {
 
         struct NkppMemoryCallbacks memCallbacks;
-        struct NkppErrorState errorState;
+        // struct NkppErrorState errorState;
         struct NkppState *state;
         char *testStr2;
 
-        nkppErrorStateInit(&errorState);
+        // nkppErrorStateInit(&errorState);
 
         // FIXME: Make a real init function for this.
         memCallbacks.mallocWrapper = NULL;
@@ -118,7 +119,7 @@ int main(int argc, char *argv[])
             ~(nkuint32_t)0, counter);
         #endif
 
-        state = nkppStateCreate(&errorState, &memCallbacks);
+        state = nkppStateCreate(&memCallbacks);
         if(!state) {
             printf("Allocation failure on state creation.\n");
             // return 0;
@@ -128,7 +129,7 @@ int main(int argc, char *argv[])
         testStr2 = loadFile(state, NULL, "test.txt");
         if(!testStr2) {
             printf("Allocation failure on file load.\n");
-            nkppStateDestroy(state);
+            nkppStateDestroy_internal(state);
             // return 0;
             continue;
         }
@@ -144,7 +145,7 @@ int main(int argc, char *argv[])
             printf("----------------------------------------------------------------------\n");
 
             state->writePositionMarkers = nktrue;
-            if(nkppStateExecute(state, testStr2)) {
+            if(nkppStateExecute_internal(state, testStr2)) {
                 printf("Preprocessor success\n");
             } else {
                 printf("Preprocessor failed\n");
@@ -159,27 +160,28 @@ int main(int argc, char *argv[])
 
         }
 
-        {
-            struct NkppError *error = errorState.firstError;
-            while(error) {
-                printf("error: %s:%ld: %s\n",
-                    error->filename,
-                    (long)error->lineNumber,
-                    error->text);
-                error = error->next;
-            }
-        }
+        // {
+        //     struct NkppError *error = errorState.firstError;
+        //     while(error) {
+        //         printf("error: %s:%ld: %s\n",
+        //             error->filename,
+        //             (long)error->lineNumber,
+        //             error->text);
+        //         error = error->next;
+        //     }
+        // }
 
-        nkppErrorStateClear(state, &errorState);
+        // nkppErrorStateClear(state, &errorState);
 
         nkppFree(state, testStr2);
 
         printf("----------------------------------------------------------------------\n");
         printf("  Iteration: %5lu, Allocation failure? %s\n",
             (unsigned long)counter,
-            errorState.allocationFailure ? "yes" : "no");
+            state->errorState->allocationFailure ? "yes" : "no");
         printf("----------------------------------------------------------------------\n");
 
+        // nkppStateDestroy_internal(state);
         nkppStateDestroy(state);
 
         nkppTestRun();

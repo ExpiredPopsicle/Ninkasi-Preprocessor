@@ -91,7 +91,7 @@ nkbool nkppDirective_ifdefReal(
 {
     nkbool ret = nkfalse;
     struct NkppState *directiveParseState =
-        nkppStateCreate(state->errorState, state->memoryCallbacks);
+        nkppStateCreate_internal(state->errorState, state->memoryCallbacks);
     struct NkppToken *identifierToken = NULL;
     struct NkppMacro *macro = NULL;
 
@@ -130,7 +130,7 @@ nkbool nkppDirective_ifdefReal(
     }
 
     if(directiveParseState) {
-        nkppStateDestroy(directiveParseState);
+        nkppStateDestroy_internal(directiveParseState);
     }
 
     return ret;
@@ -209,7 +209,7 @@ nkbool nkppDirective_undef(
     struct NkppToken *identifierToken = NULL;
 
     directiveParseState =
-        nkppStateCreate(state->errorState, state->memoryCallbacks);
+        nkppStateCreate_internal(state->errorState, state->memoryCallbacks);
     if(!directiveParseState) {
         return nkfalse;
     }
@@ -220,7 +220,7 @@ nkbool nkppDirective_undef(
     // Get identifier.
     identifierToken = nkppStateInputGetNextToken(directiveParseState, nkfalse);
     if(!identifierToken) {
-        nkppStateDestroy(directiveParseState);
+        nkppStateDestroy_internal(directiveParseState);
         return nkfalse;
     }
 
@@ -251,7 +251,7 @@ nkbool nkppDirective_undef(
     }
 
     nkppTokenDestroy(state, identifierToken);
-    nkppStateDestroy(directiveParseState);
+    nkppStateDestroy_internal(directiveParseState);
     return ret;
 }
 
@@ -269,7 +269,7 @@ nkbool nkppDirective_define(
     struct NkppToken *argToken = NULL;
 
     // Setup pp state.
-    directiveParseState = nkppStateCreate(
+    directiveParseState = nkppStateCreate_internal(
         state->errorState, state->memoryCallbacks);
     if(!directiveParseState) {
         ret = nkfalse;
@@ -463,7 +463,7 @@ nkppDirective_define_cleanup:
 
     // Cleanup.
     if(directiveParseState) {
-        nkppStateDestroy(directiveParseState);
+        nkppStateDestroy_internal(directiveParseState);
     }
     if(identifierToken) {
         nkppTokenDestroy(state, identifierToken);
@@ -503,7 +503,7 @@ nkbool nkppDirective_line(
     }
 
     // Preprocess this line first.
-    if(!nkppStateExecute(childState, restOfLine)) {
+    if(!nkppStateExecute_internal(childState, restOfLine)) {
         ret = nkfalse;
         goto nkppDirective_line_cleanup;
     }
@@ -516,7 +516,8 @@ nkbool nkppDirective_line(
     }
 
     // Create a parser state just for the tokenization functionality.
-    parserState = nkppStateCreate(state->errorState, state->memoryCallbacks);
+    parserState = nkppStateCreate_internal(
+        state->errorState, state->memoryCallbacks);
     if(!parserState) {
         ret = nkfalse;
         goto nkppDirective_line_cleanup;
@@ -582,10 +583,10 @@ nkppDirective_line_cleanup:
         nkppFree(state, trimmedLine);
     }
     if(childState) {
-        nkppStateDestroy(childState);
+        nkppStateDestroy_internal(childState);
     }
     if(parserState) {
-        nkppStateDestroy(parserState);
+        nkppStateDestroy_internal(parserState);
     }
     if(lineNumberToken) {
         nkppTokenDestroy(state, lineNumberToken);
@@ -671,7 +672,7 @@ nkbool nkppDirective_include_handleInclusion(
     nkppStateFlagFileLineMarkersForUpdate(state);
 
     // Execute it.
-    nkppStateExecute(state, fileData);
+    nkppStateExecute_internal(state, fileData);
 
 nkppDirective_include_handleInclusion_cleanup:
 

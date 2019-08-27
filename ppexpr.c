@@ -746,13 +746,13 @@ nkbool nkppEvaluateExpression(
         goto nkppEvaluateExpression_outer_cleanup;
     }
     clonedState->preprocessingIfExpression = nktrue;
-    if(!nkppStateExecute(clonedState, expression)) {
+    if(!nkppStateExecute_internal(clonedState, expression)) {
         ret = nkfalse;
         goto nkppEvaluateExpression_outer_cleanup;
     }
 
     // Create a state just for reading tokens out of the input string.
-    expressionState = nkppStateCreate(
+    expressionState = nkppStateCreate_internal(
         state->errorState, state->memoryCallbacks);
     if(!expressionState) {
         ret = nkfalse;
@@ -768,10 +768,10 @@ nkbool nkppEvaluateExpression(
 
 nkppEvaluateExpression_outer_cleanup:
     if(clonedState) {
-        nkppStateDestroy(clonedState);
+        nkppStateDestroy_internal(clonedState);
     }
     if(expressionState) {
-        nkppStateDestroy(expressionState);
+        nkppStateDestroy_internal(expressionState);
     }
 
     return ret;
@@ -786,7 +786,7 @@ nkbool nkppTest_expressionTest(void)
 
     NK_PPTEST_SECTION("nkppTest_expressionTest()");
 
-    exprState = nkppStateCreate(NULL, NULL);
+    exprState = nkppStateCreate_internal(NULL, NULL);
 
     NK_PPTEST_CHECK(exprState);
 
@@ -820,7 +820,7 @@ nkbool nkppTest_expressionTest(void)
     NK_PP_EXPRESSIONTEST_CHECK(1 ? 2 : 3 ? 4 : 5);
     NK_PP_EXPRESSIONTEST_CHECK(1 ? 2 ? 6 : 7 : 3 ? 4 : 5);
 
-    nkppStateDestroy(exprState);
+    nkppStateDestroy_internal(exprState);
 
     return ret;
 }

@@ -316,7 +316,7 @@ nkbool nkppMacroExecute(
     if(ret) {
 
         // Feed the macro definition through the cloned state.
-        if(!nkppStateExecute(
+        if(!nkppStateExecute_internal(
                 clonedState,
                 macro->definition ? macro->definition : ""))
         {
@@ -338,7 +338,7 @@ nkppMacroExecute_cleanup:
 
     // Clean up.
     if(clonedState) {
-        nkppStateDestroy(clonedState);
+        nkppStateDestroy_internal(clonedState);
     }
     if(unstrippedArgumentText) {
         nkppFree(state, unstrippedArgumentText);
@@ -389,7 +389,7 @@ nkbool nkppMacroStringify(
                 ret = nktrue;
             }
 
-            nkppStateDestroy(macroState);
+            nkppStateDestroy_internal(macroState);
         }
 
     } else {
