@@ -258,6 +258,12 @@ __TIME__ __DATE__
 
 
 
-#include <stdio.h>
+#include <string.h>
 
+
+
+
+#if !defined ELIFTEST
+BUTTWAFFLW
+#endif
 

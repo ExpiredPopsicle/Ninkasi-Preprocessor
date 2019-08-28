@@ -103,6 +103,9 @@ struct NkppState
     // expression. If we are, then we need to skip macros inside of
     // "defined()" expressions.
     nkbool preprocessingIfExpression;
+
+    char **includePaths;
+    nkuint32_t includePathCount;
 };
 
 // ----------------------------------------------------------------------

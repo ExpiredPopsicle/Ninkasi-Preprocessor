@@ -155,44 +155,58 @@ nkbool nkppEvaluateExpression_macroDefined(
     nkbool ret = nktrue;
     char *identifierStr = NULL;
     struct NkppMacro *macro = NULL;
+    nkbool startWithParen = nkfalse;
 
-    // Skip '('.
     token = nkppStateInputGetNextToken(expressionState, nkfalse);
     if(!token) {
         ret = nkfalse;
         goto nkppEvaluateExpression_macroDefined_cleanup;
     }
-    if(token->type != NK_PPTOKEN_OPENPAREN) {
-        ret = nkfalse;
-        goto nkppEvaluateExpression_macroDefined_cleanup;
+
+    // Skip '('.
+    if(token->type == NK_PPTOKEN_OPENPAREN) {
+        nkppTokenDestroy(state, token);
+        token = nkppStateInputGetNextToken(expressionState, nkfalse);
+        startWithParen = nktrue;
     }
-    nkppTokenDestroy(state, token);
 
     // Read identifier.
-    token = nkppStateInputGetNextToken(expressionState, nkfalse);
     if(!token) {
         ret = nkfalse;
         goto nkppEvaluateExpression_macroDefined_cleanup;
     }
     if(token->type != NK_PPTOKEN_IDENTIFIER) {
+
+        // FIXME: Remove this.
+        nkppStateAddError(state, "Expected identifier.");
+        // FIXME: Remove this.
+        nkppStateAddError(state, token->str);
+
         ret = nkfalse;
         goto nkppEvaluateExpression_macroDefined_cleanup;
     }
     identifierStr = nkppStrdup(state, token->str);
     nkppTokenDestroy(state, token);
+    token = NULL;
 
     // Skip ')'.
-    token = nkppStateInputGetNextToken(expressionState, nkfalse);
-    if(!token) {
-        ret = nkfalse;
-        goto nkppEvaluateExpression_macroDefined_cleanup;
+    if(startWithParen) {
+        token = nkppStateInputGetNextToken(expressionState, nkfalse);
+        if(!token) {
+            ret = nkfalse;
+            goto nkppEvaluateExpression_macroDefined_cleanup;
+        }
+        if(token->type != NK_PPTOKEN_CLOSEPAREN) {
+
+            // FIXME: Remove this.
+            nkppStateAddError(state, "Expected ')'.");
+
+            ret = nkfalse;
+            goto nkppEvaluateExpression_macroDefined_cleanup;
+        }
+        nkppTokenDestroy(state, token);
+        token = NULL;
     }
-    if(token->type != NK_PPTOKEN_CLOSEPAREN) {
-        ret = nkfalse;
-        goto nkppEvaluateExpression_macroDefined_cleanup;
-    }
-    nkppTokenDestroy(state, token);
-    token = NULL;
 
     // Look for the macro and set the output.
     macro = nkppStateFindMacro(state, identifierStr);
@@ -207,7 +221,7 @@ nkppEvaluateExpression_macroDefined_cleanup:
     if(!ret) {
         nkppStateAddError(
             state,
-            "Failed to read argument to defined() expression.\n");
+            "Failed to read argument to defined() expression.");
     }
 
     if(identifierStr) {
@@ -582,15 +596,20 @@ nkbool nkppEvaluateExpression_internal(
             }
             currentOperator = operatorToken->type;
 
-            nkppTokenDestroy(state, operatorToken);
-            operatorToken = NULL;
-
             // Make sure whatever we parsed was actually an operator.
             if(nkppEvaluateExpression_getPrecedence(currentOperator) == NK_INVALID_VALUE) {
                 nkppStateAddError(expressionState, "Bad operator token.");
+
+                // FIXME: Remove this.
+                nkppStateAddError(expressionState, operatorToken->str);
+                nkppStateAddError(expressionState, expressionState->str);
+
                 ret = nkfalse;
                 goto nkppEvaluateExpression_cleanup;
             }
+
+            nkppTokenDestroy(state, operatorToken);
+            operatorToken = NULL;
 
             // Resolve all operators with a higher-precedence than
             // this one that are on the top of the stack.

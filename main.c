@@ -92,6 +92,8 @@ char *loadFile(
     fclose(in);
     nkppFree(state, realFilename);
 
+    printf("LOAD SUCCESS\n");
+
     return ret;
 }
 
@@ -150,6 +152,10 @@ int main(int argc, char *argv[])
             // return 0;
             continue;
         }
+
+        nkppStateAddIncludePath(state, "/usr/include");
+        nkppStateAddIncludePath(state, "/usr/include/x86_64-linux-gnu");
+        nkppStateAddIncludePath(state, "/usr/include/c++/8/tr1");
 
         testStr2 = loadFile(state, NULL, "test.txt", nkfalse);
         if(!testStr2) {

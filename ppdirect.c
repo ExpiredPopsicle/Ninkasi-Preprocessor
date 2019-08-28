@@ -236,8 +236,8 @@ nkbool nkppDirective_undef(
 
             } else {
 
-                nkppStateAddError(state, "Cannot delete macro.");
-                ret = nkfalse;
+                // Okay. Apparently we don't throw an error when
+                // #undefing stuff that isn't #defined.
 
             }
 
@@ -435,12 +435,6 @@ nkbool nkppDirective_define(
         goto nkppDirective_define_cleanup;
     }
 
-    // Disallow multiple definitions.
-    if(nkppStateFindMacro(state, macro->identifier)) {
-        nkppStateAddError(state, "Multiple definitions of the same macro.");
-        ret = nkfalse;
-    }
-
     // Add definition to list, or clean up if we had an error.
     if(ret) {
 
@@ -448,9 +442,22 @@ nkbool nkppDirective_define(
         // actual work if we're inside a failed #if block.
         if(nkppStateConditionalOutputPassed(state)) {
 
-            // Add the macro.
-            nkppStateAddMacro(state, macro);
-            macro = NULL;
+            // Disallow multiple definitions.
+            if(nkppStateFindMacro(state, macro->identifier)) {
+                nkppStateAddError(state, "Multiple definitions of the same macro.");
+
+                // FIXME: Remove this.
+                nkppStateAddError(state, macro->identifier);
+
+                ret = nkfalse;
+
+            } else {
+
+                // Add the macro.
+                nkppStateAddMacro(state, macro);
+                macro = NULL;
+
+            }
 
         }
 
@@ -625,6 +632,9 @@ nkbool nkppDirective_include_handleInclusion(
     const char *unquotedName,
     nkbool systemInclude)
 {
+    // FIXME: Attempt to load the file first so we can fail early
+    // without setting up a whole new state.
+
     nkbool ret = nktrue;
     char *fileData = NULL;
     NkppLoadFileCallback loadFileCallback =
@@ -656,7 +666,7 @@ nkbool nkppDirective_include_handleInclusion(
             unquotedName,
             systemInclude);
     if(!fileData) {
-        nkppStateAddError(state, "Could not load file to include.");
+        // nkppStateAddError(state, "Could not load file to include.");
         ret = nkfalse;
         goto nkppDirective_include_handleInclusion_cleanup;
     }
@@ -793,7 +803,37 @@ nkbool nkppDirective_include(
 
     // Handle the inclusion itself.
     if(nkppStateConditionalOutputPassed(state)) {
-        if(!nkppDirective_include_handleInclusion(state, appendedPath, systemInclude)) {
+
+        nkbool success = nkfalse;
+
+        // Attempt system include directories first if this was using
+        // "<>".
+        if(systemInclude) {
+            nkuint32_t i;
+            for(i = 0; i < state->includePathCount; i++) {
+                char *appendedPath2 =
+                    nkppPathAppend(state, state->includePaths[i], unquotedName);
+                if(appendedPath2) {
+                    if(nkppDirective_include_handleInclusion(state, appendedPath2, systemInclude)) {
+                        success = nktrue;
+                        nkppFree(state, appendedPath2);
+                        break;
+                    }
+                    nkppFree(state, appendedPath2);
+                }
+            }
+        }
+
+        // If this isn't a system include, or we couldn't find a
+        // system include, then check the current directory too.
+        if(!success) {
+            if(nkppDirective_include_handleInclusion(state, appendedPath, systemInclude)) {
+                success = nktrue;
+            }
+        }
+
+        if(!success) {
+            nkppStateAddError(state, "Could not load file to include.");
             ret = nkfalse;
             goto nkppDirective_include_cleanup;
         }

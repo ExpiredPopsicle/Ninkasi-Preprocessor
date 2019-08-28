@@ -73,4 +73,8 @@ nkuint32_t nkppStateGetErrorCount(
 nkuint32_t nkppStateHasError(
     const struct NkppState *state);
 
+nkbool nkppStateAddIncludePath(
+    struct NkppState *state,
+    const char *path);
+
 #endif // NK_PPX_H

@@ -163,5 +163,41 @@ nkbool nkppStateAddDefine(
     return nkppDirective_define(state, line);
 }
 
+nkbool nkppStateAddIncludePath(
+    struct NkppState *state,
+    const char *path)
+{
+    nkuint32_t newPathCount;
+    nkbool overflow = nkfalse;
+    char **newPathList;
+    char *copiedPath;
+
+    NK_CHECK_OVERFLOW_UINT_ADD(
+        state->includePathCount, 1,
+        newPathCount, overflow);
+    if(overflow) {
+        return nkfalse;
+    }
+
+    copiedPath = nkppStrdup(state, path);
+    if(!copiedPath) {
+        return nkfalse;
+    }
+
+    newPathList = nkppRealloc(
+        state, state->includePaths,
+        sizeof(char*) * newPathCount);
+    if(!newPathList) {
+        nkppFree(state, copiedPath);
+        return nkfalse;
+    }
+    state->includePaths = newPathList;
+
+    state->includePaths[state->includePathCount] = copiedPath;
+    state->includePathCount = newPathCount;
+
+    return nktrue;
+}
+
 
 

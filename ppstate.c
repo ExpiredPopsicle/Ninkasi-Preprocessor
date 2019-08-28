@@ -39,6 +39,8 @@ struct NkppState *nkppStateCreate_internal(
         ret->preprocessingIfExpression = nkfalse;
         ret->tokensOnThisLine = 0;
         ret->conditionalStack = NULL;
+        ret->includePaths = NULL;
+        ret->includePathCount = 0;
 
         // Memory callbacks now set up. Can use normal functions that
         // require allocations.
@@ -63,6 +65,8 @@ void nkppStateDestroy_internal(struct NkppState *state)
     struct NkppMacro *currentMacro = NULL;
     struct NkppStateConditional *currentConditional = NULL;
 
+    nkuint32_t i;
+
     currentMacro = state->macros;
     while(currentMacro) {
         struct NkppMacro *next = currentMacro->next;
@@ -79,6 +83,12 @@ void nkppStateDestroy_internal(struct NkppState *state)
 
     nkppFree(state, state->output);
     nkppFree(state, state->filename);
+
+    // Free all include paths.
+    for(i = 0; i < state->includePathCount; i++) {
+        nkppFree(state, state->includePaths[i]);
+    }
+    nkppFree(state, state->includePaths);
 
     // Final NkppState allocation was not allocated through
     // nkppMalloc. Use the memory callback directly.
@@ -471,7 +481,7 @@ nkbool nkppStateInputGetNextToken_checkForDefinedExpression(
 
     // Skip the identifier we parsed that lead us here.
     while(i != NK_UINT_MAX) {
-        if(nkppIsValidIdentifierCharacter(state->str[i], nktrue)) {
+        if(nkppIsValidIdentifierCharacter(state->str[i], nkfalse)) {
             i--;
         } else {
             break;
@@ -494,14 +504,12 @@ nkbool nkppStateInputGetNextToken_checkForDefinedExpression(
     }
 
     // Find '('.
-    if(state->str[i] != '(') {
-        return nkfalse;
-    }
-
-    // Go back from the '('.
-    i--;
-    if(i == NK_UINT_MAX) {
-        return nkfalse;
+    if(state->str[i] == '(') {
+        // Go back from the '('.
+        i--;
+        if(i == NK_UINT_MAX) {
+            return nkfalse;
+        }
     }
 
     // Skip more whitespace.
@@ -1245,6 +1253,11 @@ char *nkppStateInputReadInteger(struct NkppState *state)
     nkppMemcpy(ret, str + start, len);
     ret[len] = 0;
 
+    // Skip 'L' postfix.
+    if(str[state->index] == 'L') {
+        nkppStateInputSkipChar(state, nkfalse);
+    }
+
     return ret;
 }
 
@@ -1568,6 +1581,10 @@ nkbool nkppStateDirective(
     // list of directives.
     if(!nkppDirectiveIsValid(directiveNameToken->str)) {
         nkppStateAddError(state, "Invalid directive name.");
+
+        // FIXME: Remove this.
+        nkppStateAddError(state, directiveNameToken->str);
+
         ret = nkfalse;
         goto nkppStateDirective_cleanup;
     }
@@ -1638,6 +1655,8 @@ nkbool nkppStateExecute_internal(
                 // Output nothing. This is the symbol concatenation
                 // token, and it does its job by effectively just
                 // dropping out.
+
+                // FIXME: We need to close up the whitespace gap here!
 
             } else if(token->type == NK_PPTOKEN_HASH &&
                 !state->concatenationEnabled &&
