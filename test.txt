@@ -253,3 +253,5 @@ Case 3
 Case else
 #endif
 
+__TIME__ __DATE__
+

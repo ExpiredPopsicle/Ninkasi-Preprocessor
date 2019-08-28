@@ -85,10 +85,10 @@ int main(int argc, char *argv[])
 
     // for(counter = 18830; counter < 18831; counter++) {
 
-    // for(counter = 2000000; counter < 2000001; counter++) {
+    for(counter = 2000000; counter < 2000001; counter++) {
 
     // for(counter = 62400; counter < 2000000; counter++) {
-    for(counter = 0; counter < 2000000; counter++) {
+    // for(counter = 0; counter < 2000000; counter++) {
 
         struct NkppMemoryCallbacks memCallbacks;
         // struct NkppErrorState errorState;
@@ -145,7 +145,7 @@ int main(int argc, char *argv[])
             printf("----------------------------------------------------------------------\n");
 
             state->writePositionMarkers = nktrue;
-            if(nkppStateExecute_internal(state, testStr2)) {
+            if(nkppStateExecute(state, testStr2, "test.txt")) {
                 printf("Preprocessor success\n");
             } else {
                 printf("Preprocessor failed\n");

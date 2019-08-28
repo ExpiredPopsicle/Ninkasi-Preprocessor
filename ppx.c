@@ -16,7 +16,7 @@ struct NkppState *nkppStateCreate(
     struct NkppState *state = NULL;
 
     errorState =
-        mallocWrapper(NULL, userData, sizeof(struct NkppErrorState));
+        mallocWrapper(userData, sizeof(struct NkppErrorState));
     if(!errorState) {
         return NULL;
     }
@@ -25,7 +25,7 @@ struct NkppState *nkppStateCreate(
 
     state = nkppStateCreate_internal(errorState, memoryCallbacks);
     if(!state) {
-        freeWrapper(NULL, userData, errorState);
+        freeWrapper(userData, errorState);
         return NULL;
     }
 
@@ -52,9 +52,46 @@ void nkppStateDestroy(
 
     nkppErrorStateClear(state, state->errorState);
 
-    freeWrapper(NULL, userData, state->errorState);
+    freeWrapper(userData, state->errorState);
 
     nkppStateDestroy_internal(state);
+}
+
+nkbool nkppStateAddBuiltinDefines(
+    struct NkppState *state)
+{
+    // The time/date defines in here seem like the enemy of
+    // reproducible builds, and possibly even an anti-feature, but
+    // they're included for C89 completeness.
+
+    time_t currentTime;
+    struct tm *currentTimeLocal;
+    char tmp[256];
+    const char *months[] = {
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+    };
+
+    time(&currentTime);
+    currentTimeLocal = localtime(&currentTime);
+
+    sprintf(tmp, "__TIME__ \"%.2d:%.2d:%.2d\"",
+        currentTimeLocal->tm_hour,
+        currentTimeLocal->tm_min,
+        currentTimeLocal->tm_sec);
+    if(!nkppStateAddDefine(state, tmp)) {
+        return nkfalse;
+    }
+
+    sprintf(tmp, "__DATE__ \"%s %2d %4d\"",
+        months[currentTimeLocal->tm_mon],
+        currentTimeLocal->tm_mday,
+        1900 + currentTimeLocal->tm_year);
+    if(!nkppStateAddDefine(state, tmp)) {
+        return nkfalse;
+    }
+
+    return nktrue;
 }
 
 nkbool nkppStateExecute(
@@ -63,6 +100,10 @@ nkbool nkppStateExecute(
     const char *filename)
 {
     assert(state);
+
+    if(!nkppStateAddBuiltinDefines(state)) {
+        return nkfalse;
+    }
 
     if(filename) {
         if(!nkppStateSetFilename(state, filename)) {
@@ -112,6 +153,12 @@ nkbool nkppStateHasError(
     return nkfalse;
 }
 
+nkbool nkppStateAddDefine(
+    struct NkppState *state,
+    const char *line)
+{
+    return nkppDirective_define(state, line);
+}
 
 
 

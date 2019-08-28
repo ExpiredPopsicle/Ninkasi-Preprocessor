@@ -6,12 +6,10 @@
 struct NkppErrorState;
 
 typedef void *(*NkppMallocWrapper)(
-    struct NkppState *state,
     void *userData,
     nkuint32_t size);
 
 typedef void (*NkppFreeWrapper)(
-    struct NkppState *state,
     void *userData,
     void *ptr);
 
@@ -62,6 +60,11 @@ nkbool nkppStateExecute(
     struct NkppState *state,
     const char *str,
     const char *filename);
+
+/// Execute a #define directive immediately.
+nkbool nkppStateAddDefine(
+    struct NkppState *state,
+    const char *line);
 
 nkuint32_t nkppStateGetErrorCount(
     const struct NkppState *state);

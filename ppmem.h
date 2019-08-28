@@ -23,11 +23,9 @@ void *nkppRealloc(
 // Default fallbacks when the user does not specify callbacks
 
 void *nkppDefaultMallocWrapper(
-    struct NkppState *state,
     void *userData, nkuint32_t size);
 
 void nkppDefaultFreeWrapper(
-    struct NkppState *state,
     void *userData, void *ptr);
 
 char *nkppDefaultLoadFileCallback(

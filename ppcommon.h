@@ -17,6 +17,7 @@
 #include <string.h>
 #include <malloc.h>
 #include <assert.h>
+#include <time.h>
 
 struct NkppState;
 

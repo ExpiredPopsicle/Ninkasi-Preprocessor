@@ -113,9 +113,9 @@ void *nkppMalloc(struct NkppState *state, nkuint32_t size)
 
     if(state->memoryCallbacks && state->memoryCallbacks->mallocWrapper) {
         newHeader = state->memoryCallbacks->mallocWrapper(
-            state, state->memoryCallbacks->userData, actualSize);
+            state->memoryCallbacks->userData, actualSize);
     } else {
-        newHeader = nkppDefaultMallocWrapper(state, NULL, actualSize);
+        newHeader = nkppDefaultMallocWrapper(NULL, actualSize);
     }
 
     if(!newHeader) {
@@ -155,9 +155,9 @@ void nkppFree(struct NkppState *state, void *ptr)
 
     if(state->memoryCallbacks && state->memoryCallbacks->freeWrapper) {
         state->memoryCallbacks->freeWrapper(
-            state, state->memoryCallbacks->userData, header);
+            state->memoryCallbacks->userData, header);
     } else {
-        nkppDefaultFreeWrapper(state, NULL, header);
+        nkppDefaultFreeWrapper(NULL, header);
     }
 }
 
@@ -165,7 +165,6 @@ void nkppFree(struct NkppState *state, void *ptr)
 // Default handlers (lowest level before actual system calls)
 
 void *nkppDefaultMallocWrapper(
-    struct NkppState *state,
     void *userData,
     nkuint32_t size)
 {
@@ -176,7 +175,6 @@ void *nkppDefaultMallocWrapper(
 }
 
 void nkppDefaultFreeWrapper(
-    struct NkppState *state,
     void *userData,
     void *ptr)
 {
