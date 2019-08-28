@@ -31,7 +31,8 @@ void nkppDefaultFreeWrapper(
 char *nkppDefaultLoadFileCallback(
     struct NkppState *state,
     void *userData,
-    const char *filename);
+    const char *filename,
+    nkbool systemInclude);
 
 // ----------------------------------------------------------------------
 // Debugging stuff

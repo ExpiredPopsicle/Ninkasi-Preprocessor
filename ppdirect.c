@@ -622,7 +622,8 @@ nkbool nkppDirective_error(
 
 nkbool nkppDirective_include_handleInclusion(
     struct NkppState *state,
-    const char *unquotedName)
+    const char *unquotedName,
+    nkbool systemInclude)
 {
     nkbool ret = nktrue;
     char *fileData = NULL;
@@ -645,12 +646,15 @@ nkbool nkppDirective_include_handleInclusion(
         return nkfalse;
     }
 
+    state->conditionalStack = NULL;
+
     // (Attempt to) load the file.
     fileData =
         loadFileCallback(
             state,
             state->memoryCallbacks ? state->memoryCallbacks->userData : NULL,
-            unquotedName);
+            unquotedName,
+            systemInclude);
     if(!fileData) {
         nkppStateAddError(state, "Could not load file to include.");
         ret = nkfalse;
@@ -662,7 +666,6 @@ nkbool nkppDirective_include_handleInclusion(
     state->str = fileData;
     state->recursionLevel++;
     state->lineNumber = 0;
-    state->conditionalStack = NULL;
     if(!nkppStateSetFilename(state, unquotedName)) {
         ret = nkfalse;
         goto nkppDirective_include_handleInclusion_cleanup;
@@ -715,6 +718,7 @@ nkbool nkppDirective_include(
     char endChar = 0;
     char *currentDirname = NULL;
     char *appendedPath = NULL;
+    nkbool systemInclude = nkfalse;
 
     // Trim input.
     trimmedInput = nkppStripCommentsAndTrim(state, restOfLine);
@@ -735,6 +739,7 @@ nkbool nkppDirective_include(
         endChar = '"';
     } else if(trimmedInput[0] == '<') {
         endChar = '>';
+        systemInclude = nktrue;
     } else {
         nkppStateAddError(state, "Expected \"\" or <> around filename in #include.");
         ret = nkfalse;
@@ -788,7 +793,7 @@ nkbool nkppDirective_include(
 
     // Handle the inclusion itself.
     if(nkppStateConditionalOutputPassed(state)) {
-        if(!nkppDirective_include_handleInclusion(state, appendedPath)) {
+        if(!nkppDirective_include_handleInclusion(state, appendedPath, systemInclude)) {
             ret = nkfalse;
             goto nkppDirective_include_cleanup;
         }

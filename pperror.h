@@ -34,4 +34,9 @@ void nkppErrorStateClear(
     struct NkppState *state,
     struct NkppErrorState *errorState);
 
+/// Use this to just dump all the errors to stdout.
+void nkppErrorStateDump(
+    struct NkppState *state,
+    struct NkppErrorState *errorState);
+
 #endif // NK_PPERROR_H

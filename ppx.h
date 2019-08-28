@@ -16,7 +16,8 @@ typedef void (*NkppFreeWrapper)(
 typedef char *(*NkppLoadFileCallback)(
     struct NkppState *state,
     void *userData,
-    const char *filename);
+    const char *filename,
+    nkbool systemInclude);
 
 struct NkppMemoryCallbacks
 {

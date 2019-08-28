@@ -35,16 +35,39 @@ char *testStr =
 char *loadFile(
     struct NkppState *state,
     void *userData,
-    const char *filename)
+    const char *filename,
+    nkbool systemInclude)
 {
-    FILE *in = fopen(filename, "rb");
+    FILE *in = NULL;
     nkuint32_t fileSize = 0;
     char *ret;
+    char *realFilename = NULL;
+
+    // if(systemInclude) {
+    //     realFilename = nkppPathAppend(state, "/usr/include", filename);
+    //     in = fopen(realFilename, "rb");
+    // }
+
+    // if(!in) {
+    //     nkppFree(state, realFilename);
+    //     realFilename = nkppStrdup(state, filename);
+    //     in = fopen(realFilename, "rb");
+    // }
+
+    realFilename = nkppStrdup(state, filename);
+
+    if(!realFilename) {
+        return NULL;
+    }
+
+    in = fopen(realFilename, "rb");
+
 
     // FIXME: Remove this.
-    printf("LOADING FILE: %s\n", filename);
+    printf("LOADING FILE: %s\n", realFilename);
 
     if(!in) {
+        nkppFree(state, realFilename);
         return NULL;
     }
 
@@ -55,6 +78,7 @@ char *loadFile(
     ret = nkppMalloc(state, fileSize + 1);
     if(!ret) {
         fclose(in);
+        nkppFree(state, realFilename);
         return NULL;
     }
 
@@ -66,6 +90,7 @@ char *loadFile(
     }
 
     fclose(in);
+    nkppFree(state, realFilename);
 
     return ret;
 }
@@ -126,7 +151,7 @@ int main(int argc, char *argv[])
             continue;
         }
 
-        testStr2 = loadFile(state, NULL, "test.txt");
+        testStr2 = loadFile(state, NULL, "test.txt", nkfalse);
         if(!testStr2) {
             printf("Allocation failure on file load.\n");
             nkppStateDestroy_internal(state);

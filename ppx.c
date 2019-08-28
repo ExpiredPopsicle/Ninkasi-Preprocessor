@@ -50,6 +50,9 @@ void nkppStateDestroy(
     userData =
         state->memoryCallbacks ? state->memoryCallbacks->userData : NULL;
 
+    // FIXME: Remove this.
+    nkppErrorStateDump(state, state->errorState);
+
     nkppErrorStateClear(state, state->errorState);
 
     freeWrapper(userData, state->errorState);

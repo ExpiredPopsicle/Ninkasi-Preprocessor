@@ -20,4 +20,18 @@ void nkppErrorStateClear(
     }
 }
 
+void nkppErrorStateDump(
+    struct NkppState *state,
+    struct NkppErrorState *errorState)
+{
+    struct NkppError *error = errorState->firstError;
+    while(error) {
+        printf("error: %s:%ld: %s\n",
+            error->filename,
+            (long)error->lineNumber,
+            error->text);
+        error = error->next;
+    }
+}
+
 
