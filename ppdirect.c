@@ -445,6 +445,7 @@ nkbool nkppDirective_define(
             // Disallow multiple definitions.
             if(oldMacro) {
 
+                // Ignore redundant macros with the same definition.
                 if(nkppStrcmp(oldMacro->definition, macro->definition)) {
 
                     // FIXME: This should probably just be a warning.
@@ -857,6 +858,10 @@ nkbool nkppDirective_include(
 
         if(!success) {
             nkppStateAddError(state, "Could not load file to include.");
+
+            // FIXME: Remove this.
+            nkppStateAddError(state, appendedPath);
+
             ret = nkfalse;
             goto nkppDirective_include_cleanup;
         }

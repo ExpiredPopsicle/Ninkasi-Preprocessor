@@ -157,6 +157,7 @@ int main(int argc, char *argv[])
         nkppStateAddIncludePath(state, "/usr/include");
         nkppStateAddIncludePath(state, "/usr/include/x86_64-linux-gnu");
         nkppStateAddIncludePath(state, "/usr/include/c++/8/tr1");
+        nkppStateAddIncludePath(state, "/usr/include/linux");
 
         testStr2 = loadFile(state, NULL, "test.txt", nkfalse);
         if(!testStr2) {
