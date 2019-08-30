@@ -153,6 +153,7 @@ int main(int argc, char *argv[])
             continue;
         }
 
+        // nkppStateAddDefine(state, "__STRICT_ANSI__ 1");
         nkppStateAddIncludePath(state, "/usr/include");
         nkppStateAddIncludePath(state, "/usr/include/x86_64-linux-gnu");
         nkppStateAddIncludePath(state, "/usr/include/c++/8/tr1");

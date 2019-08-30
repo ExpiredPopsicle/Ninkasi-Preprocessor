@@ -189,6 +189,11 @@ nkbool nkppEvaluateExpression_macroDefined(
     nkppTokenDestroy(state, token);
     token = NULL;
 
+    // FIXME: Remove this.
+    // if(state->lineNumber >= 268 && state->lineNumber <= 271) {
+        printf("Testing macro defined: %s\n", identifierStr);
+    // }
+
     // Skip ')'.
     if(startWithParen) {
         token = nkppStateInputGetNextToken(expressionState, nkfalse);
@@ -215,6 +220,11 @@ nkbool nkppEvaluateExpression_macroDefined(
     } else {
         *output = 0;
     }
+
+    // FIXME: Remove this.
+    // if(state->lineNumber >= 268 && state->lineNumber <= 271) {
+        printf("Testing macro defined: %s = %ld\n", identifierStr, (long)*output);
+    // }
 
 nkppEvaluateExpression_macroDefined_cleanup:
 
@@ -322,7 +332,7 @@ nkbool nkppEvaluateExpression_parseValue(
         case NK_PPTOKEN_OPENPAREN:
 
             ret = nkppEvaluateExpression_internal(
-                expressionState,
+                state,
                 expressionState,
                 output, recursionLevel + 1);
 
@@ -553,6 +563,11 @@ nkbool nkppEvaluateExpression_internal(
     nkint32_t currentOperator = NK_INVALID_VALUE;
 
     *output = 0;
+
+    // FIXME: Remove this.
+    if(state->lineNumber >= 268 && state->lineNumber <= 271) {
+        printf("Expression: %s\n", expressionState->str);
+    }
 
     // FIXME: Make this less arbitrary.
     if(actualRecursionLevel > 20) {

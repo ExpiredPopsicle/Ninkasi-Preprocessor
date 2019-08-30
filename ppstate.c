@@ -374,7 +374,13 @@ nkbool nkppStateInputSkipWhitespaceAndComments(
 
             while(state->str[state->index] && state->str[state->index + 1]) {
                 if(state->str[state->index] == '*' && state->str[state->index + 1] == '/') {
-                    if(!nkppStateInputSkipChar(state, output) || !nkppStateInputSkipChar(state, output)) {
+
+                    // FIXME: Clean this up.
+
+                    // if(!nkppStateInputSkipChar(state, output) ||
+                    //     !nkppStateInputSkipChar(state, output))
+                    if(!nkppStateInputSkipChar(state, output))
+                    {
                         return nkfalse;
                     }
                     break;
@@ -384,26 +390,27 @@ nkbool nkppStateInputSkipWhitespaceAndComments(
                 }
             }
 
+        } else if(state->str[state->index] == '\n') {
+
+            // Bail out when we get to the end of the line.
+            if(stopAtNewline) {
+                break;
+            }
+
         } else if(!nkppIsWhitespace(state->str[state->index])) {
 
             // Non-whitespace, non-comment character found.
             break;
 
-        }
+        } else if(!state->str[state->index]) {
 
-        // Bail out when we get to the end of the line.
-        if(state->str[state->index] == '\n') {
-            if(stopAtNewline) {
-                break;
-            }
-        }
-
-        // Check for end of buffer.
-        if(!state->str[state->index]) {
+            // End of buffer.
             break;
+
         }
 
         if(!nkppStateInputSkipChar(state, output)) {
+
             return nkfalse;
         }
     }
@@ -795,7 +802,11 @@ char *nkppStateInputReadRestOfLine(
 
             while(state->str[state->index] && state->str[state->index + 1]) {
                 if(state->str[state->index] == '*' && state->str[state->index + 1] == '/') {
-                    if(!nkppStateInputSkipChar(state, nktrue) || !nkppStateInputSkipChar(state, nktrue)) {
+                    // FIXME: Add some sense to this. We are only
+                    // skipping one character and then letting the
+                    // normal looping character skip do the second.
+                    if(!nkppStateInputSkipChar(state, nktrue) // || !nkppStateInputSkipChar(state, nktrue)
+                        ) {
                         return nkfalse;
                     }
                     break;
@@ -1634,6 +1645,7 @@ nkbool nkppStateExecute_internal(
 {
     nkbool ret = nktrue;
     struct NkppToken *token = NULL;
+    nkbool lastTokenWasDoubleHash = nkfalse;
 
     // FIXME: Maybe make this less arbitraty.
     if(state->recursionLevel > 20) {
@@ -1646,9 +1658,11 @@ nkbool nkppStateExecute_internal(
 
     while(state->str && state->str[state->index]) {
 
-        token = nkppStateInputGetNextToken(state, nktrue);
+        token = nkppStateInputGetNextToken(state, !lastTokenWasDoubleHash);
 
         if(token) {
+
+            lastTokenWasDoubleHash = nkfalse;
 
             if(state->concatenationEnabled && token->type == NK_PPTOKEN_DOUBLEHASH) {
 
@@ -1657,6 +1671,15 @@ nkbool nkppStateExecute_internal(
                 // dropping out.
 
                 // FIXME: We need to close up the whitespace gap here!
+                while(state->outputLength &&
+                    nkppIsWhitespace(state->output[state->outputLength - 1]) &&
+                    state->output[state->outputLength - 1] != '\n')
+                {
+                    state->output[state->outputLength - 1] = 0;
+                    state->outputLength--;
+                }
+
+                lastTokenWasDoubleHash = nktrue;
 
             } else if(token->type == NK_PPTOKEN_HASH &&
                 !state->concatenationEnabled &&
