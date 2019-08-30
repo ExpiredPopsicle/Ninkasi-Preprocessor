@@ -51,6 +51,10 @@ nkbool nkppDirective_error(
     struct NkppState *state,
     const char *restOfLine);
 
+nkbool nkppDirective_warning(
+    struct NkppState *state,
+    const char *restOfLine);
+
 nkbool nkppDirective_include(
     struct NkppState *state,
     const char *restOfLine);

@@ -19,6 +19,7 @@ struct NkppDirectiveMapping nkppDirectiveMapping[] = {
     { "endif",   nkppDirective_endif   },
     { "line",    nkppDirective_line    },
     { "error",   nkppDirective_error   },
+    { "warning", nkppDirective_warning },
     { "include", nkppDirective_include },
     { "if",      nkppDirective_if      },
     { "elif",    nkppDirective_elif    },
@@ -307,12 +308,9 @@ nkbool nkppDirective_define(
         goto nkppDirective_define_cleanup;
     }
 
-    if(!nkppStateInputSkipWhitespaceAndComments(
-            directiveParseState, nkfalse, nkfalse))
-    {
-        ret = nkfalse;
-        goto nkppDirective_define_cleanup;
-    }
+    // Note: There can't be any spaces between the identifier and the
+    // '(' when we check for argument lists. If there is a space, then
+    // what we find is considered the definition itself.
 
     // Check for arguments (next char == '(').
     if(directiveParseState->str[directiveParseState->index] == '(') {
@@ -442,23 +440,29 @@ nkbool nkppDirective_define(
         // actual work if we're inside a failed #if block.
         if(nkppStateConditionalOutputPassed(state)) {
 
+            struct NkppMacro *oldMacro = nkppStateFindMacro(state, macro->identifier);
+
             // Disallow multiple definitions.
-            if(nkppStateFindMacro(state, macro->identifier)) {
-                nkppStateAddError(state, "Multiple definitions of the same macro.");
+            if(oldMacro) {
 
-                // FIXME: Remove this.
-                nkppStateAddError(state, macro->identifier);
+                if(nkppStrcmp(oldMacro->definition, macro->definition)) {
 
-                ret = nkfalse;
+                    // FIXME: This should probably just be a warning.
+                    nkppStateAddError(state, "Multiple definitions of the same macro.");
 
-            } else {
+                    // FIXME: Remove this.
+                    nkppStateAddError(state, macro->identifier);
 
-                // Add the macro.
-                nkppStateAddMacro(state, macro);
-                macro = NULL;
+                }
+
+                // Remove the old one.
+                nkppStateDeleteMacro(state, macro->identifier);
 
             }
 
+            // Add the macro.
+            nkppStateAddMacro(state, macro);
+            macro = NULL;
         }
 
     } else {
@@ -624,6 +628,25 @@ nkbool nkppDirective_error(
 
     // This one's a little weird. We want to resume normal behavior
     // despite having had an error.
+    return nktrue;
+}
+
+nkbool nkppDirective_warning(
+    struct NkppState *state,
+    const char *restOfLine)
+{
+    char *trimmedLine = nkppStripCommentsAndTrim(state, restOfLine);
+    if(!trimmedLine) {
+        return nkfalse;
+    }
+
+    if(nkppStateConditionalOutputPassed(state)) {
+        // Warnings treated as errors for now.
+        nkppStateAddError(state, trimmedLine);
+    }
+
+    nkppFree(state, trimmedLine);
+
     return nktrue;
 }
 
