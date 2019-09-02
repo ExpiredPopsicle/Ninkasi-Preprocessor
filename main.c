@@ -199,6 +199,13 @@ int main(int argc, char *argv[])
                 printf("%s\n", state->output);
             }
 
+
+            if(state->output) {
+                FILE *outfile = fopen("tmp.c", "wb+");
+                fprintf(outfile, "%s", state->output);
+                fclose(outfile);
+            }
+
         }
 
         // {

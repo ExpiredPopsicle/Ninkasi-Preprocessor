@@ -160,7 +160,7 @@ struct NkppMacro *nkppMacroClone(
     }
 
     ret->functionStyleMacro = macro->functionStyleMacro;
-    ret->isArgumentName = ret->isArgumentName;
+    ret->isArgumentName = macro->isArgumentName;
 
     currentArgument = macro->arguments;
     argumentWritePtr = &ret->arguments;
