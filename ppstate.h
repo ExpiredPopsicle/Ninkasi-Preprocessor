@@ -119,7 +119,8 @@ void nkppStateDestroy_internal(struct NkppState *state);
 
 struct NkppState *nkppStateClone(
     struct NkppState *state,
-    nkbool copyOutput);
+    nkbool copyOutput,
+    nkbool cloneArguments);
 
 /// Set the current file name. Used for error tracking.
 nkbool nkppStateSetFilename(

@@ -445,6 +445,9 @@ nkbool nkppDirective_define(
             // Disallow multiple definitions.
             if(oldMacro) {
 
+                // FIXME!!! More thorough test for equality! Test
+                // argument names!
+
                 // Ignore redundant macros with the same definition.
                 if(nkppStrcmp(oldMacro->definition, macro->definition)) {
 
@@ -508,7 +511,7 @@ nkbool nkppDirective_line(
     char *newFilename = NULL;
     nkuint32_t newLineNumber = state->lineNumber;
 
-    childState = nkppStateClone(state, nkfalse);
+    childState = nkppStateClone(state, nkfalse, nkfalse);
     if(!childState) {
         ret = nkfalse;
         goto nkppDirective_line_cleanup;
@@ -860,7 +863,7 @@ nkbool nkppDirective_include(
             nkppStateAddError(state, "Could not load file to include.");
 
             // FIXME: Remove this.
-            nkppStateAddError(state, appendedPath);
+            nkppStateAddError(state, unquotedName);
 
             ret = nkfalse;
             goto nkppDirective_include_cleanup;

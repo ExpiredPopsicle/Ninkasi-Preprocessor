@@ -126,22 +126,41 @@ struct NkppMacro *nkppMacroClone(
 
     ret = nkppMacroCreate(state);
     if(!ret) {
+
+        // FIXME: Remove this.
+        assert(0);
+
         return NULL;
     }
+
+    // FIXME: Remove this.
+    assert(macro->identifier);
 
     ret->identifier = nkppStrdup(state, macro->identifier);
     if(!ret->identifier) {
         nkppMacroDestroy(state, ret);
+
+        // FIXME: Remove this.
+        assert(!state->errorState->allocationFailure);
+
+        // FIXME: Remove this.
+        assert(0);
+
         return NULL;
     }
 
     ret->definition = nkppStrdup(state, macro->definition);
     if(!ret->definition) {
+
+        // FIXME: Remove this.
+        assert(0);
+
         nkppMacroDestroy(state, ret);
         return NULL;
     }
 
     ret->functionStyleMacro = macro->functionStyleMacro;
+    ret->isArgumentName = ret->isArgumentName;
 
     currentArgument = macro->arguments;
     argumentWritePtr = &ret->arguments;
@@ -154,6 +173,10 @@ struct NkppMacro *nkppMacroClone(
                 sizeof(struct NkppMacroArgument));
         if(!clonedArg) {
             nkppMacroDestroy(state, ret);
+
+            // FIXME: Remove this.
+            assert(0);
+
             return NULL;
         }
 
@@ -162,6 +185,10 @@ struct NkppMacro *nkppMacroClone(
         if(!clonedArg->name) {
             nkppFree(state, clonedArg);
             nkppMacroDestroy(state, ret);
+
+            // FIXME: Remove this.
+            assert(0);
+
             return NULL;
         }
 
@@ -170,6 +197,9 @@ struct NkppMacro *nkppMacroClone(
 
         currentArgument = currentArgument->next;
     }
+
+    // FIXME: Remove this.
+    assert(ret);
 
     return ret;
 }
@@ -184,7 +214,10 @@ nkbool nkppMacroExecute(
     char *argumentText = NULL;
     struct NkppMacro *newMacro = NULL;
 
-    clonedState = nkppStateClone(state, nkfalse);
+    // FIXME: Remove this.
+    printf("FFFF Start ----------\n");
+
+    clonedState = nkppStateClone(state, nkfalse, nkfalse);
     if(!clonedState) {
         return nkfalse;
     }
@@ -228,6 +261,29 @@ nkbool nkppMacroExecute(
 
                 nkppFree(state, unstrippedArgumentText);
                 unstrippedArgumentText = NULL;
+
+                // FIXME!!! The macro arguments need to be
+                // preprocessed so we pass the right text through to
+                // the next level.
+                {
+                    // FIXME!!! Check errors on all this crap.
+                    struct NkppState *clonedState =
+                        nkppStateClone(state, nkfalse, nktrue);
+
+                    printf("FFFF Argument text (%p) (before): %s = %s\n", clonedState, argument->name, argumentText);
+
+                    clonedState->concatenationEnabled = nktrue;
+                    nkppStateExecute_internal(
+                        clonedState,
+                        argumentText);
+
+                    nkppFree(state, argumentText);
+                    argumentText = nkppStrdup(state, clonedState->output);
+
+                    nkppStateDestroy_internal(clonedState);
+                    printf("FFFF Argument text (%p): %s = %s\n", clonedState, argument->name, argumentText);
+                }
+
 
                 // Add the argument as a macro to
                 // the new cloned state.
@@ -302,6 +358,10 @@ nkbool nkppMacroExecute(
 
         } else {
             nkppStateAddError(state, "Expected argument list.");
+
+            // FIXME: Remove this.
+            nkppStateAddError(state, state->str);
+
             ret = nkfalse;
         }
 
@@ -312,8 +372,28 @@ nkbool nkppMacroExecute(
 
     }
 
+    // FIXME: Remove this.
+    printf("FFFF End ----------\n");
+
     // Preprocess the macro into place.
     if(ret) {
+
+        // FIXME: Remove this.
+        {
+            struct NkppMacroArgument *arg = macro->arguments;
+            struct NkppMacro *mac = clonedState->macros;
+            printf("FFFF Executing macro: %s = %s\n", macro->identifier, macro->definition);
+            while(arg) {
+                printf("FFFF   Argument: %s\n", arg->name);
+                arg = arg->next;
+            }
+            while(mac) {
+                printf("FFFF   Inner macro: %s = %s\n", mac->identifier, mac->definition);
+                mac = mac->next;
+            }
+            printf("FFFF   Text (%p): %s\n", clonedState, macro->definition);
+        }
+
 
         // Feed the macro definition through the cloned state.
         if(!nkppStateExecute_internal(
@@ -321,6 +401,11 @@ nkbool nkppMacroExecute(
                 macro->definition ? macro->definition : ""))
         {
             ret = nkfalse;
+        }
+
+        // FIXME: Remove this.
+        {
+            printf("FFFF  Result (%p): %s\n", clonedState, clonedState->output);
         }
 
         // Write output.
@@ -366,7 +451,7 @@ nkbool nkppMacroStringify(
 
     if(macro) {
 
-        macroState = nkppStateClone(state, nkfalse);
+        macroState = nkppStateClone(state, nkfalse, nkfalse);
 
         if(macroState) {
 

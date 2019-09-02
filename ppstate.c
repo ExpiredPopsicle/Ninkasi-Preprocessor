@@ -108,14 +108,17 @@ nkbool nkppStateWritePositionMarker(struct NkppState *state)
         return nkfalse;
     }
 
-    ret &= nkppStateOutputAppendString(state, "#file \"");
-    ret &= nkppStateOutputAppendString(state, escapedFilenameStr);
-    ret &= nkppStateOutputAppendString(state, "\"");
+    // ret &= nkppStateOutputAppendString(state, "#file \"");
+    // ret &= nkppStateOutputAppendString(state, escapedFilenameStr);
+    // ret &= nkppStateOutputAppendString(state, "\"");
 
     sprintf(
-        numberStr, "\n#line %ld\n",
+        numberStr, "\n#line %ld",
         (long)state->lineNumber);
     ret &= nkppStateOutputAppendString(state, numberStr);
+    ret &= nkppStateOutputAppendString(state, " \"");
+    ret &= nkppStateOutputAppendString(state, escapedFilenameStr);
+    ret &= nkppStateOutputAppendString(state, "\"\n");
 
     state->outputLineNumber = state->lineNumber;
 
@@ -277,8 +280,8 @@ nkbool nkppStateOutputAppendChar(struct NkppState *state, char c)
         // If this is the first character on a line...
         if(!state->output || state->output[state->outputLength - 1] == '\n') {
 
-            // FIXME: Make this optional.
-            ret = nkppStateDebugOutputLineStart(state) && ret;
+            // // FIXME: Make this optional.
+            // ret = nkppStateDebugOutputLineStart(state) && ret;
 
             if(state->outputLineNumber != state->lineNumber) {
 
@@ -805,8 +808,7 @@ char *nkppStateInputReadRestOfLine(
                     // FIXME: Add some sense to this. We are only
                     // skipping one character and then letting the
                     // normal looping character skip do the second.
-                    if(!nkppStateInputSkipChar(state, nktrue) // || !nkppStateInputSkipChar(state, nktrue)
-                        ) {
+                    if(!nkppStateInputSkipChar(state, nktrue) || !nkppStateInputSkipChar(state, nktrue)) {
                         return nkfalse;
                     }
                     break;
@@ -818,43 +820,64 @@ char *nkppStateInputReadRestOfLine(
 
             lastCharWasBackslash = nkfalse;
 
-        } else if(state->str[state->index] == '\\') {
+        } else {
 
-            lastCharWasBackslash = !lastCharWasBackslash;
+            if(state->str[state->index] == '\\') {
 
-        } else if(state->str[state->index] == '\n') {
+                // Backslash, indicating an upcoming continuation.
+                lastCharWasBackslash = !lastCharWasBackslash;
 
-            if(actualLineCount) {
-                (*actualLineCount)++;
-            }
+                // Skip this backslash. Don't output it.
+                if(!nkppStateInputSkipChar(state, nkfalse)) {
+                    return nkfalse;
+                }
 
-            if(lastCharWasBackslash) {
+            } else if(state->str[state->index] == '\n') {
 
-                // This is an escaped newline, so we're going to keep
-                // going.
-                lastCharWasBackslash = nkfalse;
+                if(actualLineCount) {
+                    (*actualLineCount)++;
+                }
+
+                // // Skip this character. Only output if it's a newline to keep
+                // // lines in sync between input and output.
+                // if(!nkppStateInputSkipChar(state, state->str[state->index] == '\n')) {
+                //     return NULL;
+                // }
+
+                if(lastCharWasBackslash) {
+
+                    // This is an escaped newline, so we're going to keep
+                    // going.
+                    lastCharWasBackslash = nkfalse;
+
+                } else {
+
+                    // Skip that newline and bail out. We're done. Only
+                    // output if it's a newline to keep lines in sync
+                    // between input and output.
+
+                    if(!nkppStateInputSkipChar(state, state->str[state->index] == '\n')) {
+                        return NULL;
+                    }
+                    break;
+
+                }
+
+                // Skip this newline.
+                if(!nkppStateInputSkipChar(state, state->str[state->index] == '\n')) {
+                    return nkfalse;
+                }
 
             } else {
 
-                // Skip that newline and bail out. We're done. Only
-                // output if it's a newline to keep lines in sync
-                // between input and output.
-                if(!nkppStateInputSkipChar(state, state->str[state->index] == '\n')) {
-                    return NULL;
-                }
-                break;
+                lastCharWasBackslash = nkfalse;
 
+                // Skip this, whatever it is.
+                if(!nkppStateInputSkipChar(state, state->str[state->index] == '\n')) {
+                    return nkfalse;
+                }
             }
 
-        } else {
-
-            lastCharWasBackslash = nkfalse;
-        }
-
-        // Skip this character. Only output if it's a newline to keep
-        // lines in sync between input and output.
-        if(!nkppStateInputSkipChar(state, state->str[state->index] == '\n')) {
-            return NULL;
         }
     }
 
@@ -878,6 +901,9 @@ char *nkppStateInputReadRestOfLine(
         nkppMemcpy(ret, state->str + lineStart, lineLen);
         ret[lineLen] = 0;
     }
+
+    // FIXME: Remove this.
+    printf("Rest of line: %s\n", ret);
 
     return ret;
 }
@@ -1010,7 +1036,8 @@ nkbool nkppStateDeleteMacro(
 
 struct NkppState *nkppStateClone(
     struct NkppState *state,
-    nkbool copyOutput)
+    nkbool copyOutput,
+    nkbool cloneArguments)
 {
     struct NkppState *ret = nkppStateCreate_internal(
         state->errorState, state->memoryCallbacks);
@@ -1018,6 +1045,10 @@ struct NkppState *nkppStateClone(
     struct NkppMacro **macroWritePtr;
 
     if(!ret) {
+
+        // FIXME: Remove this.
+        assert(0);
+
         return NULL;
     }
 
@@ -1038,6 +1069,10 @@ struct NkppState *nkppStateClone(
         if(ret->outputCapacity) {
             if(!ret->output) {
                 nkppStateDestroy_internal(ret);
+
+                // FIXME: Remove this.
+                assert(0);
+
                 return NULL;
             }
             nkppMemcpy(
@@ -1048,6 +1083,10 @@ struct NkppState *nkppStateClone(
 
         if(state->output && !ret->output) {
             nkppStateDestroy_internal(ret);
+
+            // FIXME: Remove this.
+            assert(0);
+
             return NULL;
         }
     }
@@ -1057,6 +1096,10 @@ struct NkppState *nkppStateClone(
     ret->errorState = state->errorState;
     if(!nkppStateSetFilename(ret, state->filename)) {
         nkppStateDestroy_internal(ret);
+
+        // FIXME: Remove this.
+        assert(0);
+
         return NULL;
     }
 
@@ -1070,12 +1113,18 @@ struct NkppState *nkppStateClone(
 
     while(currentMacro) {
 
-        if(!currentMacro->isArgumentName) {
+        // FIXME: Uhhh... should this be here?
+        if(!currentMacro->isArgumentName || cloneArguments)
+        {
 
             struct NkppMacro *clonedMacro =
                 nkppMacroClone(state, currentMacro);
             if(!clonedMacro) {
                 nkppStateDestroy_internal(ret);
+
+                // FIXME: Remove this.
+                assert(0);
+
                 return NULL;
             }
 
@@ -1085,6 +1134,9 @@ struct NkppState *nkppStateClone(
 
         currentMacro = currentMacro->next;
     }
+
+    // FIXME: Remove this.
+    assert(ret);
 
     return ret;
 }
@@ -1702,8 +1754,9 @@ nkbool nkppStateExecute_internal(
 
                 if(nameToken &&
                     nameToken->type == NK_PPTOKEN_IDENTIFIER &&
-                    (macro = nkppStateFindMacro(state, nameToken->str)) &&
-                    macro->isArgumentName)
+                    (macro = nkppStateFindMacro(state, nameToken->str))
+                    // && macro->isArgumentName
+                    )
                 {
                     if(!nkppMacroStringify(state, nameToken->str)) {
                         nkppStateAddError(state, "Stringification failed.");

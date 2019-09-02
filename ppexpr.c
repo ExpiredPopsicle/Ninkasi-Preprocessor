@@ -774,7 +774,7 @@ nkbool nkppEvaluateExpression(
     struct NkppState *clonedState = NULL;
 
     // Make cloned state to preprocess the equation.
-    clonedState = nkppStateClone(state, nkfalse);
+    clonedState = nkppStateClone(state, nkfalse, nkfalse);
     if(!clonedState) {
         ret = nkfalse;
         goto nkppEvaluateExpression_outer_cleanup;

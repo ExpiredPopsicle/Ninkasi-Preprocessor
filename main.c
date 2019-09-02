@@ -141,10 +141,13 @@ int main(int argc, char *argv[])
         // nkppMemDebugSetAllocationFailureTestLimits(
         //     memLimit, allocLimit);
 
-        #if NK_PP_MEMDEBUG
-        nkppMemDebugSetAllocationFailureTestLimits(
-            ~(nkuint32_t)0, counter);
-        #endif
+
+
+
+        // #if NK_PP_MEMDEBUG
+        // nkppMemDebugSetAllocationFailureTestLimits(
+        //     ~(nkuint32_t)0, counter);
+        // #endif
 
         state = nkppStateCreate(&memCallbacks);
         if(!state) {
@@ -154,12 +157,16 @@ int main(int argc, char *argv[])
         }
 
         // nkppStateAddDefine(state, "__STRICT_ANSI__ 1");
+        nkppStateAddIncludePath(state, "/usr/lib/gcc/x86_64-linux-gnu/8/include");
         nkppStateAddIncludePath(state, "/usr/include");
         nkppStateAddIncludePath(state, "/usr/include/x86_64-linux-gnu");
         nkppStateAddIncludePath(state, "/usr/include/c++/8/tr1");
+        nkppStateAddIncludePath(state, "/usr/include/c++/8");
+        nkppStateAddIncludePath(state, "/usr/include/c++/tr1");
         nkppStateAddIncludePath(state, "/usr/include/linux");
 
-        testStr2 = loadFile(state, NULL, "test.txt", nkfalse);
+        // testStr2 = loadFile(state, NULL, "test.txt", nkfalse);
+        testStr2 = loadFile(state, NULL, "ctest.c", nkfalse);
         if(!testStr2) {
             printf("Allocation failure on file load.\n");
             nkppStateDestroy_internal(state);
@@ -178,7 +185,8 @@ int main(int argc, char *argv[])
             printf("----------------------------------------------------------------------\n");
 
             state->writePositionMarkers = nktrue;
-            if(nkppStateExecute(state, testStr2, "test.txt")) {
+            // if(nkppStateExecute(state, testStr2, "test.txt")) {
+            if(nkppStateExecute(state, testStr2, "ctest.c")) {
                 printf("Preprocessor success\n");
             } else {
                 printf("Preprocessor failed\n");
@@ -217,7 +225,7 @@ int main(int argc, char *argv[])
         // nkppStateDestroy_internal(state);
         nkppStateDestroy(state);
 
-        nkppTestRun();
+        // nkppTestRun();
 
         printf("Memory leaked: %lu\n", (unsigned long)nkppMemDebugGetTotalAllocations());
         assert(nkppMemDebugGetTotalAllocations() == 0);
