@@ -354,6 +354,8 @@ nkbool nkppStateInputSkipWhitespaceAndComments(
         return nktrue;
     }
 
+    nkbool outputComments = nkfalse;
+
     while(state->str[state->index]) {
 
         // Skip comments (but output them).
@@ -361,7 +363,7 @@ nkbool nkppStateInputSkipWhitespaceAndComments(
 
             // C++-style comment.
             while(state->str[state->index] && state->str[state->index] != '\n') {
-                if(!nkppStateInputSkipChar(state, output)) {
+                if(!nkppStateInputSkipChar(state, output && outputComments)) {
                     return nkfalse;
                 }
             }
@@ -370,28 +372,46 @@ nkbool nkppStateInputSkipWhitespaceAndComments(
 
             // C-style comment.
 
-            // Skip initial comment maker.
-            if(!nkppStateInputSkipChar(state, output) || !nkppStateInputSkipChar(state, output)) {
+            // while(state->str[state->index] == '/' && state->str[state->index + 1] == '*')
+            {
+
+                // Skip initial comment maker.
+                if(!nkppStateInputSkipChar(state, output && outputComments) ||
+                    !nkppStateInputSkipChar(state, output && outputComments)) {
+                    return nkfalse;
+                }
+
+                while(state->str[state->index] && state->str[state->index + 1]) {
+
+                    if(state->str[state->index] == '*' && state->str[state->index + 1] == '/') {
+
+                        // Found the end.
+                        if(!nkppStateInputSkipChar(state, output && outputComments) ||
+                            !nkppStateInputSkipChar(state, output && outputComments))
+                        {
+                            return nkfalse;
+                        }
+                        break;
+                    }
+
+                    // Keep going.
+                    if(!nkppStateInputSkipChar(state, output && outputComments)) {
+                        return nkfalse;
+                    }
+                }
+
+            }
+
+            // if(!nkppStateInputSkipChar(state, output)) {
+            //     return nkfalse;
+            // }
+
+            // C-style comments are replaced with a single space when
+            // removed.
+            if(!nkppStateOutputAppendChar(state, ' ')) {
                 return nkfalse;
             }
 
-            while(state->str[state->index] && state->str[state->index + 1]) {
-                if(state->str[state->index] == '*' && state->str[state->index + 1] == '/') {
-
-                    // FIXME: Clean this up.
-
-                    // if(!nkppStateInputSkipChar(state, output) ||
-                    //     !nkppStateInputSkipChar(state, output))
-                    if(!nkppStateInputSkipChar(state, output))
-                    {
-                        return nkfalse;
-                    }
-                    break;
-                }
-                if(!nkppStateInputSkipChar(state, output)) {
-                    return nkfalse;
-                }
-            }
 
         } else if(state->str[state->index] == '\n') {
 
@@ -400,9 +420,20 @@ nkbool nkppStateInputSkipWhitespaceAndComments(
                 break;
             }
 
+            if(!nkppStateInputSkipChar(state, output)) {
+                return nkfalse;
+            }
+
         } else if(!nkppIsWhitespace(state->str[state->index])) {
 
             // Non-whitespace, non-comment character found.
+
+            // // FIXME: Remove this.
+            // printf("%c\n", state->str[state->index]);
+
+            // if(!nkppStateInputSkipChar(state, output)) {
+            //     return nkfalse;
+            // }
             break;
 
         } else if(!state->str[state->index]) {
@@ -410,11 +441,11 @@ nkbool nkppStateInputSkipWhitespaceAndComments(
             // End of buffer.
             break;
 
-        }
+        } else {
 
-        if(!nkppStateInputSkipChar(state, output)) {
-
-            return nkfalse;
+            if(!nkppStateInputSkipChar(state, output)) {
+                return nkfalse;
+            }
         }
     }
 
@@ -798,27 +829,38 @@ char *nkppStateInputReadRestOfLine(
 
             // C-style comment.
 
-            // Skip initial comment maker.
-            if(!nkppStateInputSkipChar(state, nktrue) || !nkppStateInputSkipChar(state, nktrue)) {
-                return nkfalse;
-            }
+            // while(state->str[state->index] == '/' && state->str[state->index + 1] == '*')
+            {
 
-            while(state->str[state->index] && state->str[state->index + 1]) {
-                if(state->str[state->index] == '*' && state->str[state->index + 1] == '/') {
-                    // FIXME: Add some sense to this. We are only
-                    // skipping one character and then letting the
-                    // normal looping character skip do the second.
-                    if(!nkppStateInputSkipChar(state, nktrue) || !nkppStateInputSkipChar(state, nktrue)) {
-                        return nkfalse;
-                    }
-                    break;
-                }
-                if(!nkppStateInputSkipChar(state, nktrue)) {
+                // Skip initial comment maker.
+                if(!nkppStateInputSkipChar(state, nktrue) || !nkppStateInputSkipChar(state, nktrue)) {
                     return nkfalse;
                 }
+
+                while(state->str[state->index] && state->str[state->index + 1]) {
+                    if(state->str[state->index] == '*' && state->str[state->index + 1] == '/') {
+                        // FIXME: Add some sense to this. We are only
+                        // skipping one character and then letting the
+                        // normal looping character skip do the second.
+                        if(!nkppStateInputSkipChar(state, nktrue) || !nkppStateInputSkipChar(state, nktrue)) {
+                            return nkfalse;
+                        }
+                        break;
+                    }
+                    if(!nkppStateInputSkipChar(state, nktrue)) {
+                        return nkfalse;
+                    }
+                }
+
+                lastCharWasBackslash = nkfalse;
+
             }
 
-            lastCharWasBackslash = nkfalse;
+            // // C-style comments are replaced with a single space when
+            // // removed.
+            // if(!nkppStateOutputAppendChar(state, ' ')) {
+            //     return nkfalse;
+            // }
 
         } else {
 

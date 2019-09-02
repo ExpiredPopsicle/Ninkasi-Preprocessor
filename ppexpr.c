@@ -477,6 +477,10 @@ nkbool nkppEvaluateExpression_applyOperator(
             break;
 
         case NK_PPTOKEN_LESSTHANOREQUALS:
+
+            // FIXME: Remove this.
+            // printf("LESS THAN OR EQUALS\n");
+
             *result = (a <= b);
             break;
 

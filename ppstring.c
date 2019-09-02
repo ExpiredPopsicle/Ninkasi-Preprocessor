@@ -115,7 +115,7 @@ char *nkppStripCommentsAndTrim(
 
             // C-style comment. Run through until we hit the end or a "*/".
 
-            readIndex += 2; // Skip initial comment maker.
+            readIndex += 2; // Skip initial comment marker.
 
             while(in[readIndex] && in[readIndex+1]) {
                 if(in[readIndex] == '*' && in[readIndex + 1] == '/') {
@@ -124,6 +124,9 @@ char *nkppStripCommentsAndTrim(
                 }
                 readIndex++;
             }
+
+            // C-style comments are replaced with a single space.
+            ret[writeIndex++] = ' ';
 
         } else {
 

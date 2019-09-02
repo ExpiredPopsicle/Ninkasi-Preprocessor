@@ -1,2 +1,2 @@
 #!/bin/bash
-valgrind --leak-check=full --exit-on-first-error=yes --error-exitcode=1 ./a
+valgrind --leak-check=full --exit-on-first-error=yes --error-exitcode=1 ../a
