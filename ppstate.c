@@ -1754,9 +1754,8 @@ nkbool nkppStateExecute_internal(
 
                 if(nameToken &&
                     nameToken->type == NK_PPTOKEN_IDENTIFIER &&
-                    (macro = nkppStateFindMacro(state, nameToken->str))
-                    // && macro->isArgumentName
-                    )
+                    (macro = nkppStateFindMacro(state, nameToken->str)) &&
+                    macro->isArgumentName)
                 {
                     if(!nkppMacroStringify(state, nameToken->str)) {
                         nkppStateAddError(state, "Stringification failed.");
