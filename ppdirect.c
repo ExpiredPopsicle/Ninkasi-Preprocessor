@@ -23,6 +23,7 @@ struct NkppDirectiveMapping nkppDirectiveMapping[] = {
     { "include", nkppDirective_include },
     { "if",      nkppDirective_if      },
     { "elif",    nkppDirective_elif    },
+    { "pragma",  nkppDirective_pragma  },
 };
 
 static nkuint32_t nkppDirectiveMappingLen =
@@ -558,13 +559,13 @@ nkbool nkppDirective_line(
     }
 
     // Handle line number.
-    ret = ret && nkppStrtol(lineNumberToken->str, &num);
+    ret = nkppStrtol(lineNumberToken->str, &num) && ret;
     if(ret) {
 
         // Only actually do something if we're outside of a failed
         // "if" block.
         if(nkppStateConditionalOutputPassed(state)) {
-            state->lineNumber = num;
+            newLineNumber = num;
         }
 
     } else {
@@ -657,7 +658,8 @@ nkbool nkppDirective_warning(
 nkbool nkppDirective_include_handleInclusion(
     struct NkppState *state,
     const char *unquotedName,
-    nkbool systemInclude)
+    nkbool systemInclude,
+    nkbool *innerFailure)
 {
     // FIXME: Attempt to load the file first so we can fail early
     // without setting up a whole new state.
@@ -712,7 +714,9 @@ nkbool nkppDirective_include_handleInclusion(
     nkppStateFlagFileLineMarkersForUpdate(state);
 
     // Execute it.
-    nkppStateExecute_internal(state, fileData);
+    if(!nkppStateExecute_internal(state, fileData)) {
+        *innerFailure = nktrue;
+    }
 
 nkppDirective_include_handleInclusion_cleanup:
 
@@ -844,16 +848,30 @@ nkbool nkppDirective_include(
     if(nkppStateConditionalOutputPassed(state)) {
 
         nkbool success = nkfalse;
+        nkbool innerFailure = nkfalse;
+
+        // Check the current directory *first* if this isn't a system
+        // include.
+        if(!systemInclude) {
+            if(nkppDirective_include_handleInclusion(state, appendedPath,
+                    systemInclude, &innerFailure))
+            {
+                success = nktrue;
+            }
+        }
 
         // Attempt system include directories first if this was using
         // "<>".
-        if(systemInclude) {
+        if(!success) {
             nkuint32_t i;
             for(i = 0; i < state->includePathCount; i++) {
                 char *appendedPath2 =
                     nkppPathAppend(state, state->includePaths[i], unquotedName);
                 if(appendedPath2) {
-                    if(nkppDirective_include_handleInclusion(state, appendedPath2, systemInclude)) {
+                    if(nkppDirective_include_handleInclusion(
+                            state, appendedPath2, systemInclude,
+                            &innerFailure))
+                    {
                         success = nktrue;
                         nkppFree(state, appendedPath2);
                         break;
@@ -863,10 +881,12 @@ nkbool nkppDirective_include(
             }
         }
 
-        // If this isn't a system include, or we couldn't find a
-        // system include, then check the current directory too.
-        if(!success) {
-            if(nkppDirective_include_handleInclusion(state, appendedPath, systemInclude)) {
+        // If we couldn't find a system include, then check the
+        // current directory too.
+        if(!success && systemInclude) {
+            if(nkppDirective_include_handleInclusion(state, appendedPath,
+                    systemInclude, &innerFailure))
+            {
                 success = nktrue;
             }
         }
@@ -879,6 +899,12 @@ nkbool nkppDirective_include(
 
             ret = nkfalse;
             goto nkppDirective_include_cleanup;
+        }
+
+        // Finally, if there was an error in the included file, report
+        // that back up the call stack.
+        if(innerFailure) {
+            ret = nkfalse;
         }
     }
 
@@ -903,4 +929,10 @@ nkppDirective_include_cleanup:
     return ret;
 }
 
+nkbool nkppDirective_pragma(
+    struct NkppState *state,
+    const char *restOfLine)
+{
+    return nktrue;
+}
 

@@ -823,6 +823,8 @@ char *nkppStateInputReadRestOfLine(
     char *ret = NULL;
     nkbool overflow = nkfalse;
 
+    nkbool outputComments = nkfalse;
+
     while(state->str[state->index]) {
 
         if(state->str[state->index] == '/' && state->str[state->index + 1] == '*') {
@@ -833,21 +835,24 @@ char *nkppStateInputReadRestOfLine(
             {
 
                 // Skip initial comment maker.
-                if(!nkppStateInputSkipChar(state, nktrue) || !nkppStateInputSkipChar(state, nktrue)) {
+                if(!nkppStateInputSkipChar(state, outputComments) ||
+                    !nkppStateInputSkipChar(state, outputComments))
+                {
                     return nkfalse;
                 }
 
                 while(state->str[state->index] && state->str[state->index + 1]) {
+
                     if(state->str[state->index] == '*' && state->str[state->index + 1] == '/') {
-                        // FIXME: Add some sense to this. We are only
-                        // skipping one character and then letting the
-                        // normal looping character skip do the second.
-                        if(!nkppStateInputSkipChar(state, nktrue) || !nkppStateInputSkipChar(state, nktrue)) {
+                        if(!nkppStateInputSkipChar(state, outputComments) ||
+                            !nkppStateInputSkipChar(state, outputComments))
+                        {
                             return nkfalse;
                         }
                         break;
                     }
-                    if(!nkppStateInputSkipChar(state, nktrue)) {
+
+                    if(!nkppStateInputSkipChar(state, outputComments)) {
                         return nkfalse;
                     }
                 }
@@ -856,11 +861,11 @@ char *nkppStateInputReadRestOfLine(
 
             }
 
-            // // C-style comments are replaced with a single space when
-            // // removed.
-            // if(!nkppStateOutputAppendChar(state, ' ')) {
-            //     return nkfalse;
-            // }
+            // C-style comments are replaced with a single space when
+            // removed.
+            if(!nkppStateOutputAppendChar(state, ' ')) {
+                return nkfalse;
+            }
 
         } else {
 

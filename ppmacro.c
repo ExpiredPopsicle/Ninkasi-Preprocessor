@@ -362,14 +362,15 @@ nkbool nkppMacroExecute(
                 ret = nkfalse;
             }
 
-        } else {
-            nkppStateAddError(state, "Expected argument list.");
+        } // else {
+        //     nkppStateAddError(state, "Expected argument list.");
 
-            // FIXME: Remove this.
-            nkppStateAddError(state, state->str);
+        //     // FIXME: Remove this.
+        //     nkppStateAddError(state, state->str + state->index);
+        //     assert(0);
 
-            ret = nkfalse;
-        }
+        //     ret = nkfalse;
+        // }
 
     } else {
 
