@@ -568,11 +568,6 @@ nkbool nkppEvaluateExpression_internal(
 
     *output = 0;
 
-    // FIXME: Remove this.
-    if(state->lineNumber >= 268 && state->lineNumber <= 271) {
-        printf("Expression: %s\n", expressionState->str);
-    }
-
     // FIXME: Make this less arbitrary.
     if(actualRecursionLevel > 20) {
         nkppStateAddError(state, "Arbitrary recursion limit reached in expression parser.");

@@ -756,9 +756,21 @@ nkbool nkppDirective_include(
     char *currentDirname = NULL;
     char *appendedPath = NULL;
     nkbool systemInclude = nkfalse;
+    struct NkppState *clonedState = NULL;
+
+    // Process input.
+    clonedState = nkppStateClone(state, nkfalse, nkfalse);
+    if(!clonedState) {
+        ret = nkfalse;
+        goto nkppDirective_include_cleanup;
+    }
+    if(!nkppStateExecute_internal(clonedState, restOfLine)) {
+        ret = nkfalse;
+        goto nkppDirective_include_cleanup;
+    }
 
     // Trim input.
-    trimmedInput = nkppStripCommentsAndTrim(state, restOfLine);
+    trimmedInput = nkppStripCommentsAndTrim(state, clonedState->output);
     if(!trimmedInput) {
         ret = nkfalse;
         goto nkppDirective_include_cleanup;
@@ -883,6 +895,9 @@ nkppDirective_include_cleanup:
     }
     if(unquotedName) {
         nkppFree(state, unquotedName);
+    }
+    if(clonedState) {
+        nkppStateDestroy_internal(clonedState);
     }
 
     return ret;
