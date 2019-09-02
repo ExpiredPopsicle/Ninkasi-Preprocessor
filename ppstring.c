@@ -369,13 +369,13 @@ nkbool nkppStrtol(const char *str, nkuint32_t *out)
         base = 8;
         str++;
 
-        if(str[0] == 'x') {
+        if(str[0] == 'x' || str[0] == 'X') {
 
             // Hex.
             base = 16;
             str++;
 
-        } else if(str[0] == 'b') {
+        } else if(str[0] == 'b' || str[0] == 'B') {
 
             // Binary.
             base = 2;
@@ -387,6 +387,14 @@ nkbool nkppStrtol(const char *str, nkuint32_t *out)
     while(str[0]) {
 
         nkuint32_t digit = nkppParseDigit(str[0]);
+
+        // 'L' and 'U' are postfix values. If we see them, it's time
+        // to bail out.
+        if(str[0] == 'L' || str[0] == 'l' ||
+            str[0] == 'U' || str[0] == 'u')
+        {
+            break;
+        }
 
         if(digit >= base || digit == NK_INVALID_VALUE) {
             return nkfalse;

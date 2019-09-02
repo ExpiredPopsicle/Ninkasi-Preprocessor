@@ -593,6 +593,7 @@ nkbool nkppEvaluateExpression_internal(
                 &tmpVal,
                 recursionLevel + 1))
         {
+            nkppStateAddError(state, "Failed to parse value.");
             ret = nkfalse;
             goto nkppEvaluateExpression_cleanup;
         }
@@ -605,6 +606,7 @@ nkbool nkppEvaluateExpression_internal(
             // Parse operator token.
             operatorToken = nkppStateInputGetNextToken(expressionState, nkfalse);
             if(!operatorToken) {
+                nkppStateAddError(state, "Failed to parse operator.");
                 ret = nkfalse;
                 goto nkppEvaluateExpression_cleanup;
             }
@@ -635,6 +637,7 @@ nkbool nkppEvaluateExpression_internal(
 
                 // Compare precedence.
                 if(!nkppExpressionStackPeekTop(operatorStack, &stackTop)) {
+                    nkppStateAddError(state, "Internal parser error.");
                     ret = nkfalse;
                     goto nkppEvaluateExpression_cleanup;
                 }
@@ -653,6 +656,7 @@ nkbool nkppEvaluateExpression_internal(
 
                 // Apply it.
                 if(!nkppEvaluateExpression_applyStackTop(state, valueStack, operatorStack)) {
+                    nkppStateAddError(state, "Failed to apply operator.");
                     ret = nkfalse;
                     goto nkppEvaluateExpression_cleanup;
                 }
@@ -670,6 +674,7 @@ nkbool nkppEvaluateExpression_internal(
 
                 // Get the value at the top of the stack.
                 if(!nkppExpressionStackPeekTop(valueStack, &valueStackTop)) {
+                    nkppStateAddError(state, "Internal parser error.");
                     ret = nkfalse;
                     goto nkppEvaluateExpression_cleanup;
                 }
@@ -679,6 +684,7 @@ nkbool nkppEvaluateExpression_internal(
                     state, expressionState,
                     &option1Value, recursionLevel + 1))
                 {
+                    nkppStateAddError(state, "Failed to evaluate first subexpression in ternary operator.");
                     ret = nkfalse;
                     goto nkppEvaluateExpression_cleanup;
                 }
@@ -699,6 +705,7 @@ nkbool nkppEvaluateExpression_internal(
                     state, expressionState,
                     &option2Value, recursionLevel + 1))
                 {
+                    nkppStateAddError(state, "Failed to evaluate second subexpression in ternary operator.");
                     ret = nkfalse;
                     goto nkppEvaluateExpression_cleanup;
                 }
@@ -736,6 +743,8 @@ nkbool nkppEvaluateExpression_internal(
                 valueStack,
                 operatorStack))
         {
+            nkppStateAddError(state, "Failed to evaluate final operators.");
+
             ret = nkfalse;
             goto nkppEvaluateExpression_cleanup;
         }
@@ -745,6 +754,7 @@ nkbool nkppEvaluateExpression_internal(
     if(nkppExpressionStackGetSize(valueStack) == 1) {
         nkppExpressionStackPeekTop(valueStack, output);
     } else {
+        nkppStateAddError(state, "Operators still on stack after expression evaluation.");
         ret = nkfalse;
         goto nkppEvaluateExpression_cleanup;
     }

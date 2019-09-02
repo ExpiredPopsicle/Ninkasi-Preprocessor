@@ -768,6 +768,7 @@ nkbool nkppDirective_include(
         ret = nkfalse;
         goto nkppDirective_include_cleanup;
     }
+    clonedState->readBracketStrings = nktrue;
     if(!nkppStateExecute_internal(clonedState, restOfLine)) {
         ret = nkfalse;
         goto nkppDirective_include_cleanup;

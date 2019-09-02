@@ -37,6 +37,7 @@ struct NkppState *nkppStateCreate_internal(
         ret->recursionLevel = 0;
         ret->concatenationEnabled = nkfalse;
         ret->preprocessingIfExpression = nkfalse;
+        ret->readBracketStrings = nkfalse;
         ret->tokensOnThisLine = 0;
         ret->conditionalStack = NULL;
         ret->includePaths = NULL;
@@ -641,6 +642,12 @@ struct NkppToken *nkppStateInputGetNextToken(
         ret->str = nkppStateInputReadInteger(state);
         ret->type = NK_PPTOKEN_NUMBER;
 
+    } else if(state->str[state->index] == '<' && state->readBracketStrings) {
+
+        // Read quoted string.
+        ret->str = nkppStateInputReadBracketString(state);
+        ret->type = NK_PPTOKEN_BRACKETSTRING;
+
     } else if(state->str[state->index] == '"') {
 
         // Read quoted string.
@@ -1231,6 +1238,41 @@ char *nkppStateInputReadIdentifier(struct NkppState *state)
     return ret;
 }
 
+char *nkppStateInputReadBracketString(struct NkppState *state)
+{
+    char *ret = NULL;
+    nkuint32_t start = state->index;
+    nkuint32_t len;
+
+    assert(state->str[start] == '<');
+
+    while(state->str[state->index]) {
+
+        if(state->str[state->index] == '>') {
+            if(!nkppStateInputSkipChar(state, nkfalse)) {
+                return NULL;
+            }
+            break;
+        }
+
+        if(!nkppStateInputSkipChar(state, nkfalse)) {
+            return NULL;
+        }
+    }
+
+    len = (state->index - start);
+    // FIXME: Overflow check?
+    ret = nkppMalloc(state, len + 1);
+    if(!ret) {
+        return NULL;
+    }
+
+    ret[len] = 0;
+    memcpy(ret, state->str + start, len);
+
+    return ret;
+}
+
 char *nkppStateInputReadQuotedString(struct NkppState *state)
 {
     const char *str = state->str;
@@ -1324,9 +1366,11 @@ char *nkppStateInputReadInteger(struct NkppState *state)
             return NULL;
         }
 
-        if(str[state->index] == 'x' || str[state->index] == 'b') {
-
-            hex = str[state->index] == 'x';
+        if(str[state->index] == 'x' || str[state->index] == 'X' ||
+            str[state->index] == 'b' || str[state->index] == 'B')
+        {
+            hex = str[state->index] == 'x' ||
+                str[state->index] == 'X';
 
             if(!nkppStateInputSkipChar(state, nkfalse)) {
                 return NULL;
@@ -1363,8 +1407,12 @@ char *nkppStateInputReadInteger(struct NkppState *state)
     nkppMemcpy(ret, str + start, len);
     ret[len] = 0;
 
-    // Skip 'L' postfix.
-    if(str[state->index] == 'L') {
+    // FIXME: Do something more correct for unsigned values.
+
+    // Skip 'L' or 'U' postfix.
+    if(str[state->index] == 'L' || str[state->index] == 'l' ||
+        str[state->index] == 'U' || str[state->index] == 'u')
+    {
         nkppStateInputSkipChar(state, nkfalse);
     }
 
@@ -1690,12 +1738,18 @@ nkbool nkppStateDirective(
     // understand by going through the *actual*
     // list of directives.
     if(!nkppDirectiveIsValid(directiveNameToken->str)) {
-        nkppStateAddError(state, "Invalid directive name.");
 
-        // FIXME: Remove this.
-        nkppStateAddError(state, directiveNameToken->str);
+        // Skip directives that we don't know the name of if we failed
+        // output checks. This lets us skip directives that have been
+        // #ifed out because they rely on specific compilers.
+        if(nkppStateConditionalOutputPassed(state)) {
+            nkppStateAddError(state, "Invalid directive name.");
 
-        ret = nkfalse;
+            // FIXME: Remove this.
+            nkppStateAddError(state, directiveNameToken->str);
+
+            ret = nkfalse;
+        }
         goto nkppStateDirective_cleanup;
     }
 

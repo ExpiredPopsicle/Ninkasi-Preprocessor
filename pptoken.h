@@ -6,9 +6,10 @@
 enum NkppTokenType
 {
     NK_PPTOKEN_IDENTIFIER,
-    NK_PPTOKEN_QUOTEDSTRING, // str is string with escape characters unconverted and quotes intact!
-    NK_PPTOKEN_HASH,         // "#"
-    NK_PPTOKEN_DOUBLEHASH,   // "##"
+    NK_PPTOKEN_QUOTEDSTRING,  // str is string with escape characters unconverted and quotes intact!
+    NK_PPTOKEN_BRACKETSTRING,
+    NK_PPTOKEN_HASH,          // "#"
+    NK_PPTOKEN_DOUBLEHASH,    // "##"
     NK_PPTOKEN_COMMA,
     NK_PPTOKEN_NUMBER,
     NK_PPTOKEN_OPENPAREN,

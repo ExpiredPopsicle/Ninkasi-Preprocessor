@@ -252,7 +252,7 @@ int main(int argc, char *argv[])
         nkppStateAddDefine(state, "__FLT64X_MIN_10_EXP__ (-4931)");
         nkppStateAddDefine(state, "__LDBL_HAS_QUIET_NAN__ 1");
         nkppStateAddDefine(state, "__FLT64_MANT_DIG__ 53");
-        nkppStateAddDefine(state, "__GNUC__ 8");
+        // nkppStateAddDefine(state, "__GNUC__ 8");
         nkppStateAddDefine(state, "__pie__ 2");
         nkppStateAddDefine(state, "__MMX__ 1");
         nkppStateAddDefine(state, "__FLT_HAS_DENORM__ 1");
@@ -502,6 +502,7 @@ int main(int argc, char *argv[])
         nkppStateAddDefine(state, "__ATOMIC_ACQ_REL 4");
         nkppStateAddDefine(state, "__ATOMIC_RELEASE 3");
 
+        // nkppStateAddDefine(state, "_GCC_LIMITS_H_");
 
         // nkppStateAddDefine(state, "__STRICT_ANSI__ 1");
         nkppStateAddIncludePath(state, "/usr/lib/gcc/x86_64-linux-gnu/8/include");

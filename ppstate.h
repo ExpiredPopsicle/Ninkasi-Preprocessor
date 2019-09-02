@@ -104,6 +104,11 @@ struct NkppState
     // "defined()" expressions.
     nkbool preprocessingIfExpression;
 
+    // This is to handle the case in #include directive parsing where
+    // we need to skip executing macros inside of <> brackets the same
+    // way we do for quoted strings.
+    nkbool readBracketStrings;
+
     char **includePaths;
     nkuint32_t includePathCount;
 };
@@ -193,6 +198,7 @@ struct NkppToken *nkppStateInputGetNextToken(
 
 char *nkppStateInputReadIdentifier(struct NkppState *state);
 char *nkppStateInputReadQuotedString(struct NkppState *state);
+char *nkppStateInputReadBracketString(struct NkppState *state);
 char *nkppStateInputReadInteger(struct NkppState *state);
 
 /// Read an argument on the *invocation* of a macro.
