@@ -223,6 +223,12 @@ nkbool nkppMacroExecute(
     }
     clonedState->concatenationEnabled = nktrue;
 
+    // Remove this macro from the cloned state, so we can't infinitely
+    // recurse.
+    nkppStateDeleteMacro(clonedState, macro->identifier);
+
+
+
     // Input is the macro definition. Output is
     // appending to the "parent" state.
 

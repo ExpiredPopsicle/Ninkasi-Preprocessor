@@ -1702,6 +1702,10 @@ nkbool nkppStateExecute_internal(
     // FIXME: Maybe make this less arbitraty.
     if(state->recursionLevel > 20) {
         nkppStateAddError(state, "Arbitrary recursion limit reached in preprocessor.");
+
+        // FIXME: Remove this.
+        assert(0);
+
         return nkfalse;
     }
 

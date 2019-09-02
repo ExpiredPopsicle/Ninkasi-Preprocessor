@@ -166,7 +166,8 @@ int main(int argc, char *argv[])
         nkppStateAddIncludePath(state, "/usr/include/linux");
 
         // testStr2 = loadFile(state, NULL, "test.txt", nkfalse);
-        testStr2 = loadFile(state, NULL, "ctest.c", nkfalse);
+        // testStr2 = loadFile(state, NULL, "ctest.c", nkfalse);
+        testStr2 = loadFile(state, NULL, argc > 1 ? argv[1] : "ctest.c", nkfalse);
         if(!testStr2) {
             printf("Allocation failure on file load.\n");
             nkppStateDestroy_internal(state);
