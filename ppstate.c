@@ -336,9 +336,6 @@ nkbool nkppStateInputSkipChar(struct NkppState *state, nkbool output)
     if(state->str && state->str[state->index] == '\n') {
         state->lineNumber++;
         state->tokensOnThisLine = 0;
-
-        // FIXME: Remove this.
-        printf("Line: %ld\n", (long)state->lineNumber);
     }
 
     state->index++;
@@ -428,13 +425,6 @@ nkbool nkppStateInputSkipWhitespaceAndComments(
         } else if(!nkppIsWhitespace(state->str[state->index])) {
 
             // Non-whitespace, non-comment character found.
-
-            // // FIXME: Remove this.
-            // printf("%c\n", state->str[state->index]);
-
-            // if(!nkppStateInputSkipChar(state, output)) {
-            //     return nkfalse;
-            // }
             break;
 
         } else if(!state->str[state->index]) {
@@ -618,9 +608,6 @@ struct NkppToken *nkppStateInputGetNextToken(
         return NULL;
     }
 
-    // FIXME: This list is getting long enough that I think we need a
-    // table of values that we just search through.
-
     if(nkppIsValidIdentifierCharacter(state->str[state->index], nktrue)) {
 
         // Read identifiers (and directives).
@@ -644,7 +631,7 @@ struct NkppToken *nkppStateInputGetNextToken(
 
     } else if(state->str[state->index] == '<' && state->readBracketStrings) {
 
-        // Read quoted string.
+        // Read string between '<' and '>' for include directives.
         ret->str = nkppStateInputReadBracketString(state);
         ret->type = NK_PPTOKEN_BRACKETSTRING;
 
@@ -956,9 +943,6 @@ char *nkppStateInputReadRestOfLine(
         ret[lineLen] = 0;
     }
 
-    // FIXME: Remove this.
-    printf("Rest of line: %s\n", ret);
-
     return ret;
 }
 
@@ -1099,10 +1083,6 @@ struct NkppState *nkppStateClone(
     struct NkppMacro **macroWritePtr;
 
     if(!ret) {
-
-        // FIXME: Remove this.
-        assert(0);
-
         return NULL;
     }
 
@@ -1123,10 +1103,6 @@ struct NkppState *nkppStateClone(
         if(ret->outputCapacity) {
             if(!ret->output) {
                 nkppStateDestroy_internal(ret);
-
-                // FIXME: Remove this.
-                assert(0);
-
                 return NULL;
             }
             nkppMemcpy(
@@ -1137,10 +1113,6 @@ struct NkppState *nkppStateClone(
 
         if(state->output && !ret->output) {
             nkppStateDestroy_internal(ret);
-
-            // FIXME: Remove this.
-            assert(0);
-
             return NULL;
         }
     }
@@ -1150,35 +1122,26 @@ struct NkppState *nkppStateClone(
     ret->errorState = state->errorState;
     if(!nkppStateSetFilename(ret, state->filename)) {
         nkppStateDestroy_internal(ret);
-
-        // FIXME: Remove this.
-        assert(0);
-
         return NULL;
     }
 
-    // Note: Nested if state is not copied.
+    // Note: Nested "if" state is not copied.
 
     // Note: Macros that come in as arguments to another macro are not
-    // copied.
+    // copied by default.
 
     currentMacro = state->macros;
     macroWritePtr = &ret->macros;
 
     while(currentMacro) {
 
-        // FIXME: Uhhh... should this be here?
-        if(!currentMacro->isArgumentName || cloneArguments)
-        {
+        // Don't clone macro arguments unless by default.
+        if(!currentMacro->isArgumentName || cloneArguments) {
 
             struct NkppMacro *clonedMacro =
                 nkppMacroClone(state, currentMacro);
             if(!clonedMacro) {
                 nkppStateDestroy_internal(ret);
-
-                // FIXME: Remove this.
-                assert(0);
-
                 return NULL;
             }
 
@@ -1188,9 +1151,6 @@ struct NkppState *nkppStateClone(
 
         currentMacro = currentMacro->next;
     }
-
-    // FIXME: Remove this.
-    assert(ret);
 
     return ret;
 }
@@ -1243,6 +1203,8 @@ char *nkppStateInputReadBracketString(struct NkppState *state)
     char *ret = NULL;
     nkuint32_t start = state->index;
     nkuint32_t len;
+    nkuint32_t bufferLen;
+    nkbool overflow = nkfalse;
 
     assert(state->str[start] == '<');
 
@@ -1261,8 +1223,11 @@ char *nkppStateInputReadBracketString(struct NkppState *state)
     }
 
     len = (state->index - start);
-    // FIXME: Overflow check?
-    ret = nkppMalloc(state, len + 1);
+    NK_CHECK_OVERFLOW_UINT_ADD(len, 1, bufferLen, overflow);
+    if(overflow) {
+        return NULL;
+    }
+    ret = nkppMalloc(state, bufferLen);
     if(!ret) {
         return NULL;
     }
@@ -1771,15 +1736,13 @@ nkbool nkppStateDirective(
     // list of directives.
     if(!nkppDirectiveIsValid(directiveNameToken->str)) {
 
-        // Skip directives that we don't know the name of if we failed
-        // output checks. This lets us skip directives that have been
-        // #ifed out because they rely on specific compilers.
+        // Skip error output on directives that we don't know the name
+        // of if we aren't emitting output right now. This lets us
+        // quietly skip directives that have been #ifed out because
+        // they rely on specific compilers (like "include_next" in
+        // GCC).
         if(nkppStateConditionalOutputPassed(state)) {
-            nkppStateAddError(state, "Invalid directive name.");
-
-            // FIXME: Remove this.
-            nkppStateAddError(state, directiveNameToken->str);
-
+            nkppStateAddError2(state, "Invalid directive name: ", directiveNameToken->str);
             ret = nkfalse;
         }
         goto nkppStateDirective_cleanup;
@@ -1835,10 +1798,6 @@ nkbool nkppStateExecute_internal(
     // FIXME: Maybe make this less arbitraty.
     if(state->recursionLevel > 20) {
         nkppStateAddError(state, "Arbitrary recursion limit reached in preprocessor.");
-
-        // FIXME: Remove this.
-        assert(0);
-
         return nkfalse;
     }
 
@@ -1859,7 +1818,7 @@ nkbool nkppStateExecute_internal(
                 // token, and it does its job by effectively just
                 // dropping out.
 
-                // FIXME: We need to close up the whitespace gap here!
+                // But we do need to close up the whitespace gap here!
                 while(state->outputLength &&
                     nkppIsWhitespace(state->output[state->outputLength - 1]) &&
                     state->output[state->outputLength - 1] != '\n')

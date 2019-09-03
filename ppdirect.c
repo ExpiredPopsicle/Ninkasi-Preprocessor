@@ -6,10 +6,6 @@ struct NkppDirectiveMapping
     nkbool (*handler)(struct NkppState *, const char*);
 };
 
-// TODO: Add these...
-//   warning (passthrough?)
-//   pragma? (passthrough?)
-//   ... anything else I think of
 struct NkppDirectiveMapping nkppDirectiveMapping[] = {
     { "undef",   nkppDirective_undef   },
     { "define",  nkppDirective_define  },
@@ -688,7 +684,7 @@ nkbool nkppDirective_warning(
 
     if(nkppStateConditionalOutputPassed(state)) {
         // Warnings treated as errors for now.
-        nkppStateAddError(state, trimmedLine);
+        nkppStateAddError2(state, "Warning: ", trimmedLine);
     }
 
     nkppFree(state, trimmedLine);

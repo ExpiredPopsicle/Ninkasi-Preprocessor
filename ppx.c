@@ -50,7 +50,7 @@ void nkppStateDestroy(
     userData =
         state->memoryCallbacks ? state->memoryCallbacks->userData : NULL;
 
-    // FIXME: Remove this.
+    // FIXME: Remove this. (Once we add a real error reporting API.)
     nkppErrorStateDump(state, state->errorState);
 
     nkppErrorStateClear(state, state->errorState);

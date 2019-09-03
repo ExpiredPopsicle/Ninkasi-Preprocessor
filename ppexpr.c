@@ -461,10 +461,6 @@ nkbool nkppEvaluateExpression_applyOperator(
             break;
 
         case NK_PPTOKEN_LESSTHANOREQUALS:
-
-            // FIXME: Remove this.
-            // printf("LESS THAN OR EQUALS\n");
-
             *result = (a <= b);
             break;
 
@@ -598,12 +594,7 @@ nkbool nkppEvaluateExpression_internal(
 
             // Make sure whatever we parsed was actually an operator.
             if(nkppEvaluateExpression_getPrecedence(currentOperator) == NK_INVALID_VALUE) {
-                nkppStateAddError(expressionState, "Bad operator token.");
-
-                // FIXME: Remove this.
-                nkppStateAddError(expressionState, operatorToken->str);
-                nkppStateAddError(expressionState, expressionState->str);
-
+                nkppStateAddError2(expressionState, "Bad operator token: ", operatorToken->str);
                 ret = nkfalse;
                 goto nkppEvaluateExpression_cleanup;
             }
