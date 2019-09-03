@@ -172,6 +172,7 @@ nkbool nkppEvaluateExpression_macroDefined(
 
     // Read identifier.
     if(!token) {
+        nkppStateAddError(state, "Expected identifier.");
         ret = nkfalse;
         goto nkppEvaluateExpression_macroDefined_cleanup;
     }
@@ -184,23 +185,16 @@ nkbool nkppEvaluateExpression_macroDefined(
     nkppTokenDestroy(state, token);
     token = NULL;
 
-    // FIXME: Remove this.
-    // if(state->lineNumber >= 268 && state->lineNumber <= 271) {
-        printf("Testing macro defined: %s\n", identifierStr);
-    // }
-
     // Skip ')'.
     if(startWithParen) {
         token = nkppStateInputGetNextToken(expressionState, nkfalse);
         if(!token) {
+            nkppStateAddError(state, "Expected ')'.");
             ret = nkfalse;
             goto nkppEvaluateExpression_macroDefined_cleanup;
         }
         if(token->type != NK_PPTOKEN_CLOSEPAREN) {
-
-            // FIXME: Remove this.
-            nkppStateAddError(state, "Expected ')'.");
-
+            nkppStateAddError2(state, "Expected ')' at: ", token->str);
             ret = nkfalse;
             goto nkppEvaluateExpression_macroDefined_cleanup;
         }
@@ -215,11 +209,6 @@ nkbool nkppEvaluateExpression_macroDefined(
     } else {
         *output = 0;
     }
-
-    // FIXME: Remove this.
-    // if(state->lineNumber >= 268 && state->lineNumber <= 271) {
-        printf("Testing macro defined: %s = %ld\n", identifierStr, (long)*output);
-    // }
 
 nkppEvaluateExpression_macroDefined_cleanup:
 

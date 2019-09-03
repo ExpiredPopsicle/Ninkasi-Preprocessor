@@ -493,12 +493,12 @@ nkbool nkppDirective_define(
                 // Ignore redundant macros with the same definition.
                 if(!nkppDirective_define_macrosEqual(oldMacro, macro)) {
 
-                    // FIXME: This should probably just be a warning.
-                    nkppStateAddError(state, "Multiple definitions of the same macro.");
-
-                    // FIXME: Remove this.
-                    nkppStateAddError(state, macro->identifier);
-
+                    // This should probably just be a warning, if we
+                    // ever add warnings. It won't cause a compile
+                    // failure, but it will add an error for now.
+                    nkppStateAddError2(
+                        state, "Warning: Multiple definitions of the same macro: ",
+                        macro->identifier);
                 }
 
                 // Remove the old one.
