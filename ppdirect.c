@@ -257,6 +257,50 @@ nkbool nkppDirective_undef(
     return ret;
 }
 
+nkbool nkppDirective_define_macrosEqual(
+    const struct NkppMacro *a,
+    const struct NkppMacro *b)
+{
+    const struct NkppMacroArgument *arg_a;
+    const struct NkppMacroArgument *arg_b;
+
+    if(nkppStrcmp(a->identifier, b->identifier)) {
+        return nkfalse;
+    }
+
+    if(nkppStrcmp(a->definition, b->definition)) {
+        return nkfalse;
+    }
+
+    if(a->functionStyleMacro != b->functionStyleMacro) {
+        return nkfalse;
+    }
+
+    if(a->isArgumentName != b->isArgumentName) {
+        return nkfalse;
+    }
+
+    arg_a = a->arguments;
+    arg_b = b->arguments;
+
+    while(arg_a && arg_b) {
+
+        if(nkppStrcmp(arg_a->name, arg_b->name)) {
+            return nkfalse;
+        }
+
+        arg_a = arg_a->next;
+        arg_b = arg_b->next;
+    }
+
+    if(arg_a || arg_b) {
+        // One list or the other had more stuff.
+        return nkfalse;
+    }
+
+    return nktrue;
+}
+
 nkbool nkppDirective_define(
     struct NkppState *state,
     const char *restOfLine)
@@ -446,11 +490,8 @@ nkbool nkppDirective_define(
             // Disallow multiple definitions.
             if(oldMacro) {
 
-                // FIXME!!! More thorough test for equality! Test
-                // argument names!
-
                 // Ignore redundant macros with the same definition.
-                if(nkppStrcmp(oldMacro->definition, macro->definition)) {
+                if(!nkppDirective_define_macrosEqual(oldMacro, macro)) {
 
                     // FIXME: This should probably just be a warning.
                     nkppStateAddError(state, "Multiple definitions of the same macro.");
