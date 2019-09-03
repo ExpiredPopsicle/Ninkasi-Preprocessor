@@ -176,12 +176,7 @@ nkbool nkppEvaluateExpression_macroDefined(
         goto nkppEvaluateExpression_macroDefined_cleanup;
     }
     if(token->type != NK_PPTOKEN_IDENTIFIER) {
-
-        // FIXME: Remove this.
-        nkppStateAddError(state, "Expected identifier.");
-        // FIXME: Remove this.
-        nkppStateAddError(state, token->str);
-
+        nkppStateAddError2(state, "Expected identifier at: ", token->str);
         ret = nkfalse;
         goto nkppEvaluateExpression_macroDefined_cleanup;
     }
@@ -801,6 +796,11 @@ nkbool nkppEvaluateExpression(
         ret = nkfalse;
         goto nkppEvaluateExpression_outer_cleanup;
     }
+    if(!nkppStateSetFilename(expressionState, state->filename)) {
+        ret = nkfalse;
+        goto nkppEvaluateExpression_outer_cleanup;
+    }
+    expressionState->lineNumber = state->lineNumber;
     expressionState->str = clonedState->output;
     expressionState->recursionLevel = state->recursionLevel;
 

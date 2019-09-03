@@ -217,6 +217,11 @@ void nkppStateAddError(
     struct NkppState *state,
     const char *errorMessage);
 
+void nkppStateAddError2(
+    struct NkppState *state,
+    const char *part1,
+    const char *part2);
+
 // ----------------------------------------------------------------------
 // ifdef/ifndef/if/else/endif handling
 

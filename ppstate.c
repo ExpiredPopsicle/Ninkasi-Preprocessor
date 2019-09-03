@@ -1519,6 +1519,37 @@ void nkppStateOutputClear(struct NkppState *state)
     state->outputLineNumber = 1;
 }
 
+void nkppStateAddError2(
+    struct NkppState *state,
+    const char *part1,
+    const char *part2)
+{
+    nkuint32_t len1 = nkppStrlen(part1);
+    nkuint32_t len2 = nkppStrlen(part2);
+    nkuint32_t outputLen;
+    nkuint32_t outputBufferLen;
+    nkbool overflow = nkfalse;
+    char *output = NULL;
+
+    NK_CHECK_OVERFLOW_UINT_ADD(len1, len2, outputLen, overflow);
+    NK_CHECK_OVERFLOW_UINT_ADD(outputLen, 1, outputBufferLen, overflow);
+    if(overflow) {
+        nkppStateAddError(state, "Error generating error.");
+        return;
+    }
+
+    output = nkppMalloc(state, outputBufferLen);
+    if(output) {
+        memcpy(output, part1, len1);
+        memcpy(output + len1, part2, len2);
+        output[outputLen] = 0;
+        nkppStateAddError(state, output);
+        nkppFree(state, output);
+    } else {
+        nkppStateAddError(state, "Error generating error.");
+    }
+}
+
 void nkppStateAddError(
     struct NkppState *state,
     const char *errorMessage)
@@ -1628,6 +1659,7 @@ nkbool nkppStatePopIfResult(
     struct NkppStateConditional *stackTop = state->conditionalStack;
 
     if(!stackTop) {
+        nkppStateAddError(state, "\"endif\" directive without corresponding \"if\" directive.");
         return nkfalse;
     }
     state->conditionalStack = stackTop->next;
@@ -1776,8 +1808,8 @@ nkbool nkppStateDirective(
         // because an error would have
         // been added in nkppDirectiveHandleDirective()
         // for whatever went wrong.
-        nkppStateAddError(
-            state, "Bad directive.");
+        nkppStateAddError2(
+            state, "Directive failed: ", directiveNameToken->str);
         ret = nkfalse;
     }
 

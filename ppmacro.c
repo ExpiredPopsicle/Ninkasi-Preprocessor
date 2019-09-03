@@ -126,35 +126,17 @@ struct NkppMacro *nkppMacroClone(
 
     ret = nkppMacroCreate(state);
     if(!ret) {
-
-        // FIXME: Remove this.
-        assert(0);
-
         return NULL;
     }
-
-    // FIXME: Remove this.
-    assert(macro->identifier);
 
     ret->identifier = nkppStrdup(state, macro->identifier);
     if(!ret->identifier) {
         nkppMacroDestroy(state, ret);
-
-        // FIXME: Remove this.
-        assert(!state->errorState->allocationFailure);
-
-        // FIXME: Remove this.
-        assert(0);
-
         return NULL;
     }
 
     ret->definition = nkppStrdup(state, macro->definition);
     if(!ret->definition) {
-
-        // FIXME: Remove this.
-        assert(0);
-
         nkppMacroDestroy(state, ret);
         return NULL;
     }
@@ -173,10 +155,6 @@ struct NkppMacro *nkppMacroClone(
                 sizeof(struct NkppMacroArgument));
         if(!clonedArg) {
             nkppMacroDestroy(state, ret);
-
-            // FIXME: Remove this.
-            assert(0);
-
             return NULL;
         }
 

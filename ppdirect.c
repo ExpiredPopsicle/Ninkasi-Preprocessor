@@ -934,11 +934,7 @@ nkbool nkppDirective_include(
         }
 
         if(!success) {
-            nkppStateAddError(state, "Could not load file to include.");
-
-            // FIXME: Remove this.
-            nkppStateAddError(state, unquotedName);
-
+            nkppStateAddError2(state, "Could not load file to include: ", unquotedName);
             ret = nkfalse;
             goto nkppDirective_include_cleanup;
         }
