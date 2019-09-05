@@ -551,8 +551,12 @@ int main(int argc, char *argv[])
 
             if(state->output) {
                 FILE *outfile = fopen("tmp.c", "wb+");
-                fprintf(outfile, "%s", state->output);
-                fclose(outfile);
+                if(outfile) {
+                    fprintf(outfile, "%s", state->output);
+                    fclose(outfile);
+                } else {
+                    printf("Failed to write preprocessed file.\n");
+                }
             }
 
         }

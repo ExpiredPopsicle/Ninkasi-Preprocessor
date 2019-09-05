@@ -1,6 +1,9 @@
 #ifndef NK_PPTYPES_H
 #define NK_PPTYPES_H
 
+// FIXME: Zlib has a better way of determining these sizes. Check out
+// how they do it and implement it like that.
+
 #if !defined(NKPP_32BIT) && !defined(NKPP_16BIT)
 
 #  ifdef __ILP32__

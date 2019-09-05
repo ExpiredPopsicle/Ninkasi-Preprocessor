@@ -348,11 +348,11 @@ nkbool nkppStateInputSkipWhitespaceAndComments(
     nkbool output,
     nkbool stopAtNewline)
 {
+    nkbool outputComments = nkfalse;
+
     if(!state->str) {
         return nktrue;
     }
-
-    nkbool outputComments = nkfalse;
 
     while(state->str[state->index]) {
 
@@ -370,46 +370,36 @@ nkbool nkppStateInputSkipWhitespaceAndComments(
 
             // C-style comment.
 
-            // while(state->str[state->index] == '/' && state->str[state->index + 1] == '*')
-            {
-
-                // Skip initial comment maker.
-                if(!nkppStateInputSkipChar(state, output && outputComments) ||
-                    !nkppStateInputSkipChar(state, output && outputComments)) {
-                    return nkfalse;
-                }
-
-                while(state->str[state->index] && state->str[state->index + 1]) {
-
-                    if(state->str[state->index] == '*' && state->str[state->index + 1] == '/') {
-
-                        // Found the end.
-                        if(!nkppStateInputSkipChar(state, output && outputComments) ||
-                            !nkppStateInputSkipChar(state, output && outputComments))
-                        {
-                            return nkfalse;
-                        }
-                        break;
-                    }
-
-                    // Keep going.
-                    if(!nkppStateInputSkipChar(state, output && outputComments)) {
-                        return nkfalse;
-                    }
-                }
-
+            // Skip initial comment marker.
+            if(!nkppStateInputSkipChar(state, output && outputComments) ||
+                !nkppStateInputSkipChar(state, output && outputComments)) {
+                return nkfalse;
             }
 
-            // if(!nkppStateInputSkipChar(state, output)) {
-            //     return nkfalse;
-            // }
+            while(state->str[state->index] && state->str[state->index + 1]) {
+
+                if(state->str[state->index] == '*' && state->str[state->index + 1] == '/') {
+
+                    // Found the end.
+                    if(!nkppStateInputSkipChar(state, output && outputComments) ||
+                        !nkppStateInputSkipChar(state, output && outputComments))
+                    {
+                        return nkfalse;
+                    }
+                    break;
+                }
+
+                // Keep going.
+                if(!nkppStateInputSkipChar(state, output && outputComments)) {
+                    return nkfalse;
+                }
+            }
 
             // C-style comments are replaced with a single space when
             // removed.
             if(!nkppStateOutputAppendChar(state, ' ')) {
                 return nkfalse;
             }
-
 
         } else if(state->str[state->index] == '\n') {
 
@@ -1374,10 +1364,11 @@ char *nkppStateInputReadInteger(struct NkppState *state)
 
     // FIXME: Do something more correct for unsigned values.
 
-    // Skip 'L' or 'U' postfix.
-    if(str[state->index] == 'L' || str[state->index] == 'l' ||
-        str[state->index] == 'U' || str[state->index] == 'u')
-    {
+    // Skip 'L', 'U', or 'UL' postfix.
+    if(str[state->index] == 'U' || str[state->index] == 'u') {
+        nkppStateInputSkipChar(state, nkfalse);
+    }
+    if(str[state->index] == 'L' || str[state->index] == 'l') {
         nkppStateInputSkipChar(state, nkfalse);
     }
 

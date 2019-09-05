@@ -347,6 +347,8 @@ nkuint32_t nkppParseDigit(char c)
     return NK_INVALID_VALUE;
 }
 
+// FIXME: Naming. This doesn't act like the C function and it only
+// does uints anyway.
 nkbool nkppStrtol(const char *str, nkuint32_t *out)
 {
     nkuint32_t base = 10;
@@ -388,8 +390,8 @@ nkbool nkppStrtol(const char *str, nkuint32_t *out)
 
         nkuint32_t digit = nkppParseDigit(str[0]);
 
-        // 'L' and 'U' are postfix values. If we see them, it's time
-        // to bail out.
+        // 'L' and 'U' are postfix type specifiers. If we see them,
+        // it's time to bail out of the actual number parsing.
         if(str[0] == 'L' || str[0] == 'l' ||
             str[0] == 'U' || str[0] == 'u')
         {

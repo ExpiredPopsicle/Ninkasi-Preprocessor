@@ -11,6 +11,7 @@ wcc pppath.c
 wcc pptest.c
 wcc ppexpr.c
 wcc pperror.c
+wcc ppx.c
 wcl *.obj
 
 echo "DONE"

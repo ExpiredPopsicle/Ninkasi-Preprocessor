@@ -306,7 +306,11 @@ nkbool nkppEvaluateExpression_parseValue(
             ret = nkppStrtol(token->str, &outputTmp);
 
             if(outputTmp >= (NK_UINT_MAX >> 1)) {
-                nkppStateAddError(expressionState, "Signed integer overflow.");
+                char tmp[256];
+                sprintf(tmp, "Signed integer overflow: %lu >= %lu",
+                    (unsigned long)outputTmp,
+                    (unsigned long)(NK_UINT_MAX >> 1));
+                nkppStateAddError(expressionState, tmp);
                 ret = nkfalse;
             }
 
