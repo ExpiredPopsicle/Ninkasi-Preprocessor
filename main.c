@@ -585,7 +585,7 @@ int main(int argc, char *argv[])
         // nkppStateDestroy_internal(state);
         nkppStateDestroy(state);
 
-        // nkppTestRun();
+        nkppTestRun();
 
         printf("Memory leaked: %lu\n", (unsigned long)nkppMemDebugGetTotalAllocations());
         assert(nkppMemDebugGetTotalAllocations() == 0);

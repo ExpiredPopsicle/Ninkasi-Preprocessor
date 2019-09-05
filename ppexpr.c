@@ -30,9 +30,19 @@
 //     "<=" less-than or equal    ( 5)
 //   Ternary (?:) operator        (12)
 
+struct NkppExpressionStackValue
+{
+    union {
+        nkuint32_t uintValue;
+        nkint32_t intValue;
+        enum NkppTokenType operatorType;
+    };
+    nkbool signedInt;
+};
+
 struct NkppExpressionStack
 {
-    nkint32_t *values;
+    struct NkppExpressionStackValue *values;
     nkuint32_t capacity;
     nkuint32_t size;
 };
@@ -65,7 +75,7 @@ void nkppExpressionStackDestroy(
 nkbool nkppExpressionStackPush(
     struct NkppState *state,
     struct NkppExpressionStack *stack,
-    nkint32_t value)
+    struct NkppExpressionStackValue value)
 {
     nkuint32_t newSize;
     nkuint32_t newCapacity;
@@ -80,7 +90,7 @@ nkbool nkppExpressionStackPush(
 
     if(newSize > newCapacity) {
 
-        nkint32_t *newValues;
+        struct NkppExpressionStackValue *newValues;
         nkuint32_t actualAllocationSize;
 
         // Figure out what the new capacity is going to be. Just
@@ -93,7 +103,8 @@ nkbool nkppExpressionStackPush(
         }
 
         NK_CHECK_OVERFLOW_UINT_MUL(
-            newCapacity, sizeof(nkint32_t),
+            newCapacity,
+            sizeof(struct NkppExpressionStackValue),
             actualAllocationSize,
             overflow);
 
@@ -131,7 +142,7 @@ nkbool nkppExpressionStackPop(
 
 nkbool nkppExpressionStackPeekTop(
     struct NkppExpressionStack *stack,
-    nkint32_t *value)
+    struct NkppExpressionStackValue *value)
 {
     if(stack->size == 0) {
         return nkfalse;
@@ -149,7 +160,7 @@ nkuint32_t nkppExpressionStackGetSize(
 nkbool nkppEvaluateExpression_macroDefined(
     struct NkppState *state,
     struct NkppState *expressionState,
-    nkint32_t *output)
+    struct NkppExpressionStackValue *output)
 {
     struct NkppToken *token;
     nkbool ret = nktrue;
@@ -204,10 +215,11 @@ nkbool nkppEvaluateExpression_macroDefined(
 
     // Look for the macro and set the output.
     macro = nkppStateFindMacro(state, identifierStr);
+    output->signedInt = nkfalse;
     if(macro) {
-        *output = 1;
+        output->uintValue = 1;
     } else {
-        *output = 0;
+        output->uintValue = 0;
     }
 
 nkppEvaluateExpression_macroDefined_cleanup:
@@ -230,20 +242,20 @@ nkppEvaluateExpression_macroDefined_cleanup:
 nkbool nkppEvaluateExpression_internal(
     struct NkppState *state,
     struct NkppState *expressionState,
-    nkint32_t *output,
+    struct NkppExpressionStackValue *output,
     nkuint32_t recursionLevel);
 
 nkbool nkppEvaluateExpression_parseValue(
     struct NkppState *state,
     struct NkppState *expressionState,
-    nkint32_t *output,
+    struct NkppExpressionStackValue *output,
     nkuint32_t recursionLevel)
 {
     struct NkppToken *token =
         nkppStateInputGetNextToken(expressionState, nkfalse);
     nkbool ret = nktrue;
     nkuint32_t outputTmp = 0;
-    nkint32_t outputSignedTmp = 0;
+    struct NkppExpressionStackValue outputValueTmp = {0};
     nkuint32_t actualRecursionLevel =
         expressionState->recursionLevel + recursionLevel;
 
@@ -274,9 +286,16 @@ nkbool nkppEvaluateExpression_parseValue(
             ret = nkppEvaluateExpression_parseValue(
                 state,
                 expressionState,
-                &outputSignedTmp,
+                &outputValueTmp,
                 recursionLevel + 1);
-            *output = ~outputSignedTmp;
+            *output = outputValueTmp;
+
+            if(outputValueTmp.signedInt) {
+                output->intValue = ~output->intValue;
+            } else {
+                output->uintValue = ~output->uintValue;
+            }
+
             break;
 
         case NK_PPTOKEN_MINUS:
@@ -285,9 +304,18 @@ nkbool nkppEvaluateExpression_parseValue(
             ret = nkppEvaluateExpression_parseValue(
                 state,
                 expressionState,
-                &outputSignedTmp,
+                &outputValueTmp,
                 recursionLevel + 1);
-            *output = -outputSignedTmp;
+            *output = outputValueTmp;
+
+            // Negate a signed int or convert to signed if unsigned.
+            if(outputValueTmp.signedInt) {
+                output->intValue = -output->intValue;
+            } else {
+                output->intValue = -output->uintValue;
+                output->signedInt = nktrue;
+            }
+
             break;
 
         case NK_PPTOKEN_EXCLAMATION:
@@ -296,25 +324,41 @@ nkbool nkppEvaluateExpression_parseValue(
             ret = nkppEvaluateExpression_parseValue(
                 state,
                 expressionState,
-                &outputSignedTmp,
+                &outputValueTmp,
                 recursionLevel + 1);
-            *output = !outputSignedTmp;
+            *output = outputValueTmp;
+
+            if(outputValueTmp.signedInt) {
+                output->intValue = !output->intValue;
+            } else {
+                output->uintValue = !output->uintValue;
+            }
+
             break;
 
         case NK_PPTOKEN_NUMBER:
 
             ret = nkppStrtol(token->str, &outputTmp);
 
-            if(outputTmp >= (NK_UINT_MAX >> 1)) {
-                char tmp[256];
-                sprintf(tmp, "Signed integer overflow: %lu >= %lu",
-                    (unsigned long)outputTmp,
-                    (unsigned long)(NK_UINT_MAX >> 1));
-                nkppStateAddError(expressionState, tmp);
-                ret = nkfalse;
+            output->signedInt = nktrue;
+
+            {
+                nkuint32_t i = 0;
+                nkuint32_t len = nkppStrlen(token->str);
+                for(i = 0; i < len; i++) {
+                    if(token->str[i] == 'U' ||
+                        token->str[i] == 'u')
+                    {
+                        output->signedInt = nkfalse;
+                    }
+                }
             }
 
-            *output = (nkint32_t)outputTmp;
+            if(output->signedInt) {
+                output->intValue = (nkint32_t)outputTmp;
+            } else {
+                output->uintValue = outputTmp;
+            }
             break;
 
         case NK_PPTOKEN_OPENPAREN:
@@ -322,7 +366,8 @@ nkbool nkppEvaluateExpression_parseValue(
             ret = nkppEvaluateExpression_internal(
                 state,
                 expressionState,
-                output, recursionLevel + 1);
+                output,
+                recursionLevel + 1);
 
             // Skip closing paren.
             if(ret && expressionState->str[expressionState->index] == ')') {
@@ -335,13 +380,16 @@ nkbool nkppEvaluateExpression_parseValue(
 
             // Identifiers are just undefined macros in this context,
             // with the exception of "defined".
-            *output = 0;
+            output->signedInt = nkfalse;
+            output->uintValue = 0;
             break;
 
         default:
 
             nkppStateAddError(expressionState, "Expected value token.");
             ret = nkfalse;
+            output->signedInt = 0;
+            output->uintValue = nkfalse;
             break;
     }
 
@@ -385,94 +433,194 @@ nkuint32_t nkppEvaluateExpression_getPrecedence(
 nkbool nkppEvaluateExpression_applyOperator(
     struct NkppState *state,
     enum NkppTokenType type,
-    nkint32_t a,
-    nkint32_t b,
-    nkint32_t *result)
+    struct NkppExpressionStackValue a,
+    struct NkppExpressionStackValue b,
+    struct NkppExpressionStackValue *result)
 {
+    nkbool ret = nktrue;
+
+    // Handle type promotions.
+    if(a.signedInt && !b.signedInt) {
+        if(b.uintValue > (NK_UINT_MAX >> 1)) {
+            nkppStateAddError(state, "Integer overflow converting to signed from unsigned int.");
+            ret = nkfalse;
+        }
+        b.signedInt = nktrue;
+        b.intValue = (nkint32_t)b.uintValue;
+    }
+    if(b.signedInt && !a.signedInt) {
+        if(a.uintValue > (NK_UINT_MAX >> 1)) {
+            nkppStateAddError(state, "Integer overflow converting to signed from unsigned int.");
+            ret = nkfalse;
+        }
+        a.signedInt = nktrue;
+        a.intValue = (nkint32_t)a.uintValue;
+    }
+
+    result->signedInt = a.signedInt;
+
     switch(type) {
 
         case NK_PPTOKEN_ASTERISK:
-            *result = (a *  b);
+            if(a.signedInt) {
+                result->intValue = a.intValue * b.intValue;
+            } else {
+                result->uintValue = a.uintValue * b.uintValue;
+            }
             break;
 
         case NK_PPTOKEN_SLASH:
         case NK_PPTOKEN_PERCENT:
-            if(b == 0) {
+            if(b.uintValue == 0) { // Same for uint and int.
                 nkppStateAddError(state, "Division by zero in expression.");
                 return nkfalse;
             }
-            if(b == -1 && a == -2147483647 - 1) {
+            if(a.signedInt && b.intValue == -1 && a.intValue == -2147483647 - 1) {
                 nkppStateAddError(state, "Result of division cannot be expressed.");
                 return nkfalse;
             }
-            *result = type == NK_PPTOKEN_SLASH ? (a /  b) : (a %  b);
+
+            if(a.signedInt) {
+                result->intValue =
+                    type == NK_PPTOKEN_SLASH ?
+                    (a.intValue /  b.intValue) :
+                    (a.intValue %  b.intValue);
+            } else {
+                result->uintValue =
+                    type == NK_PPTOKEN_SLASH ?
+                    (a.uintValue /  b.uintValue) :
+                    (a.uintValue %  b.uintValue);
+            }
+
             break;
 
         case NK_PPTOKEN_PLUS:
-            *result = (a + b);
+            if(a.signedInt) {
+                result->intValue = a.intValue + b.intValue;
+            } else {
+                result->uintValue = a.uintValue + b.uintValue;
+            }
             break;
 
         case NK_PPTOKEN_MINUS:
-            *result = (a - b);
+            if(a.signedInt) {
+                result->intValue = a.intValue - b.intValue;
+            } else {
+                result->uintValue = a.uintValue - b.uintValue;
+            }
             break;
 
         case NK_PPTOKEN_LEFTSHIFT:
-            *result = (a << b);
+            if(a.signedInt) {
+                result->intValue = a.intValue << b.intValue;
+            } else {
+                result->uintValue = a.uintValue << b.uintValue;
+            }
             break;
 
         case NK_PPTOKEN_RIGHTSHIFT:
-            *result = (a >> b);
+            if(a.signedInt) {
+                result->intValue = a.intValue >> b.intValue;
+            } else {
+                result->uintValue = a.uintValue >> b.uintValue;
+            }
             break;
 
         case NK_PPTOKEN_BINARYAND:
-            *result = (a & b);
+            if(a.signedInt) {
+                result->intValue = a.intValue & b.intValue;
+            } else {
+                result->uintValue = a.uintValue & b.uintValue;
+            }
             break;
 
         case NK_PPTOKEN_BINARYXOR:
-            *result = (a ^ b);
+            if(a.signedInt) {
+                result->intValue = a.intValue ^ b.intValue;
+            } else {
+                result->uintValue = a.uintValue ^ b.uintValue;
+            }
             break;
 
         case NK_PPTOKEN_BINARYOR:
-            *result = (a | b);
+            if(a.signedInt) {
+                result->intValue = a.intValue | b.intValue;
+            } else {
+                result->uintValue = a.uintValue | b.uintValue;
+            }
             break;
 
         case NK_PPTOKEN_LOGICALAND:
-            *result = (a && b);
+            if(a.signedInt) {
+                result->intValue = a.intValue && b.intValue;
+            } else {
+                result->uintValue = a.uintValue && b.uintValue;
+            }
             break;
 
         case NK_PPTOKEN_LOGICALOR:
-            *result = (a || b);
+            if(a.signedInt) {
+                result->intValue = a.intValue || b.intValue;
+            } else {
+                result->uintValue = a.uintValue || b.uintValue;
+            }
             break;
 
         case NK_PPTOKEN_NOTEQUAL:
-            *result = (a != b);
+            if(a.signedInt) {
+                result->intValue = (a.intValue != b.intValue);
+            } else {
+                result->uintValue = (a.uintValue != b.uintValue);
+            }
             break;
 
         case NK_PPTOKEN_COMPARISONEQUALS:
-            *result = (a == b);
+            if(a.signedInt) {
+                result->intValue = (a.intValue == b.intValue);
+            } else {
+                result->uintValue = (a.uintValue == b.uintValue);
+            }
             break;
 
         case NK_PPTOKEN_GREATERTHAN:
-            *result = (a > b);
+            if(a.signedInt) {
+                result->intValue = a.intValue > b.intValue;
+            } else {
+                result->uintValue = a.uintValue > b.uintValue;
+            }
             break;
 
         case NK_PPTOKEN_GREATERTHANOREQUALS:
-            *result = (a >= b);
+            if(a.signedInt) {
+                result->intValue = a.intValue >= b.intValue;
+            } else {
+                result->uintValue = a.uintValue >= b.uintValue;
+            }
             break;
 
         case NK_PPTOKEN_LESSTHAN:
-            *result = (a < b);
+            if(a.signedInt) {
+                result->intValue = a.intValue < b.intValue;
+            } else {
+                result->uintValue = a.uintValue < b.uintValue;
+            }
             break;
 
         case NK_PPTOKEN_LESSTHANOREQUALS:
-            *result = (a <= b);
+            if(a.signedInt) {
+                result->intValue = a.intValue <= b.intValue;
+            } else {
+                result->uintValue = a.uintValue <= b.uintValue;
+            }
             break;
 
         default:
-            *result = NK_INVALID_VALUE;
+            result->uintValue = NK_INVALID_VALUE;
+            result->signedInt = nkfalse;
             return nkfalse;
     }
-    return nktrue;
+
+    return nktrue && ret;
 }
 
 nkbool nkppEvaluateExpression_applyStackTop(
@@ -480,10 +628,10 @@ nkbool nkppEvaluateExpression_applyStackTop(
     struct NkppExpressionStack *valueStack,
     struct NkppExpressionStack *operatorStack)
 {
-    nkint32_t a = 0;
-    nkint32_t b = 0;
-    nkint32_t result = 0;
-    nkint32_t operatorStackTop = NK_INVALID_VALUE;
+    struct NkppExpressionStackValue a = {0};
+    struct NkppExpressionStackValue b = {0};
+    struct NkppExpressionStackValue result = {0};
+    struct NkppExpressionStackValue operatorStackTop = {0};
 
     if(!nkppExpressionStackPeekTop(operatorStack, &operatorStackTop)) {
         return nkfalse;
@@ -511,7 +659,7 @@ nkbool nkppEvaluateExpression_applyStackTop(
 
     if(!nkppEvaluateExpression_applyOperator(
             state,
-            operatorStackTop,
+            operatorStackTop.operatorType,
             b, a, &result))
     {
         return nkfalse;
@@ -539,7 +687,7 @@ nkbool nkppEvaluateExpression_atEndOfExpression(
 nkbool nkppEvaluateExpression_internal(
     struct NkppState *state,
     struct NkppState *expressionState,
-    nkint32_t *output,
+    struct NkppExpressionStackValue *output,
     nkuint32_t recursionLevel)
 {
     nkbool ret = nktrue;
@@ -550,7 +698,8 @@ nkbool nkppEvaluateExpression_internal(
     struct NkppToken *operatorToken = NULL;
     nkint32_t currentOperator = NK_INVALID_VALUE;
 
-    *output = 0;
+    output->signedInt = nkfalse;
+    output->uintValue = 0;
 
     // FIXME: Make this less arbitrary.
     if(actualRecursionLevel > 20) {
@@ -568,7 +717,7 @@ nkbool nkppEvaluateExpression_internal(
 
     while(!nkppEvaluateExpression_atEndOfExpression(expressionState)) {
 
-        nkint32_t tmpVal;
+        struct NkppExpressionStackValue tmpVal = {0};
 
         // Parse a value.
         if(!nkppEvaluateExpression_parseValue(
@@ -610,7 +759,7 @@ nkbool nkppEvaluateExpression_internal(
             // this one that are on the top of the stack.
             while(nkppExpressionStackGetSize(operatorStack)) {
 
-                nkint32_t stackTop = 0;
+                struct NkppExpressionStackValue stackTop = {0};
                 nkuint32_t stackPrecedence = 0;
                 nkuint32_t currentPrecedence = 0;
 
@@ -620,7 +769,7 @@ nkbool nkppEvaluateExpression_internal(
                     ret = nkfalse;
                     goto nkppEvaluateExpression_cleanup;
                 }
-                stackPrecedence = nkppEvaluateExpression_getPrecedence(stackTop);
+                stackPrecedence = nkppEvaluateExpression_getPrecedence(stackTop.operatorType);
                 currentPrecedence = nkppEvaluateExpression_getPrecedence(currentOperator);
                 if(currentPrecedence <= stackPrecedence) {
                     break;
@@ -647,9 +796,9 @@ nkbool nkppEvaluateExpression_internal(
             // would get applied before anything else anyway.
             if(currentOperator == NK_PPTOKEN_QUESTIONMARK) {
 
-                nkint32_t valueStackTop = 0;
-                nkint32_t option1Value = 0;
-                nkint32_t option2Value = 0;
+                struct NkppExpressionStackValue valueStackTop = {0};
+                struct NkppExpressionStackValue option1Value = {0};
+                struct NkppExpressionStackValue option2Value = {0};
 
                 // Get the value at the top of the stack.
                 if(!nkppExpressionStackPeekTop(valueStack, &valueStackTop)) {
@@ -698,7 +847,7 @@ nkbool nkppEvaluateExpression_internal(
                 // Push the result.
                 if(!nkppExpressionStackPush(
                         expressionState, valueStack,
-                        valueStackTop ? option1Value : option2Value))
+                        valueStackTop.uintValue ? option1Value : option2Value))
                 {
                     ret = nkfalse;
                     goto nkppEvaluateExpression_cleanup;
@@ -707,7 +856,9 @@ nkbool nkppEvaluateExpression_internal(
             } else {
 
                 // Push this operator onto the stack.
-                nkppExpressionStackPush(state, operatorStack, currentOperator);
+                struct NkppExpressionStackValue tmp = {0};
+                tmp.operatorType = currentOperator;
+                nkppExpressionStackPush(state, operatorStack, tmp);
 
             }
         }
@@ -760,6 +911,7 @@ nkbool nkppEvaluateExpression(
     nkbool ret;
     struct NkppState *expressionState = NULL;
     struct NkppState *clonedState = NULL;
+    struct NkppExpressionStackValue result = {0};
 
     // Make cloned state to preprocess the equation.
     clonedState = nkppStateClone(state, nkfalse, nkfalse);
@@ -791,7 +943,11 @@ nkbool nkppEvaluateExpression(
     // Execute.
     ret = nkppEvaluateExpression_internal(
         state, expressionState,
-        output, 0);
+        &result, 0);
+
+    // FIXME: Signed/unsigned int conversion here. We only check to
+    // see if it's zero outside of this, so it's not a big issue..
+    *output = result.intValue;
 
 nkppEvaluateExpression_outer_cleanup:
     if(clonedState) {
@@ -846,6 +1002,18 @@ nkbool nkppTest_expressionTest(void)
     NK_PP_EXPRESSIONTEST_CHECK(1 ? 2 : 3);
     NK_PP_EXPRESSIONTEST_CHECK(1 ? 2 : 3 ? 4 : 5);
     NK_PP_EXPRESSIONTEST_CHECK(1 ? 2 ? 6 : 7 : 3 ? 4 : 5);
+
+    NK_PP_EXPRESSIONTEST_CHECK(-1 == -1);
+    NK_PP_EXPRESSIONTEST_CHECK(-1 == 1 - 2);
+    NK_PP_EXPRESSIONTEST_CHECK(0xffffffff == -1);
+
+    NK_PP_EXPRESSIONTEST_CHECK(0xffffffff != -2);
+    NK_PP_EXPRESSIONTEST_CHECK(1234 == 5678);
+    NK_PP_EXPRESSIONTEST_CHECK(0xffffffff);
+    NK_PP_EXPRESSIONTEST_CHECK(0xfffffffe);
+    NK_PP_EXPRESSIONTEST_CHECK(-0xefffffff);
+
+    NK_PP_EXPRESSIONTEST_CHECK(1234U - 1234L);
 
     nkppStateDestroy_internal(exprState);
 
