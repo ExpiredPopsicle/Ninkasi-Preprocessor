@@ -270,7 +270,8 @@ nkbool nkppEvaluateExpression_macroDefined(
         ret = nkfalse;
         goto nkppEvaluateExpression_macroDefined_cleanup;
     }
-    identifierStr = nkppStrdup(state, token->str);
+    identifierStr = token->str;
+    token->str = NULL;
     nkppTokenDestroy(state, token);
     token = NULL;
 

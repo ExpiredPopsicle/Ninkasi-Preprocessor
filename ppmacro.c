@@ -4,16 +4,17 @@ void nkppMacroDestroy(
     struct NkppState *state,
     struct NkppMacro *macro)
 {
-    struct NkppMacroArgument *args = macro->arguments;
-    while(args) {
-        struct NkppMacroArgument *next = args->next;
-        nkppFree(state, args->name);
-        nkppFree(state, args);
-        args = next;
+    if(!macro->isClone) {
+        struct NkppMacroArgument *args = macro->arguments;
+        while(args) {
+            struct NkppMacroArgument *next = args->next;
+            nkppFree(state, args->name);
+            nkppFree(state, args);
+            args = next;
+        }
+        nkppFree(state, macro->identifier);
+        nkppFree(state, macro->definition);
     }
-
-    nkppFree(state, macro->identifier);
-    nkppFree(state, macro->definition);
     nkppFree(state, macro);
 }
 
@@ -30,6 +31,7 @@ struct NkppMacro *nkppMacroCreate(
         ret->next = NULL;
         ret->functionStyleMacro = nkfalse;
         ret->isArgumentName = nkfalse;
+        ret->isClone = nkfalse;
     }
 
     return ret;
@@ -121,56 +123,21 @@ struct NkppMacro *nkppMacroClone(
     const struct NkppMacro *macro)
 {
     struct NkppMacro *ret;
-    struct NkppMacroArgument *currentArgument;
-    struct NkppMacroArgument **argumentWritePtr;
 
     ret = nkppMacroCreate(state);
     if(!ret) {
         return NULL;
     }
 
-    ret->identifier = nkppStrdup(state, macro->identifier);
-    if(!ret->identifier) {
-        nkppMacroDestroy(state, ret);
-        return NULL;
-    }
+    ret->isClone = nktrue;
 
-    ret->definition = nkppStrdup(state, macro->definition);
-    if(!ret->definition) {
-        nkppMacroDestroy(state, ret);
-        return NULL;
-    }
+    ret->identifier = macro->identifier;
+    ret->definition = macro->definition;
 
     ret->functionStyleMacro = macro->functionStyleMacro;
     ret->isArgumentName = macro->isArgumentName;
 
-    currentArgument = macro->arguments;
-    argumentWritePtr = &ret->arguments;
-
-    while(currentArgument) {
-
-        struct NkppMacroArgument *clonedArg =
-            nkppMalloc(
-                state,
-                sizeof(struct NkppMacroArgument));
-        if(!clonedArg) {
-            nkppMacroDestroy(state, ret);
-            return NULL;
-        }
-
-        clonedArg->next = NULL;
-        clonedArg->name = nkppStrdup(state, currentArgument->name);
-        if(!clonedArg->name) {
-            nkppFree(state, clonedArg);
-            nkppMacroDestroy(state, ret);
-            return NULL;
-        }
-
-        *argumentWritePtr = clonedArg;
-        argumentWritePtr = &clonedArg->next;
-
-        currentArgument = currentArgument->next;
-    }
+    ret->arguments = macro->arguments;
 
     return ret;
 }
@@ -253,7 +220,8 @@ nkbool nkppMacroExecute(
 
                 // Save the processed text.
                 nkppFree(state, argumentText);
-                argumentText = nkppStrdup(state, argumentParseState->output);
+                argumentText = argumentParseState->output;
+                argumentParseState->output = NULL;
                 if(!argumentText) {
                     nkppStateDestroy_internal(argumentParseState);
                     ret = nkfalse;

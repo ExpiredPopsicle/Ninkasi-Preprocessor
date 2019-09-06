@@ -28,6 +28,10 @@ struct NkppMacro
     // works with them.
     nkbool isArgumentName;
 
+    // If this is true, then this macro does not own any of the
+    // strings or arguments attached to it.
+    nkbool isClone;
+
     struct NkppMacro *next;
 };
 
