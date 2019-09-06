@@ -13,6 +13,6 @@
 * DONE Signed/unsigned handling in expressions.
 Some libraries test UINT_MAX and friends.
 * DONE Support of 64-bit literals in expressions.
+* DONE State clones that don't copy all the strings.
 * TODO Make it compile in C++ mode.
-* TODO State clones that don't copy all the strings.
 * TODO Test for alloc-fail handling again.
