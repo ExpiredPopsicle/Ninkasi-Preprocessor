@@ -31,8 +31,8 @@
 //   Ternary (?:) operator        (12)
 
 
-typedef nkint32_t NkppExpressionStackValue_intType;
-typedef nkuint32_t NkppExpressionStackValue_uintType;
+typedef signed long int NkppExpressionStackValue_intType;
+typedef unsigned long int NkppExpressionStackValue_uintType;
 
 // These limits make assumptions about two's complement number
 // formats, which C89 doesn't actuall specify, but everyone uses
@@ -166,6 +166,74 @@ nkuint32_t nkppExpressionStackGetSize(
 {
     return stack->size;
 }
+// ----------------------------------------------------------------------
+
+nkbool nkppExpressionStrtol(
+    const char *str,
+    NkppExpressionStackValue_uintType *out)
+{
+    NkppExpressionStackValue_uintType base = 10;
+
+    *out = 0;
+
+    if(!str || !str[0]) {
+        return nkfalse;
+    }
+
+    // Skip whitespace.
+    while(nkppIsWhitespace(str[0])) {
+        str++;
+    }
+
+    // Determine base.
+    if(str[0] == '0') {
+
+        // Default to octal with no other info.
+        base = 8;
+        str++;
+
+        if(str[0] == 'x' || str[0] == 'X') {
+
+            // Hex.
+            base = 16;
+            str++;
+
+        } else if(str[0] == 'b' || str[0] == 'B') {
+
+            // Binary.
+            base = 2;
+            str++;
+
+        }
+    }
+
+    while(str[0]) {
+
+        NkppExpressionStackValue_uintType digit =
+            (NkppExpressionStackValue_uintType)nkppParseDigit(str[0]);
+
+        // 'L' and 'U' are postfix type specifiers. If we see them,
+        // it's time to bail out of the actual number parsing.
+        if(str[0] == 'L' || str[0] == 'l' ||
+            str[0] == 'U' || str[0] == 'u')
+        {
+            break;
+        }
+
+        if(digit >= base || digit == NK_INVALID_VALUE) {
+            return nkfalse;
+        }
+
+        *out = *out * base;
+        *out += digit;
+
+        str++;
+    }
+
+    return nktrue;
+}
+
+// ----------------------------------------------------------------------
 
 nkbool nkppEvaluateExpression_macroDefined(
     struct NkppState *state,
@@ -264,7 +332,7 @@ nkbool nkppEvaluateExpression_parseValue(
     struct NkppToken *token =
         nkppStateInputGetNextToken(expressionState, nkfalse);
     nkbool ret = nktrue;
-    nkuint32_t outputTmp = 0;
+    NkppExpressionStackValue_uintType outputTmp = 0;
     struct NkppExpressionStackValue outputValueTmp = {0};
     nkuint32_t actualRecursionLevel =
         expressionState->recursionLevel + recursionLevel;
@@ -318,6 +386,8 @@ nkbool nkppEvaluateExpression_parseValue(
                 recursionLevel + 1);
             *output = outputValueTmp;
 
+            // FIXME: Check overflow.
+
             // Negate a signed int or convert to signed if unsigned.
             if(outputValueTmp.signedInt) {
                 output->intValue = -output->intValue;
@@ -348,34 +418,11 @@ nkbool nkppEvaluateExpression_parseValue(
 
         case NK_PPTOKEN_NUMBER:
 
-            ret = nkppStrtoui(token->str, &outputTmp);
+            ret = nkppExpressionStrtol(
+                token->str, &outputTmp);
 
-            output->signedInt = nktrue;
-
-            // Check for any explicit unsigned postfix.
-            {
-                nkuint32_t i = 0;
-                nkuint32_t len = nkppStrlen(token->str);
-                for(i = 0; i < len; i++) {
-                    if(token->str[i] == 'U' ||
-                        token->str[i] == 'u')
-                    {
-                        output->signedInt = nkfalse;
-                    }
-                }
-            }
-
-            // Default to an unsigned int if the value is greater than
-            // something we can express in a signed int.
-            if(outputTmp > NK_PPEXPRESSIONSTACKVALUE_INT_MAX) {
-                output->signedInt = nkfalse;
-            }
-
-            if(output->signedInt) {
-                output->intValue = (NkppExpressionStackValue_intType)outputTmp;
-            } else {
-                output->uintValue = outputTmp;
-            }
+            output->signedInt = nkfalse;
+            output->uintValue = outputTmp;
             break;
 
         case NK_PPTOKEN_OPENPAREN:
@@ -523,7 +570,20 @@ nkbool nkppEvaluateExpression_applyOperator(
             if(a.signedInt) {
                 result->intValue = a.intValue - b.intValue;
             } else {
-                result->uintValue = a.uintValue - b.uintValue;
+
+                if(a.uintValue > NK_PPEXPRESSIONSTACKVALUE_INT_MAX ||
+                    b.uintValue > NK_PPEXPRESSIONSTACKVALUE_INT_MAX)
+                {
+                    nkppStateAddError(state, "Integer overflow converting to signed from unsigned int.");
+                    ret = nkfalse;
+                }
+
+                if(b.uintValue > a.uintValue) {
+                    result->intValue =
+                        (NkppExpressionStackValue_intType)a.uintValue -
+                        (NkppExpressionStackValue_intType)b.uintValue;
+                    result->signedInt = nktrue;
+                }
             }
             break;
 
