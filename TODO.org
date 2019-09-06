@@ -1,0 +1,17 @@
+* DONE Preprocess the arguments of include directives.
+* DONE Don't preprocess text inside of brackets in include directives.
+* DONE System includes should still be includable with quotes.
+* DONE Macro arguments must be pre-processed before being passed into a child macro invocation.
+** But this can't add more arguments.
+#+BEGIN_SRC c
+  #define foo = x,x
+  #define blah(x, y)
+  blah(foo) // Doesn't work.
+#+END_SRC
+
+* DONE More thorough macro equality check for redundant definitions.
+* DONE Signed/unsigned handling in expressions.
+Some libraries test UINT_MAX and friends.
+* DONE Support of 64-bit literals in expressions.
+* TODO Make it compile in C++ mode.
+* TODO State clones that don't copy all the strings.
