@@ -386,7 +386,11 @@ nkbool nkppEvaluateExpression_parseValue(
                 recursionLevel + 1);
             *output = outputValueTmp;
 
-            // FIXME: Check overflow.
+            // Check overflow.
+            if(!output->signedInt && output->uintValue > NK_PPEXPRESSIONSTACKVALUE_INT_MAX) {
+                nkppStateAddError(state, "Integer overflow converting to signed from unsigned int.");
+                ret = nkfalse;
+            }
 
             // Negate a signed int or convert to signed if unsigned.
             if(outputValueTmp.signedInt) {
