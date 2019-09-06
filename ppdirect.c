@@ -596,7 +596,7 @@ nkbool nkppDirective_line(
     }
 
     // Handle line number.
-    ret = nkppStrtol(lineNumberToken->str, &num) && ret;
+    ret = nkppStrtoui(lineNumberToken->str, &num) && ret;
     if(ret) {
 
         // Only actually do something if we're outside of a failed

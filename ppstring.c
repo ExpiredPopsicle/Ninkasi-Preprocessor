@@ -347,9 +347,7 @@ nkuint32_t nkppParseDigit(char c)
     return NK_INVALID_VALUE;
 }
 
-// FIXME: Naming. This doesn't act like the C function and it only
-// does uints anyway.
-nkbool nkppStrtol(const char *str, nkuint32_t *out)
+nkbool nkppStrtoui(const char *str, nkuint32_t *out)
 {
     nkuint32_t base = 10;
 
