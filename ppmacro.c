@@ -83,6 +83,8 @@ nkbool nkppMacroSetIdentifier(
     struct NkppMacro *macro,
     const char *identifier)
 {
+    assert(!macro->isClone);
+
     if(macro->identifier) {
         nkppFree(state, macro->identifier);
         macro->identifier = NULL;
@@ -103,6 +105,8 @@ nkbool nkppMacroSetDefinition(
     struct NkppMacro *macro,
     const char *definition)
 {
+    assert(!macro->isClone);
+
     if(macro->definition) {
         nkppFree(state, macro->definition);
         macro->definition = NULL;

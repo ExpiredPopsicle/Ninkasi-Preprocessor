@@ -966,68 +966,68 @@ struct NkppMacro *nkppStateFindMacro(
     if(!nkppStrcmp(identifier, "__FILE__") ||
         !nkppStrcmp(identifier, "__LINE__"))
     {
-        // Lazy-create the macro if it doesn't exist.
+        // Delete whatever was there.
+        if(currentMacro) {
+            nkppStateDeleteMacro(state, identifier);
+        }
+
+        // Make a new one.
+        currentMacro =
+            nkppMacroCreate(state);
         if(!currentMacro) {
+            return NULL;
+        }
 
-            currentMacro =
-                nkppMacroCreate(state);
-
-            if(currentMacro) {
-                if(nkppMacroSetIdentifier(
-                        state, currentMacro, identifier))
-                {
-                    nkppStateAddMacro(
-                        state, currentMacro);
-                } else {
-                    nkppMacroDestroy(
-                        state, currentMacro);
-                    currentMacro = NULL;
-                }
-            }
+        if(nkppMacroSetIdentifier(
+                state, currentMacro, identifier))
+        {
+            nkppStateAddMacro(
+                state, currentMacro);
+        } else {
+            nkppMacroDestroy(
+                state, currentMacro);
+            return NULL;
         }
 
         // Update to whatever it is now.
-        if(currentMacro) {
+        if(!nkppStrcmp(identifier, "__FILE__")) {
 
-            if(!nkppStrcmp(identifier, "__FILE__")) {
+            char *escapedString = nkppEscapeString(state, state->filename);
 
-                char *escapedString = nkppEscapeString(state, state->filename);
+            if(escapedString) {
 
-                if(escapedString) {
+                nkuint32_t escapedStringLen = nkppStrlen(escapedString);
+                nkuint32_t quotedStringBufLen;
+                nkbool overflow = nkfalse;
 
-                    nkuint32_t escapedStringLen = nkppStrlen(escapedString);
-                    nkuint32_t quotedStringBufLen;
-                    nkbool overflow = nkfalse;
+                NK_CHECK_OVERFLOW_UINT_ADD(
+                    escapedStringLen, 3,
+                    quotedStringBufLen, overflow);
 
-                    NK_CHECK_OVERFLOW_UINT_ADD(
-                        escapedStringLen, 3,
-                        quotedStringBufLen, overflow);
+                if(!overflow) {
+                    char *quotedString = nkppMalloc(state, quotedStringBufLen);
 
-                    if(!overflow) {
-                        char *quotedString = nkppMalloc(state, quotedStringBufLen);
+                    if(quotedString) {
 
-                        if(quotedString) {
+                        // Add the actual quotes in.
+                        quotedString[0] = '"';
+                        nkppMemcpy(quotedString + 1, escapedString, escapedStringLen);
+                        quotedString[escapedStringLen + 1] = '"';
+                        quotedString[escapedStringLen + 2] = 0;
 
-                            // Add the actual quotes in.
-                            quotedString[0] = '"';
-                            nkppMemcpy(quotedString + 1, escapedString, escapedStringLen);
-                            quotedString[escapedStringLen + 1] = '"';
-                            quotedString[escapedStringLen + 2] = 0;
+                        nkppMacroSetDefinition(state, currentMacro, quotedString);
 
-                            nkppMacroSetDefinition(state, currentMacro, quotedString);
-
-                            nkppFree(state, quotedString);
-                        }
+                        nkppFree(state, quotedString);
                     }
-
-                    nkppFree(state, escapedString);
                 }
 
-            } else if(!nkppStrcmp(identifier, "__LINE__")) {
-                char tmp[128];
-                sprintf(tmp, "%lu", (unsigned long)state->lineNumber);
-                nkppMacroSetDefinition(state, currentMacro, tmp);
+                nkppFree(state, escapedString);
             }
+
+        } else if(!nkppStrcmp(identifier, "__LINE__")) {
+            char tmp[128];
+            sprintf(tmp, "%lu", (unsigned long)state->lineNumber);
+            nkppMacroSetDefinition(state, currentMacro, tmp);
         }
     }
 

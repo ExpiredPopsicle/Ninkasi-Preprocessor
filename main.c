@@ -32,6 +32,59 @@ char *testStr =
     "// comment after multiline\n";
 
 
+
+char *loadFile2(
+    struct NkppState *state,
+    void *userData,
+    const char *filename,
+    nkbool systemInclude)
+{
+    FILE *in = NULL;
+    char *ret = NULL;
+
+    nkuint32_t bufferSize = 0;
+    nkuint32_t strSize = 1;
+
+    int inChar = 0;
+
+    in = fopen(filename, "rb");
+    if(!in) {
+        return NULL;
+    }
+
+    while((inChar = fgetc(in)) != EOF) {
+
+        // Reallocate if we need to.
+        if(strSize >= bufferSize) {
+
+            char *newBuf = NULL;
+
+            bufferSize += 256;
+            if(!bufferSize) {
+                fclose(in);
+                nkppFree(state, ret);
+            }
+
+            newBuf = nkppRealloc(state, ret, bufferSize);
+            if(!newBuf) {
+                fclose(in);
+                nkppFree(state, ret);
+                return NULL;
+            }
+
+            ret = newBuf;
+        }
+
+        ret[strSize++ - 1] = inChar;
+        // printf("File contents so far: %s\n", ret);
+    }
+    ret[strSize - 1] = 0;
+
+    fclose(in);
+
+    return ret;
+}
+
 char *loadFile(
     struct NkppState *state,
     void *userData,
@@ -42,6 +95,7 @@ char *loadFile(
     nkuint32_t fileSize = 0;
     char *ret;
     char *realFilename = NULL;
+    nkuint32_t bufferSize = 0;
 
     // if(systemInclude) {
     //     realFilename = nkppPathAppend(state, "/usr/include", filename);
@@ -75,7 +129,14 @@ char *loadFile(
     fileSize = ftell(in);
     fseek(in, 0, SEEK_SET);
 
-    ret = nkppMalloc(state, fileSize + 1);
+    bufferSize = fileSize + 1;
+    if(bufferSize < fileSize) {
+        fclose(in);
+        nkppFree(state, realFilename);
+        return NULL;
+    }
+
+    ret = nkppMalloc(state, bufferSize);
     if(!ret) {
         fclose(in);
         nkppFree(state, realFilename);
@@ -116,6 +177,7 @@ int main(int argc, char *argv[])
 
     // for(counter = 62400; counter < 2000000; counter++) {
     // for(counter = 0; counter < 2000000; counter++) {
+    // for(counter = 49108; counter < 2000000; counter++) {
 
         struct NkppMemoryCallbacks memCallbacks;
         // struct NkppErrorState errorState;
@@ -128,6 +190,8 @@ int main(int argc, char *argv[])
         memCallbacks.mallocWrapper = NULL;
         memCallbacks.freeWrapper = NULL;
         memCallbacks.loadFileCallback = loadFile;
+
+
 
 
         // nkuint32_t allocLimit = ~(nkuint32_t)0;
@@ -148,6 +212,10 @@ int main(int argc, char *argv[])
         // nkppMemDebugSetAllocationFailureTestLimits(
         //     ~(nkuint32_t)0, counter);
         // #endif
+
+
+
+
 
         state = nkppStateCreate(&memCallbacks);
         if(!state) {
@@ -515,7 +583,7 @@ int main(int argc, char *argv[])
 
         // testStr2 = loadFile(state, NULL, "test.txt", nkfalse);
         // testStr2 = loadFile(state, NULL, "ctest.c", nkfalse);
-        testStr2 = loadFile(state, NULL, argc > 1 ? argv[1] : "ctest.c", nkfalse);
+        testStr2 = loadFile2(state, NULL, argc > 1 ? argv[1] : "ctest.c", nkfalse);
         if(!testStr2) {
             printf("Allocation failure on file load.\n");
             nkppStateDestroy_internal(state);
@@ -524,7 +592,7 @@ int main(int argc, char *argv[])
         }
 
         printf("----------------------------------------------------------------------\n");
-        printf("  Input string\n");
+        printf("    Input string\n");
         printf("----------------------------------------------------------------------\n");
         printf("%s\n", testStr2);
 

@@ -342,6 +342,9 @@ nkbool nkppEvaluateExpression_parseValue(
         nkppStateAddError(
             expressionState,
             "Arbitrary recursion limit reached in value parser.");
+        if(token) {
+            nkppTokenDestroy(state, token);
+        }
         return nkfalse;
     }
 
@@ -757,12 +760,17 @@ nkbool nkppEvaluateExpression_applyStackTop(
 nkbool nkppEvaluateExpression_atEndOfExpression(
     struct NkppState *expressionState)
 {
+    if(!expressionState->str) {
+        return nktrue;
+    }
+
     if(!expressionState->str[expressionState->index] ||
         expressionState->str[expressionState->index] == ')' ||
         expressionState->str[expressionState->index] == ':')
     {
         return nktrue;
     }
+
     return nkfalse;
 }
 
