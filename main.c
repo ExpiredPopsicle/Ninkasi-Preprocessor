@@ -189,7 +189,8 @@ int main(int argc, char *argv[])
         // FIXME: Make a real init function for this.
         memCallbacks.mallocWrapper = NULL;
         memCallbacks.freeWrapper = NULL;
-        memCallbacks.loadFileCallback = loadFile;
+        memCallbacks.loadFileCallback = NULL;
+        //     nkppExampleLoadFileCallback;
 
 
 
@@ -603,7 +604,7 @@ int main(int argc, char *argv[])
 
             state->writePositionMarkers = nktrue;
             // if(nkppStateExecute(state, testStr2, "test.txt")) {
-            if(nkppStateExecute(state, testStr2, "ctest.c")) {
+            if(nkppStateExecute(state, testStr2, argc > 1 ? argv[1] : "ctest.c")) {
                 printf("Preprocessor success\n");
             } else {
                 printf("Preprocessor failed\n");
@@ -628,6 +629,24 @@ int main(int argc, char *argv[])
             }
 
         }
+
+        {
+            nkuint32_t errorCount = nkppStateGetErrorCount(state);
+            nkuint32_t i;
+            for(i = 0; i < errorCount; i++) {
+                char *text = NULL;
+                char *fname = NULL;
+                nkuint32_t lineNumber = 0;
+                if(nkppStateGetError(state, i, &fname, &lineNumber, &text)) {
+                    printf("error: %s:%lu: %s\n",
+                        fname, (unsigned long)lineNumber, text);
+                } else {
+                    printf("error: Can't read error message.\n");
+                    assert(0);
+                }
+            }
+        }
+
 
         // {
         //     struct NkppError *error = errorState.firstError;

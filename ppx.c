@@ -50,9 +50,6 @@ void nkppStateDestroy(
     userData =
         state->memoryCallbacks ? state->memoryCallbacks->userData : NULL;
 
-    // FIXME: Remove this. (Once we add a real error reporting API.)
-    nkppErrorStateDump(state, state->errorState);
-
     nkppErrorStateClear(state, state->errorState);
 
     freeWrapper(userData, state->errorState);
@@ -199,5 +196,39 @@ nkbool nkppStateAddIncludePath(
     return nktrue;
 }
 
+nkbool nkppStateGetError(
+    const struct NkppState *state,
+    nkuint32_t errorIndex,
+    char **outFilename,
+    nkuint32_t *outLineNumber,
+    char **outErrorMessage)
+{
+    struct NkppError *currentError;
 
+    if(!state->errorState) {
+        return nkfalse;
+    }
+
+    currentError = state->errorState->firstError;
+    while(currentError && errorIndex) {
+        currentError = currentError->next;
+        errorIndex--;
+    }
+
+    if(!currentError) {
+        if(errorIndex == 0 && state->errorState->allocationFailure) {
+            *outFilename = "<unknown>";
+            *outErrorMessage = "Allocation failure. All other error messages may be the result of incorrect behavior.";
+            *outLineNumber = 0;
+            return nktrue;
+        }
+        return nkfalse;
+    }
+
+    *outFilename = currentError->filename;
+    *outErrorMessage = currentError->text;
+    *outLineNumber = currentError->lineNumber;
+
+    return nktrue;
+}
 

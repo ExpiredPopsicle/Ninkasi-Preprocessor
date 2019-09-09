@@ -1035,8 +1035,9 @@ nkbool nkppEvaluateExpression(
         state, expressionState,
         &result, 0);
 
-    // FIXME: Signed/unsigned int conversion here. We only check to
-    // see if it's zero outside of this, so it's not a big issue..
+    // FIXME: We may be converting down from a more extensive type
+    // here, or from a uint to an int, but we only check to see if
+    // it's zero outside of this, so it's not a big issue..
     *output = result.intValue;
 
 nkppEvaluateExpression_outer_cleanup:

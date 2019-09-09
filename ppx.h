@@ -70,6 +70,18 @@ nkbool nkppStateAddDefine(
 nkuint32_t nkppStateGetErrorCount(
     const struct NkppState *state);
 
+/// Get an error message. This function fills in pointers to the file
+/// name and error message. These strings are owned by the
+/// NkppErrorState on the NkppState itself and will become invalid
+/// once the state is destroyed. Returns nkfalse if the error cannot
+/// be filled in.
+nkbool nkppStateGetError(
+    const struct NkppState *state,
+    nkuint32_t errorIndex,
+    char **outFilename,
+    nkuint32_t *outLineNumber,
+    char **outErrorMessage);
+
 nkuint32_t nkppStateHasError(
     const struct NkppState *state);
 

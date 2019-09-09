@@ -281,7 +281,7 @@ nkbool nkppStateOutputAppendChar(struct NkppState *state, char c)
         // If this is the first character on a line...
         if(!state->output || state->output[state->outputLength - 1] == '\n') {
 
-            // // FIXME: Make this optional.
+            // // FIXME: Make this extra debugging output optional.
             // ret = nkppStateDebugOutputLineStart(state) && ret;
 
             if(state->outputLineNumber != state->lineNumber) {
@@ -1362,8 +1362,6 @@ char *nkppStateInputReadInteger(struct NkppState *state)
     nkppMemcpy(ret, str + start, len);
     ret[len] = 0;
 
-    // FIXME: Do something more correct for unsigned values.
-
     // Skip 'L', 'U', or 'UL' postfix.
     if(str[state->index] == 'U' || str[state->index] == 'u') {
         nkppStateInputSkipChar(state, nkfalse);
@@ -1898,7 +1896,10 @@ nkbool nkppStateExecute_internal(
 
                         // Execute that macro.
                         if(!nkppMacroExecute(state, macro)) {
-                            ret = nkfalse;
+                            if(nkppStateConditionalOutputPassed(state)) {
+                                nkppStateAddError2(state, "Macro failed: ", macro->identifier);
+                                ret = nkfalse;
+                            }
                         }
 
                     } else {

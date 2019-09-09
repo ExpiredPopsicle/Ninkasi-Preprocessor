@@ -187,34 +187,80 @@ char *nkppDefaultLoadFileCallback(
     const char *filename,
     nkbool systemInclude)
 {
-    FILE *in = fopen(filename, "rb");
-    nkuint32_t fileSize = 0;
-    char *ret;
+//     FILE *in = fopen(filename, "rb");
+//     nkuint32_t fileSize = 0;
+//     char *ret;
 
+//     if(!in) {
+//         return NULL;
+//     }
+
+//     fseek(in, 0, SEEK_END);
+//     fileSize = ftell(in);
+//     fseek(in, 0, SEEK_SET);
+
+//     ret = nkppMalloc(state, fileSize + 1);
+//     if(!ret) {
+//         fclose(in);
+//         return NULL;
+//     }
+
+//     ret[fileSize] = 0;
+
+//     if(!fread(ret, fileSize, 1, in)) {
+//         nkppFree(state, ret);
+//         ret = NULL;
+//     }
+
+//     fclose(in);
+
+//     return ret;
+// }
+    FILE *in = NULL;
+    char *ret = NULL;
+
+    nkuint32_t bufferSize = 0;
+    nkuint32_t strSize = 1;
+
+    int inChar = 0;
+
+    in = fopen(filename, "rb");
     if(!in) {
         return NULL;
     }
 
-    fseek(in, 0, SEEK_END);
-    fileSize = ftell(in);
-    fseek(in, 0, SEEK_SET);
+    while((inChar = fgetc(in)) != EOF) {
 
-    ret = nkppMalloc(state, fileSize + 1);
-    if(!ret) {
-        fclose(in);
-        return NULL;
+        // Reallocate if we need to.
+        if(strSize >= bufferSize) {
+
+            char *newBuf = NULL;
+
+            bufferSize += 256;
+            if(!bufferSize) {
+                fclose(in);
+                nkppFree(state, ret);
+            }
+
+            newBuf = nkppRealloc(state, ret, bufferSize);
+            if(!newBuf) {
+                fclose(in);
+                nkppFree(state, ret);
+                return NULL;
+            }
+
+            ret = newBuf;
+        }
+
+        ret[strSize++ - 1] = inChar;
+        // printf("File contents so far: %s\n", ret);
     }
-
-    ret[fileSize] = 0;
-
-    if(!fread(ret, fileSize, 1, in)) {
-        nkppFree(state, ret);
-        ret = NULL;
-    }
+    ret[strSize - 1] = 0;
 
     fclose(in);
 
     return ret;
 }
+
 
 

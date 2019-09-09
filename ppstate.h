@@ -135,8 +135,6 @@ nkbool nkppStateSetFilename(
 // ----------------------------------------------------------------------
 // Macros
 
-// FIXME: Make a more accessible version of this for definitions
-// coming in from the hosting application.
 void nkppStateAddMacro(
     struct NkppState *state,
     struct NkppMacro *macro);

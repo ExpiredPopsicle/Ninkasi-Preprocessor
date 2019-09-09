@@ -189,6 +189,9 @@ nkbool nkppMacroExecute(
                 // Read the macro argument.
                 unstrippedArgumentText = nkppStateInputReadMacroArgument(state);
                 if(!unstrippedArgumentText) {
+                    if(nkppStateConditionalOutputPassed(state)) {
+                        nkppStateAddError(state, "Failed to read macro argument.");
+                    }
                     ret = nkfalse;
                     goto nkppMacroExecute_cleanup;
                 }
@@ -226,6 +229,14 @@ nkbool nkppMacroExecute(
                 nkppFree(state, argumentText);
                 argumentText = argumentParseState->output;
                 argumentParseState->output = NULL;
+
+                // If the input was empty, then we may have a NULL
+                // pointer on the output, so just drop in an empty
+                // string for now.
+                if(!argumentText) {
+                    argumentText = nkppStrdup(state, "");
+                }
+
                 if(!argumentText) {
                     nkppStateDestroy_internal(argumentParseState);
                     ret = nkfalse;

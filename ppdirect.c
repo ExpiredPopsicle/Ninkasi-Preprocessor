@@ -698,9 +698,6 @@ nkbool nkppDirective_include_handleInclusion(
     nkbool systemInclude,
     nkbool *innerFailure)
 {
-    // FIXME: Attempt to load the file first so we can fail early
-    // without setting up a whole new state.
-
     nkbool ret = nktrue;
     char *fileData = NULL;
     NkppLoadFileCallback loadFileCallback =
@@ -709,13 +706,14 @@ nkbool nkppDirective_include_handleInclusion(
     struct NkppStateConditional *currentConditional = NULL;
 
     // Save original place.
-    char *originalFilename = nkppStrdup(state, state->filename);
+    char *originalFilename = NULL;
     nkuint32_t originalLine = state->lineNumber;
     nkuint32_t originalRecursionLevel = state->recursionLevel;
     nkuint32_t originalIndex = state->index;
     const char *originalSource = state->str;
     struct NkppStateConditional *originalConditionals = state->conditionalStack;
 
+    originalFilename = nkppStrdup(state, state->filename);
     if(!originalFilename) {
         // Bail out before we have anything we need to clean up,
         // because clean up here is going to be a little weird.
@@ -732,7 +730,6 @@ nkbool nkppDirective_include_handleInclusion(
             unquotedName,
             systemInclude);
     if(!fileData) {
-        // nkppStateAddError(state, "Could not load file to include.");
         ret = nkfalse;
         goto nkppDirective_include_handleInclusion_cleanup;
     }
@@ -938,6 +935,7 @@ nkbool nkppDirective_include(
         // Finally, if there was an error in the included file, report
         // that back up the call stack.
         if(innerFailure) {
+            nkppStateAddError2(state, "Error inside included file: ", unquotedName);
             ret = nkfalse;
         }
     }
