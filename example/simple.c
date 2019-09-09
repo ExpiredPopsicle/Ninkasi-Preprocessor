@@ -36,9 +36,15 @@ int main(int argc, char *argv[])
     // Load a file.
     fileData = nkppSimpleLoadFile(state, argv[1]);
     if(!fileData) {
+        nkppStateDestroy(state);
         fprintf(stderr, "error: Failed to read file: %s\n", argv[1]);
         return 1;
     }
+
+    // Add some simple macros as an example.
+    nkppStateAddDefine(state, "FOO 1234");
+    nkppStateAddDefine(state, "BAR 5678");
+    nkppStateAddDefine(state, "TEST_CONCAT(x, y) x##y");
 
     // Run the preprocessor.
     if(nkppStateExecute(state, fileData, argv[1])) {
@@ -67,6 +73,7 @@ int main(int argc, char *argv[])
     }
 
     // Clean up.
+    nkppFree(state, fileData);
     nkppStateDestroy(state);
 
     return 0;
