@@ -199,9 +199,9 @@ nkbool nkppStateAddIncludePath(
 nkbool nkppStateGetError(
     const struct NkppState *state,
     nkuint32_t errorIndex,
-    char **outFilename,
+    const char **outFilename,
     nkuint32_t *outLineNumber,
-    char **outErrorMessage)
+    const char **outErrorMessage)
 {
     struct NkppError *currentError;
 
@@ -230,5 +230,18 @@ nkbool nkppStateGetError(
     *outLineNumber = currentError->lineNumber;
 
     return nktrue;
+}
+
+const char *nkppStateGetOutput(
+    const struct NkppState *state)
+{
+    return state->output;
+}
+
+char *nkppSimpleLoadFile(
+    struct NkppState *state,
+    const char *filename)
+{
+    return nkppDefaultLoadFileCallback(state, NULL, filename, nkfalse);
 }
 

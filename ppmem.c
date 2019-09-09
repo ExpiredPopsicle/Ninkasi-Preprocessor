@@ -187,35 +187,6 @@ char *nkppDefaultLoadFileCallback(
     const char *filename,
     nkbool systemInclude)
 {
-//     FILE *in = fopen(filename, "rb");
-//     nkuint32_t fileSize = 0;
-//     char *ret;
-
-//     if(!in) {
-//         return NULL;
-//     }
-
-//     fseek(in, 0, SEEK_END);
-//     fileSize = ftell(in);
-//     fseek(in, 0, SEEK_SET);
-
-//     ret = nkppMalloc(state, fileSize + 1);
-//     if(!ret) {
-//         fclose(in);
-//         return NULL;
-//     }
-
-//     ret[fileSize] = 0;
-
-//     if(!fread(ret, fileSize, 1, in)) {
-//         nkppFree(state, ret);
-//         ret = NULL;
-//     }
-
-//     fclose(in);
-
-//     return ret;
-// }
     FILE *in = NULL;
     char *ret = NULL;
 
@@ -228,6 +199,15 @@ char *nkppDefaultLoadFileCallback(
     if(!in) {
         return NULL;
     }
+
+    // Make sure we start with something to return, because a NULL
+    // return indicates a failure.
+    ret = nkppMalloc(state, 1);
+    if(!ret) {
+        fclose(in);
+        return NULL;
+    }
+    ret[0] = 0;
 
     while((inChar = fgetc(in)) != EOF) {
 

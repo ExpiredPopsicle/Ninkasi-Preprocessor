@@ -4,22 +4,6 @@
 #include "ppconfig.h"
 
 // ----------------------------------------------------------------------
-// Memory functions
-
-void *nkppMalloc(
-    struct NkppState *state,
-    nkuint32_t size);
-
-void nkppFree(
-    struct NkppState *state,
-    void *ptr);
-
-void *nkppRealloc(
-    struct NkppState *state,
-    void *ptr,
-    nkuint32_t size);
-
-// ----------------------------------------------------------------------
 // Default fallbacks when the user does not specify callbacks
 
 void *nkppDefaultMallocWrapper(

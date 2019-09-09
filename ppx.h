@@ -3,7 +3,11 @@
 
 #include "pptypes.h"
 
+// ----------------------------------------------------------------------
+// Types
+
 struct NkppErrorState;
+struct NkppState;
 
 typedef void *(*NkppMallocWrapper)(
     void *userData,
@@ -45,11 +49,17 @@ struct NkppMemoryCallbacks
     ///
     /// Memory returned by this must be allocated with nkppMalloc(),
     /// so that it may be freed by the preprocessor.
+    ///
+    /// If this is left as NULL, then a default insecure callback will
+    /// be used in its place.
     NkppLoadFileCallback loadFileCallback;
 
     /// Userdata used by all callbacks.
     void *userData;
 };
+
+// ----------------------------------------------------------------------
+// NkppState manipulation
 
 struct NkppState *nkppStateCreate(
     struct NkppMemoryCallbacks *memoryCallbacks);
@@ -57,6 +67,7 @@ struct NkppState *nkppStateCreate(
 void nkppStateDestroy(
     struct NkppState *state);
 
+/// Execute the preprocessor on some text.
 nkbool nkppStateExecute(
     struct NkppState *state,
     const char *str,
@@ -67,6 +78,7 @@ nkbool nkppStateAddDefine(
     struct NkppState *state,
     const char *line);
 
+/// Get the number of errors in the code that was processed.
 nkuint32_t nkppStateGetErrorCount(
     const struct NkppState *state);
 
@@ -78,15 +90,54 @@ nkuint32_t nkppStateGetErrorCount(
 nkbool nkppStateGetError(
     const struct NkppState *state,
     nkuint32_t errorIndex,
-    char **outFilename,
+    const char **outFilename,
     nkuint32_t *outLineNumber,
-    char **outErrorMessage);
+    const char **outErrorMessage);
 
 nkuint32_t nkppStateHasError(
     const struct NkppState *state);
 
+/// Add an include path. These are paths that will be attempted first
+/// when the script uses the brackets ("<>") instead of quotes for
+/// include directives. Note that depending on your implementation of
+/// loadFileCallback, this may not have to correspond to a real path.
 nkbool nkppStateAddIncludePath(
     struct NkppState *state,
     const char *path);
+
+/// Use this to retrieve the final output.
+const char *nkppStateGetOutput(
+    const struct NkppState *state);
+
+// ----------------------------------------------------------------------
+// Memory/file functions
+//
+// Use these to allocate and free memory associated with a given
+// NkppState.
+
+/// This is the malloc() replacement used to allocate memory
+/// associated with the preprocessor. Memory allocated with this must
+/// be freed with nkppFree().
+void *nkppMalloc(
+    struct NkppState *state,
+    nkuint32_t size);
+
+/// This is the corresponding free() replacement to nkppMalloc().
+void nkppFree(
+    struct NkppState *state,
+    void *ptr);
+
+/// This is the realloc() replacement that goes with nkppMalloc() and
+/// nkppFree().
+void *nkppRealloc(
+    struct NkppState *state,
+    void *ptr,
+    nkuint32_t size);
+
+/// This is the default file loader callack. If loadFileCallback is
+/// NULL, this will be used.
+char *nkppSimpleLoadFile(
+    struct NkppState *state,
+    const char *filename);
 
 #endif // NK_PPX_H

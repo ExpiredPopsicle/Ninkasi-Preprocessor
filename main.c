@@ -1,4 +1,3 @@
-#include "ppcommon.h"
 #include "ppx.h"
 
 #include <stdio.h>
@@ -85,78 +84,78 @@ char *loadFile2(
     return ret;
 }
 
-char *loadFile(
-    struct NkppState *state,
-    void *userData,
-    const char *filename,
-    nkbool systemInclude)
-{
-    FILE *in = NULL;
-    nkuint32_t fileSize = 0;
-    char *ret;
-    char *realFilename = NULL;
-    nkuint32_t bufferSize = 0;
+// char *loadFile(
+//     struct NkppState *state,
+//     void *userData,
+//     const char *filename,
+//     nkbool systemInclude)
+// {
+//     FILE *in = NULL;
+//     nkuint32_t fileSize = 0;
+//     char *ret;
+//     char *realFilename = NULL;
+//     nkuint32_t bufferSize = 0;
 
-    // if(systemInclude) {
-    //     realFilename = nkppPathAppend(state, "/usr/include", filename);
-    //     in = fopen(realFilename, "rb");
-    // }
+//     // if(systemInclude) {
+//     //     realFilename = nkppPathAppend(state, "/usr/include", filename);
+//     //     in = fopen(realFilename, "rb");
+//     // }
 
-    // if(!in) {
-    //     nkppFree(state, realFilename);
-    //     realFilename = nkppStrdup(state, filename);
-    //     in = fopen(realFilename, "rb");
-    // }
+//     // if(!in) {
+//     //     nkppFree(state, realFilename);
+//     //     realFilename = nkppStrdup(state, filename);
+//     //     in = fopen(realFilename, "rb");
+//     // }
 
-    realFilename = nkppStrdup(state, filename);
+//     realFilename = nkppStrdup(state, filename);
 
-    if(!realFilename) {
-        return NULL;
-    }
+//     if(!realFilename) {
+//         return NULL;
+//     }
 
-    in = fopen(realFilename, "rb");
+//     in = fopen(realFilename, "rb");
 
 
-    // FIXME: Remove this.
-    printf("LOADING FILE: %s\n", realFilename);
+//     // FIXME: Remove this.
+//     printf("LOADING FILE: %s\n", realFilename);
 
-    if(!in) {
-        nkppFree(state, realFilename);
-        return NULL;
-    }
+//     if(!in) {
+//         nkppFree(state, realFilename);
+//         return NULL;
+//     }
 
-    fseek(in, 0, SEEK_END);
-    fileSize = ftell(in);
-    fseek(in, 0, SEEK_SET);
+//     fseek(in, 0, SEEK_END);
+//     fileSize = ftell(in);
+//     fseek(in, 0, SEEK_SET);
 
-    bufferSize = fileSize + 1;
-    if(bufferSize < fileSize) {
-        fclose(in);
-        nkppFree(state, realFilename);
-        return NULL;
-    }
+//     bufferSize = fileSize + 1;
+//     if(bufferSize < fileSize) {
+//         fclose(in);
+//         nkppFree(state, realFilename);
+//         return NULL;
+//     }
 
-    ret = nkppMalloc(state, bufferSize);
-    if(!ret) {
-        fclose(in);
-        nkppFree(state, realFilename);
-        return NULL;
-    }
+//     ret = nkppMalloc(state, bufferSize);
+//     if(!ret) {
+//         fclose(in);
+//         nkppFree(state, realFilename);
+//         return NULL;
+//     }
 
-    ret[fileSize] = 0;
+//     ret[fileSize] = 0;
 
-    if(!fread(ret, fileSize, 1, in)) {
-        nkppFree(state, ret);
-        ret = NULL;
-    }
+//     if(!fread(ret, fileSize, 1, in)) {
+//         nkppFree(state, ret);
+//         ret = NULL;
+//     }
 
-    fclose(in);
-    nkppFree(state, realFilename);
+//     fclose(in);
+//     nkppFree(state, realFilename);
 
-    printf("LOAD SUCCESS\n");
+//     printf("LOAD SUCCESS\n");
 
-    return ret;
-}
+//     return ret;
+// }
 
 int main(int argc, char *argv[])
 {
@@ -587,8 +586,7 @@ int main(int argc, char *argv[])
         testStr2 = loadFile2(state, NULL, argc > 1 ? argv[1] : "ctest.c", nkfalse);
         if(!testStr2) {
             printf("Allocation failure on file load.\n");
-            nkppStateDestroy_internal(state);
-            // return 0;
+            nkppStateDestroy(state);
             continue;
         }
 
@@ -602,7 +600,7 @@ int main(int argc, char *argv[])
             printf("  Whatever\n");
             printf("----------------------------------------------------------------------\n");
 
-            state->writePositionMarkers = nktrue;
+            // state->writePositionMarkers = nktrue;
             // if(nkppStateExecute(state, testStr2, "test.txt")) {
             if(nkppStateExecute(state, testStr2, argc > 1 ? argv[1] : "ctest.c")) {
                 printf("Preprocessor success\n");
@@ -613,20 +611,20 @@ int main(int argc, char *argv[])
             printf("----------------------------------------------------------------------\n");
             printf("  Preprocessor output\n");
             printf("----------------------------------------------------------------------\n");
-            if(state->output) {
-                printf("%s\n", state->output);
+            if(nkppStateGetOutput(state)) {
+                printf("%s\n", nkppStateGetOutput(state));
             }
 
 
-            if(state->output) {
-                FILE *outfile = fopen("tmp.c", "wb+");
-                if(outfile) {
-                    fprintf(outfile, "%s", state->output);
-                    fclose(outfile);
-                } else {
-                    printf("Failed to write preprocessed file.\n");
-                }
-            }
+            // if(state->output) {
+            //     FILE *outfile = fopen("tmp.c", "wb+");
+            //     if(outfile) {
+            //         fprintf(outfile, "%s", state->output);
+            //         fclose(outfile);
+            //     } else {
+            //         printf("Failed to write preprocessed file.\n");
+            //     }
+            // }
 
         }
 
@@ -634,15 +632,14 @@ int main(int argc, char *argv[])
             nkuint32_t errorCount = nkppStateGetErrorCount(state);
             nkuint32_t i;
             for(i = 0; i < errorCount; i++) {
-                char *text = NULL;
-                char *fname = NULL;
+                const char *text = NULL;
+                const char *fname = NULL;
                 nkuint32_t lineNumber = 0;
                 if(nkppStateGetError(state, i, &fname, &lineNumber, &text)) {
                     printf("error: %s:%lu: %s\n",
                         fname, (unsigned long)lineNumber, text);
                 } else {
                     printf("error: Can't read error message.\n");
-                    assert(0);
                 }
             }
         }
@@ -664,18 +661,15 @@ int main(int argc, char *argv[])
         nkppFree(state, testStr2);
 
         printf("----------------------------------------------------------------------\n");
-        printf("  Iteration: %5lu, Allocation failure? %s\n",
-            (unsigned long)counter,
-            state->errorState->allocationFailure ? "yes" : "no");
+        printf("  Iteration: %5lu\n",
+            (unsigned long)counter);
         printf("----------------------------------------------------------------------\n");
 
         // nkppStateDestroy_internal(state);
         nkppStateDestroy(state);
 
-        nkppTestRun();
+        // nkppTestRun();
 
-        printf("Memory leaked: %lu\n", (unsigned long)nkppMemDebugGetTotalAllocations());
-        assert(nkppMemDebugGetTotalAllocations() == 0);
     }
 
     return 0;

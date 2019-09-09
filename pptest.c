@@ -14,6 +14,14 @@ nkbool nkppTestRun(void)
         ret = nkfalse;
     }
 
+    #if NK_PP_MEMDEBUG
+    printf("----------------------------------------------------------------------\n");
+    printf("Memory leaked: %lu\n", (unsigned long)nkppMemDebugGetTotalAllocations());
+    if(nkppMemDebugGetTotalAllocations()) {
+        ret = nkfalse;
+    }
+    #endif
+
     return ret;
 }
 
