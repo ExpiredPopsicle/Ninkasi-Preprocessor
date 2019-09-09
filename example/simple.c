@@ -1,6 +1,6 @@
 // "ppx.h" is the public interface to the preprocessor. It should be
 // all a hosting application needs to use the preprocessor.
-#include "ppx.h"
+#include <ppx.h>
 
 #include <stdio.h>
 

@@ -1,0 +1,9 @@
+# Build object files.
+*.o
+
+# Autotools generated stuff.
+Makefile
+Makefile.in
+configure.in
+configure
+aclocal.m4
