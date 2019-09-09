@@ -16,8 +16,9 @@ Some libraries test UINT_MAX and friends.
 * DONE State clones that don't copy all the strings.
 * DONE Test for alloc-fail handling again.
 * TODO Make it compile in C++ mode.
-* TODO AFL testing
-* TODO Add copyright headers
-* TODO Add a real build system
-* TODO Public API for error messages.
-* TODO Write the README.md
+* DONE AFL testing.
+* DONE Add copyright headers.
+* TODO Add a real build system.
+* DONE Public API for error messages.
+* TODO Write the README.md.
+* TODO More AFL testing.
