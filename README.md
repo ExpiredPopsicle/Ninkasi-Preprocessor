@@ -8,7 +8,7 @@ Ninkasi scripting language.
 Quick Example
 =============
 
-See the file [simple.c](simple.c) for a very basic example showing how
-to use the library.
+See the file [example/simple.c](example/simple.c) for a very basic
+example showing how to use the library.
 
 

@@ -1,10 +1,13 @@
-all : a_nonafl b
+all : a b
 
-a_nonafl : main.c ppmacro.c ppstate.c ppcommon.c ppstring.c pptoken.c ppdirect.c ppmem.c pppath.c pptest.c ppexpr.c pperror.c ppx.c
-	$(CC) -g -Wall $^ -o $@
+a : example/main.c src/ppmacro.c src/ppstate.c src/ppcommon.c src/ppstring.c \
+	src/pptoken.c src/ppdirect.c src/ppmem.c src/pppath.c src/pptest.c src/ppexpr.c \
+	src/pperror.c src/ppx.c
 
-b : simple.c ppmacro.c ppstate.c ppcommon.c ppstring.c \
-	pptoken.c ppdirect.c ppmem.c pppath.c pptest.c ppexpr.c \
-	pperror.c ppx.c
+	$(CC) -Isrc -g -Wall $^ -o $@
 
-	$(CC) -g -Wall $^ -o $@
+b : example/simple.c src/ppmacro.c src/ppstate.c src/ppcommon.c src/ppstring.c \
+	src/pptoken.c src/ppdirect.c src/ppmem.c src/pppath.c src/pptest.c src/ppexpr.c \
+	src/pperror.c src/ppx.c
+
+	$(CC) -Isrc -g -Wall $^ -o $@
