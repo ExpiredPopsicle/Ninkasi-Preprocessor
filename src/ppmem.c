@@ -54,7 +54,7 @@ struct NkppAllocationHeader *nkppAllocationHeaderGetFromData(void *ptr)
 struct NkppAllocationHeader *nkppAllocationHeaderGetData(struct NkppAllocationHeader *header)
 {
     void *ret = header + 1;
-    return ret;
+    return (struct NkppAllocationHeader *)ret;
 }
 
 // ----------------------------------------------------------------------
@@ -147,10 +147,13 @@ void *nkppMalloc(struct NkppState *state, nkuint32_t size)
 #endif // NK_PP_MEMDEBUG
 
     if(state->memoryCallbacks && state->memoryCallbacks->mallocWrapper) {
-        newHeader = state->memoryCallbacks->mallocWrapper(
-            state->memoryCallbacks->userData, actualSize);
+        newHeader =
+            (struct NkppAllocationHeader *)state->memoryCallbacks->mallocWrapper(
+                state->memoryCallbacks->userData, actualSize);
     } else {
-        newHeader = nkppDefaultMallocWrapper(NULL, actualSize);
+        newHeader =
+            (struct NkppAllocationHeader *)nkppDefaultMallocWrapper(
+                NULL, actualSize);
     }
 
     if(!newHeader) {
@@ -203,9 +206,12 @@ void *nkppDefaultMallocWrapper(
     void *userData,
     nkuint32_t size)
 {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wtautological-constant-out-of-range-compare"
     if(size > ~(size_t)0) {
         return NULL;
     }
+#pragma clang diagnostic pop
     return malloc(size);
 }
 
@@ -237,7 +243,7 @@ char *nkppDefaultLoadFileCallback(
 
     // Make sure we start with something to return, because a NULL
     // return indicates a failure.
-    ret = nkppMalloc(state, 1);
+    ret = (char*)nkppMalloc(state, 1);
     if(!ret) {
         fclose(in);
         return NULL;
@@ -257,7 +263,8 @@ char *nkppDefaultLoadFileCallback(
                 nkppFree(state, ret);
             }
 
-            newBuf = nkppRealloc(state, ret, bufferSize);
+            newBuf = (char*)nkppRealloc(
+                state, ret, bufferSize);
             if(!newBuf) {
                 fclose(in);
                 nkppFree(state, ret);

@@ -51,7 +51,8 @@ struct NkppState *nkppStateCreate(
     struct NkppState *state = NULL;
 
     errorState =
-        mallocWrapper(userData, sizeof(struct NkppErrorState));
+        (struct NkppErrorState*)mallocWrapper(
+            userData, sizeof(struct NkppErrorState));
     if(!errorState) {
         return NULL;
     }
@@ -216,7 +217,7 @@ nkbool nkppStateAddIncludePath(
         return nkfalse;
     }
 
-    newPathList = nkppRealloc(
+    newPathList = (char**)nkppRealloc(
         state, state->includePaths,
         sizeof(char*) * newPathCount);
     if(!newPathList) {

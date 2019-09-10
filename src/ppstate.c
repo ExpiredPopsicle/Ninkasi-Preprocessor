@@ -54,7 +54,8 @@ struct NkppState *nkppStateCreate_internal(
         memoryCallbacks->freeWrapper : nkppDefaultFreeWrapper;
     userData = memoryCallbacks ? memoryCallbacks->userData : NULL;
 
-    ret = localMallocWrapper(userData, sizeof(struct NkppState));
+    ret = (struct NkppState*)localMallocWrapper(
+        userData, sizeof(struct NkppState));
 
     if(ret) {
         ret->str = NULL;
@@ -217,7 +218,8 @@ nkbool nkppStateOutputAppendChar_real(struct NkppState *state, char c)
             newCapacity = 8;
         }
 
-        newChunk = nkppRealloc(state, state->output, newCapacity);
+        newChunk = (char*)nkppRealloc(
+            state, state->output, newCapacity);
 
         if(!newChunk) {
             return nkfalse;
@@ -482,7 +484,7 @@ char *nkppStateInputReadBytes(
         return NULL;
     }
 
-    ret = nkppMalloc(state, len);
+    ret = (char*)nkppMalloc(state, len);
     if(!ret) {
         return NULL;
     }
@@ -611,8 +613,9 @@ struct NkppToken *nkppStateInputGetNextToken(
     nkbool outputWhitespace)
 {
     nkbool success = nktrue;
-    struct NkppToken *ret = nkppMalloc(
-        state, sizeof(struct NkppToken));
+    struct NkppToken *ret =
+        (struct NkppToken*)nkppMalloc(
+            state, sizeof(struct NkppToken));
     if(!ret) {
         return NULL;
     }
@@ -962,7 +965,7 @@ char *nkppStateInputReadRestOfLine(
     }
 
     // Create and fill the return buffer.
-    ret = nkppMalloc(state, lineBufLen);
+    ret = (char*)nkppMalloc(state, lineBufLen);
     if(ret) {
         nkppMemcpy(ret, state->str + lineStart, lineLen);
         ret[lineLen] = 0;
@@ -1040,7 +1043,7 @@ struct NkppMacro *nkppStateFindMacro(
                     quotedStringBufLen, overflow);
 
                 if(!overflow) {
-                    char *quotedString = nkppMalloc(state, quotedStringBufLen);
+                    char *quotedString = (char*)nkppMalloc(state, quotedStringBufLen);
 
                     if(quotedString) {
 
@@ -1121,7 +1124,7 @@ struct NkppState *nkppStateClone(
     // Copy output.
     if(copyOutput) {
 
-        ret->output = nkppMalloc(state, state->outputCapacity);
+        ret->output = (char*)nkppMalloc(state, state->outputCapacity);
         ret->outputCapacity = state->outputCapacity;
         ret->outputLength = state->outputLength;
 
@@ -1210,7 +1213,7 @@ char *nkppStateInputReadIdentifier(struct NkppState *state)
             return NULL;
         }
 
-        ret = nkppMalloc(state, memLen);
+        ret = (char*)nkppMalloc(state, memLen);
     }
 
     if(!ret) {
@@ -1252,7 +1255,7 @@ char *nkppStateInputReadBracketString(struct NkppState *state)
     if(overflow) {
         return NULL;
     }
-    ret = nkppMalloc(state, bufferLen);
+    ret = (char*)nkppMalloc(state, bufferLen);
     if(!ret) {
         return NULL;
     }
@@ -1325,7 +1328,7 @@ char *nkppStateInputReadQuotedString(struct NkppState *state)
             return NULL;
         }
 
-        ret = nkppMalloc(state, memLen);
+        ret = (char*)nkppMalloc(state, memLen);
     }
 
     if(!ret) {
@@ -1388,7 +1391,7 @@ char *nkppStateInputReadInteger(struct NkppState *state)
     }
 
     // Allocate.
-    ret = nkppMalloc(state, bufLen);
+    ret = (char*)nkppMalloc(state, bufLen);
     if(!ret) {
         return NULL;
     }
@@ -1431,7 +1434,7 @@ char *nkppStateInputReadMacroArgument(struct NkppState *state)
 
     // Start off with an allocated-but-empty string, because we have
     // to return something not-NULL to indicate a success.
-    readerState->output = nkppMalloc(state, 1);
+    readerState->output = (char*)nkppMalloc(state, 1);
     if(!readerState->output) {
         nkppStateDestroy_internal(readerState);
         return NULL;
@@ -1527,7 +1530,7 @@ void nkppStateAddError2(
         return;
     }
 
-    output = nkppMalloc(state, outputBufferLen);
+    output = (char*)nkppMalloc(state, outputBufferLen);
     if(output) {
         memcpy(output, part1, len1);
         memcpy(output + len1, part2, len2);
@@ -1546,7 +1549,8 @@ void nkppStateAddError(
     if(state->errorState) {
 
         struct NkppError *newError =
-            nkppMalloc(state, sizeof(struct NkppError));
+            (struct NkppError *)nkppMalloc(
+                state, sizeof(struct NkppError));
 
         if(newError) {
 
@@ -1624,7 +1628,8 @@ nkbool nkppStatePushIfResult(
     nkbool ifResult)
 {
     struct NkppStateConditional *newConditional =
-        nkppMalloc(state, sizeof(struct NkppStateConditional));
+        (struct NkppStateConditional *)nkppMalloc(
+            state, sizeof(struct NkppStateConditional));
 
     if(!newConditional) {
         return nkfalse;

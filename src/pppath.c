@@ -87,7 +87,7 @@ char *nkppPathDirname(
     }
 
     // Return just the slice of the string with the directory name.
-    ret = nkppMalloc(state, i+1);
+    ret = (char*)nkppMalloc(state, i+1);
     if(ret) {
         nkppMemcpy(ret, path, i);
         ret[i] = 0;
@@ -121,7 +121,7 @@ char *nkppPathBasename(
     } else {
 
         // Return just the slice of the string with the file name.
-        ret = nkppMalloc(state, len - i + 1);
+        ret = (char*)nkppMalloc(state, len - i + 1);
         if(ret) {
             nkppMemcpy(ret, path + i + 1, len - i);
             ret[len - i] = 0;
@@ -158,7 +158,7 @@ nkbool nkppPathTidyPath_addToken(
         return nkfalse;
     }
 
-    newTokenList = nkppRealloc(
+    newTokenList = (char**)nkppRealloc(
         state,
         tokenList->tokens,
         sizeof(char*) * newTokenCount);
@@ -345,7 +345,7 @@ char *nkppPathTidyPath(
     outputLength++;
 
     // Allocate it.
-    ret = nkppMalloc(state, outputLength);
+    ret = (char*)nkppMalloc(state, outputLength);
     if(!ret) {
         goto nkppPathTidyPath_cleanup;
     }
@@ -401,7 +401,7 @@ char *nkppPathAppend(
         return NULL;
     }
 
-    tmp = nkppMalloc(state, bufferSize);
+    tmp = (char*)nkppMalloc(state, bufferSize);
     if(!tmp) {
         return NULL;
     }

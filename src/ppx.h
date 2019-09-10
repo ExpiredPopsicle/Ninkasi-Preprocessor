@@ -38,6 +38,10 @@
 
 #include "pptypes.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // ----------------------------------------------------------------------
 // Types
 
@@ -174,5 +178,11 @@ void *nkppRealloc(
 char *nkppSimpleLoadFile(
     struct NkppState *state,
     const char *filename);
+
+// ----------------------------------------------------------------------
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // NK_PPX_H

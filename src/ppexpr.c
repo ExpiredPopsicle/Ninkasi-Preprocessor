@@ -80,7 +80,7 @@ struct NkppExpressionStackValue
     union {
         NkppExpressionStackValue_uintType uintValue;
         NkppExpressionStackValue_intType intValue;
-        enum NkppTokenType operatorType;
+        nkuint32_t operatorType;
     };
     nkbool signedInt;
 };
@@ -97,7 +97,8 @@ struct NkppExpressionStack *nkppExpressionStackCreate(
 {
     struct NkppExpressionStack *stack;
 
-    stack = nkppMalloc(state, sizeof(struct NkppExpressionStack));
+    stack = (struct NkppExpressionStack*)nkppMalloc(
+        state, sizeof(struct NkppExpressionStack));
     if(!stack) {
         return NULL;
     }
@@ -157,9 +158,10 @@ nkbool nkppExpressionStackPush(
             return nkfalse;
         }
 
-        newValues = nkppRealloc(
-            state, stack->values,
-            actualAllocationSize);
+        newValues =
+            (struct NkppExpressionStackValue *)nkppRealloc(
+                state, stack->values,
+                actualAllocationSize);
 
         if(!newValues) {
             return nkfalse;
@@ -510,7 +512,7 @@ nkbool nkppEvaluateExpression_parseValue(
 }
 
 nkuint32_t nkppEvaluateExpression_getPrecedence(
-    enum NkppTokenType type)
+    nkuint32_t type)
 {
     switch(type) {
         case NK_PPTOKEN_ASTERISK:            return 2;  // Multiply
@@ -539,7 +541,7 @@ nkuint32_t nkppEvaluateExpression_getPrecedence(
 
 nkbool nkppEvaluateExpression_applyOperator(
     struct NkppState *state,
-    enum NkppTokenType type,
+    nkuint32_t type,
     struct NkppExpressionStackValue a,
     struct NkppExpressionStackValue b,
     struct NkppExpressionStackValue *result)
@@ -821,7 +823,7 @@ nkbool nkppEvaluateExpression_internal(
     struct NkppExpressionStack *valueStack = NULL;
     struct NkppExpressionStack *operatorStack = NULL;
     struct NkppToken *operatorToken = NULL;
-    enum NkppTokenType currentOperator = NK_INVALID_VALUE;
+    nkuint32_t currentOperator = NK_INVALID_VALUE;
 
     output->signedInt = nkfalse;
     output->uintValue = 0;

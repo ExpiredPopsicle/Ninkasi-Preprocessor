@@ -50,7 +50,7 @@ char *nkppDeleteBackslashNewlines(
 
         if(!overflow) {
 
-            outputStr = nkppMalloc(state, outputLen);
+            outputStr = (char*)nkppMalloc(state, outputLen);
 
             if(outputStr) {
 
@@ -97,7 +97,7 @@ char *nkppStripCommentsAndTrim(
         return NULL;
     }
 
-    ret = nkppMalloc(state, bufLen);
+    ret = (char*)nkppMalloc(state, bufLen);
     if(!ret) {
         return NULL;
     }
@@ -194,7 +194,7 @@ char *nkppEscapeString(
 
     // Return an empty string if input is MULL.
     if(!src) {
-        output = nkppMalloc(state, 1);
+        output = (char*)nkppMalloc(state, 1);
         if(output) {
             output[0] = 0;
         }
@@ -211,7 +211,7 @@ char *nkppEscapeString(
     }
 
     // Do the allocation.
-    output = nkppMalloc(state, bufferLen);
+    output = (char*)nkppMalloc(state, bufferLen);
     if(!output) {
         return NULL;
     }

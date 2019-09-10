@@ -57,7 +57,8 @@ struct NkppMacro *nkppMacroCreate(
     struct NkppState *state)
 {
     struct NkppMacro *ret =
-        nkppMalloc(state, sizeof(struct NkppMacro));
+        (struct NkppMacro *)nkppMalloc(
+            state, sizeof(struct NkppMacro));
 
     if(ret) {
         ret->identifier = NULL;
@@ -78,7 +79,7 @@ nkbool nkppMacroAddArgument(
     const char *name)
 {
     struct NkppMacroArgument *arg =
-        nkppMalloc(
+        (struct NkppMacroArgument *)nkppMalloc(
             state,
             sizeof(struct NkppMacroArgument));
     if(!arg) {
