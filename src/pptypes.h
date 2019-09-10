@@ -107,13 +107,29 @@ typedef long nkint32_t;
 #error "No data model detected!"
 #endif
 
-typedef nkuint32_t nkbool;
-typedef unsigned char nkuint8_t;
+#ifndef nkuint8_t
+#define nkuint8_t unsigned char
+#endif
 
-#define nktrue 1
-#define nkfalse 0
+#ifndef nkbool
+#define nkbool nkuint8_t
+#endif
+
+#ifndef nktrue
+#define nktrue ((nkbool)1)
+#endif
+
+#ifndef nkfalse
+#define nkfalse ((nkbool)0)
+#endif
+
+#ifndef NK_INVALID_VALUE
 #define NK_INVALID_VALUE (~(nkuint32_t)0)
+#endif
+
+#ifndef NK_UINT_MAX
 #define NK_UINT_MAX (~(nkuint32_t)0)
+#endif
 
 #endif // NK_PPTYPES_H
 
