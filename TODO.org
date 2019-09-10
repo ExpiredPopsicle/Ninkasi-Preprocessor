@@ -15,10 +15,11 @@ Some libraries test UINT_MAX and friends.
 * DONE Support of 64-bit literals in expressions.
 * DONE State clones that don't copy all the strings.
 * DONE Test for alloc-fail handling again.
-* TODO Make it compile in C++ mode.
+* DONE Make it compile in C++ mode.
 * DONE AFL testing.
 * DONE Add copyright headers.
-* TODO Add a real build system.
+* DONE Add a real build system.
 * DONE Public API for error messages.
-* TODO Write the README.md.
+* DONE Write the README.md.
+* DONE Write a COPYING.md.
 * TODO More AFL testing.
