@@ -36,12 +36,20 @@
 #ifndef NK_PPTYPES_H
 #define NK_PPTYPES_H
 
-// FIXME: Zlib has a better way of determining these sizes. Check out
-// how they do it and implement it like that.
+#include <limits.h>
+
+// ----------------------------------------------------------------------
+// Determine data model so we can figure out which type is really a
+// 32-bit int and 32-bit unsigned int.
 
 #if !defined(NKPP_32BIT) && !defined(NKPP_16BIT)
 
-#  ifdef __ILP32__
+#  if INT_MAX == 0x7fffffff && UINT_MAX == 0xffffffff
+
+     // ILP32 data model. Determined from INT_MAX and UINT_MAX
+#    define NKPP_32BIT
+
+#  elif defined(__ILP32__)
 
      // ILP32 data model. The compiler actually tells us.
 #    define NKPP_32BIT
@@ -97,38 +105,77 @@
 
 #endif // !defined(NKPP_32BIT) && !defined(NKPP_16BIT)
 
+// ----------------------------------------------------------------------
+// Actual type definitions
+
+// Ints.
 #ifdef NKPP_32BIT
-typedef unsigned int nkuint32_t;
-typedef int nkint32_t;
+#  ifndef nkuint32_t
+#    define nkuint32_t unsigned int
+#  endif
+#  ifndef nkint32_t
+#    define nkint32_t signed int
+#  endif
+#  ifndef NK_PRINTF_INT32
+#    define NK_PRINTF_INT32 "%d"
+#  endif
+#  ifndef NK_PRINTF_UINT32
+#    define NK_PRINTF_UINT32 "%u"
+#  endif
 #elif defined(NKPP_16BIT)
-typedef unsigned long nkuint32_t;
-typedef long nkint32_t;
+#  ifndef nkuint32_t
+#    define nkuint32_t unsigned long
+#  endif
+#  ifndef nkint32_t
+#    define nkint32_t signed long
+#  endif
+#  ifndef NK_PRINTF_INT32
+#    define NK_PRINTF_INT32 "%ld"
+#  endif
+#  ifndef NK_PRINTF_UINT32
+#    define NK_PRINTF_UINT32 "%lu"
+#  endif
 #else
-#error "No data model detected!"
+#  error "No data model detected!"
 #endif
 
-#ifndef nkuint8_t
-#define nkuint8_t unsigned char
+#ifndef NK_PRINTF_UINTCHARSNEED
+#  define NK_PRINTF_UINTCHARSNEED 11
 #endif
 
-#ifndef nkbool
-#define nkbool nkuint8_t
-#endif
-
-#ifndef nktrue
-#define nktrue ((nkbool)1)
-#endif
-
-#ifndef nkfalse
-#define nkfalse ((nkbool)0)
+#ifndef NK_PRINTF_INTCHARSNEED
+#  define NK_PRINTF_INTCHARSNEED 12
 #endif
 
 #ifndef NK_INVALID_VALUE
-#define NK_INVALID_VALUE (~(nkuint32_t)0)
+#  define NK_INVALID_VALUE (~(nkuint32_t)0)
 #endif
 
 #ifndef NK_UINT_MAX
-#define NK_UINT_MAX (~(nkuint32_t)0)
+#  define NK_UINT_MAX (~(nkuint32_t)0)
+#endif
+
+// Bytes.
+#ifndef nkuint8_t
+#  define nkuint8_t unsigned char
+#endif
+
+// Booleans.
+#ifndef nkbool
+#  define nkbool nkuint8_t
+#endif
+
+#ifndef nktrue
+#  define nktrue ((nkbool)1)
+#endif
+
+#ifndef nkfalse
+#  define nkfalse ((nkbool)0)
+#endif
+
+// Floats.
+#ifndef NK_PRINTF_FLOATCHARSNEEDED
+#  define NK_PRINTF_FLOATCHARSNEEDED 48
 #endif
 
 #endif // NK_PPTYPES_H

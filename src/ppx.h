@@ -133,7 +133,7 @@ nkbool nkppStateGetError(
     nkuint32_t *outLineNumber,
     const char **outErrorMessage);
 
-nkuint32_t nkppStateHasError(
+nkbool nkppStateHasError(
     const struct NkppState *state);
 
 /// Add an include path. These are paths that will be attempted first

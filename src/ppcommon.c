@@ -43,7 +43,7 @@ void nkppSanityCheck(void)
     assert(sizeof(nkuint32_t) == 4);
     assert(sizeof(nkint32_t) == 4);
     assert(sizeof(nkuint8_t) == 1);
-    assert(sizeof(nkbool) == 4);
+    assert(sizeof(nkbool) == 1);
 }
 
 
