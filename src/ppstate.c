@@ -853,40 +853,35 @@ char *nkppStateInputReadRestOfLine(
 
             // C-style comment.
 
-            // while(state->str[state->index] == '/' && state->str[state->index + 1] == '*')
+            // Skip initial comment marker.
+            if(!nkppStateInputSkipChar(state, outputComments) ||
+                !nkppStateInputSkipChar(state, outputComments))
             {
-
-                // Skip initial comment maker.
-                if(!nkppStateInputSkipChar(state, outputComments) ||
-                    !nkppStateInputSkipChar(state, outputComments))
-                {
-                    return nkfalse;
-                }
-
-                while(state->str[state->index] && state->str[state->index + 1]) {
-
-                    if(state->str[state->index] == '*' && state->str[state->index + 1] == '/') {
-                        if(!nkppStateInputSkipChar(state, outputComments) ||
-                            !nkppStateInputSkipChar(state, outputComments))
-                        {
-                            return nkfalse;
-                        }
-                        break;
-                    }
-
-                    if(!nkppStateInputSkipChar(state, outputComments)) {
-                        return nkfalse;
-                    }
-                }
-
-                lastCharWasBackslash = nkfalse;
-
+                return NULL;
             }
+
+            while(state->str[state->index] && state->str[state->index + 1]) {
+
+                if(state->str[state->index] == '*' && state->str[state->index + 1] == '/') {
+                    if(!nkppStateInputSkipChar(state, outputComments) ||
+                        !nkppStateInputSkipChar(state, outputComments))
+                    {
+                        return NULL;
+                    }
+                    break;
+                }
+
+                if(!nkppStateInputSkipChar(state, outputComments)) {
+                    return NULL;
+                }
+            }
+
+            lastCharWasBackslash = nkfalse;
 
             // C-style comments are replaced with a single space when
             // removed.
             if(!nkppStateOutputAppendChar(state, ' ')) {
-                return nkfalse;
+                return NULL;
             }
 
         } else {
@@ -898,7 +893,7 @@ char *nkppStateInputReadRestOfLine(
 
                 // Skip this backslash. Don't output it.
                 if(!nkppStateInputSkipChar(state, nkfalse)) {
-                    return nkfalse;
+                    return NULL;
                 }
 
             } else if(state->str[state->index] == '\n') {
@@ -906,12 +901,6 @@ char *nkppStateInputReadRestOfLine(
                 if(actualLineCount) {
                     (*actualLineCount)++;
                 }
-
-                // // Skip this character. Only output if it's a newline to keep
-                // // lines in sync between input and output.
-                // if(!nkppStateInputSkipChar(state, state->str[state->index] == '\n')) {
-                //     return NULL;
-                // }
 
                 if(lastCharWasBackslash) {
 
@@ -934,7 +923,7 @@ char *nkppStateInputReadRestOfLine(
 
                 // Skip this newline.
                 if(!nkppStateInputSkipChar(state, state->str[state->index] == '\n')) {
-                    return nkfalse;
+                    return NULL;
                 }
 
             } else {
@@ -943,7 +932,7 @@ char *nkppStateInputReadRestOfLine(
 
                 // Skip this, whatever it is.
                 if(!nkppStateInputSkipChar(state, state->str[state->index] == '\n')) {
-                    return nkfalse;
+                    return NULL;
                 }
             }
 

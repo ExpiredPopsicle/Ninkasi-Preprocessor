@@ -206,12 +206,12 @@ void *nkppDefaultMallocWrapper(
     void *userData,
     nkuint32_t size)
 {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wtautological-constant-out-of-range-compare"
-    if(size > ~(size_t)0) {
+    // Fail if we are trying to allocate something larger than the
+    // platform itself supports, with a one-byte safety margin.
+    if(NK_UINT_MAX >= ~(size_t)0 && size >= ~(size_t)0) {
         return NULL;
     }
-#pragma clang diagnostic pop
+
     return malloc(size);
 }
 
