@@ -42,6 +42,13 @@
 // Determine data model so we can figure out which type is really a
 // 32-bit int and 32-bit unsigned int.
 
+// See this repository for an up-to-date version of this file:
+//
+//   https://git.intoxicoding.com/ExpiredPopsicle/ninkasi_types
+//
+// If any changes are made to this file, it would be a good idea to
+// update the ninkasi_types repository, too.
+
 #if !defined(NKPP_32BIT) && !defined(NKPP_16BIT)
 
 #  if INT_MAX == 0x7fffffff && UINT_MAX == 0xffffffff
