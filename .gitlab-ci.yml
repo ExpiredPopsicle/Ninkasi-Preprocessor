@@ -1,0 +1,9 @@
+build:
+  stage: build
+  script:
+    - bash autogen.sh
+    - ./configure CFLAGS="-Wall -Werror"
+    - make
+  artifacts:
+    paths:
+      - src/libnkpp.a
