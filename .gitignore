@@ -7,3 +7,13 @@ Makefile.in
 configure.in
 configure
 aclocal.m4
+
+autom4te.cache
+config.log
+config.status
+example/.deps
+example/simple
+example/test
+pkg-config/nkpp.pc
+src/.deps
+src/libnkpp.a
